@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { rotaProtegida } from "@/lib/auth-guard";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const response = NextResponse.next();
 
   if (!rotaProtegida(request.nextUrl.pathname)) {
