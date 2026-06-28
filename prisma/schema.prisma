@@ -55,7 +55,7 @@ model ClienteFabrica {
 
 model Usuario {
   id             String            @id @default(cuid())
-  supabaseUserId String            @unique
+  supabaseUserId String?           @unique // vínculo ao login Supabase no 1º acesso (ADR-010)
   nome           String
   email          String            @unique
   perfil         PerfilUsuario     @default(OPERADOR)

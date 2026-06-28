@@ -26,10 +26,29 @@ export async function obterUsuarioLogado(): Promise<UsuarioSessao | null> {
   const { data } = await supabase.auth.getUser();
   if (!data.user) return null;
 
-  const usuario = await prisma.usuario.findUnique({
+  let usuario = await prisma.usuario.findUnique({
     where: { supabaseUserId: data.user.id },
     include: { fabricas: true },
   });
+
+  // ADR-010: usuário cadastrado só com e-mail ainda não tem vínculo ao login
+  // Supabase. No 1º acesso, casamos pelo e-mail e gravamos o supabaseUserId.
+  if (!usuario && data.user.email) {
+    const porEmail = await prisma.usuario.findUnique({
+      where: { email: data.user.email },
+      include: { fabricas: true },
+    });
+    if (porEmail && !porEmail.supabaseUserId) {
+      usuario = await prisma.usuario.update({
+        where: { id: porEmail.id },
+        data: { supabaseUserId: data.user.id },
+        include: { fabricas: true },
+      });
+    } else {
+      usuario = porEmail;
+    }
+  }
+
   if (!usuario) return null;
 
   return {
