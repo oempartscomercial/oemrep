@@ -14,11 +14,18 @@
 **divergências viram chamados rastreáveis** e **toda alteração fica auditada** —
 substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
 
-**Estado atual do desenvolvimento:** **Épico 1 — Fundação concluído**
-(`plans/2026-06-22-epic-01-fundacao.md`): Next.js + TypeScript + Tailwind, Vitest +
-Playwright, Prisma + Postgres (Supabase) com parâmetros padrão, autenticação Supabase
-Auth com proteção de rotas, casca do app com navegação dos módulos. Próximo passo:
-expandir e executar o **Épico 2 — Cadastros & Acesso**
+**Estado atual do desenvolvimento:** **Épicos 1 e 2 concluídos.**
+- **Épico 1 — Fundação** (`plans/2026-06-22-epic-01-fundacao.md`): Next.js + TypeScript +
+  Tailwind, Vitest + Playwright, Prisma + Postgres (Supabase) com parâmetros padrão,
+  autenticação Supabase Auth com proteção de rotas, casca do app com navegação.
+- **Épico 2 — Cadastros & Acesso** (`plans/2026-06-26-epico-02-cadastros-acesso.md`):
+  CNPJ validado (domínio puro), schema de Fábrica/Cliente/Usuário/auditoria, regra de
+  acesso por fábrica (ADR-009), telas de Fábricas, Clientes (multi-fábrica) e Usuários
+  (perfil + permissão por fábrica). Cadastro de usuário **sem convite por e-mail**
+  (ADR-010): cria o registro e vincula ao login Supabase no 1º acesso, pelo e-mail.
+  Primeiro ADMIN criado via `prisma/bootstrap-admin.ts`.
+
+Próximo passo: expandir e executar o **Épico 3 — Pedidos**
 (`plans/2026-06-22-epics-02-07-briefs.md`). Mantenha esta seção atualizada conforme os
 épicos forem concluídos.
 
