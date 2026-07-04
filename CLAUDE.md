@@ -14,7 +14,7 @@
 **divergências viram chamados rastreáveis** e **toda alteração fica auditada** —
 substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
 
-**Estado atual do desenvolvimento:** **Épicos 1, 2 e 3 concluídos.**
+**Estado atual do desenvolvimento:** **Épicos 1, 2, 3 e 4 concluídos.**
 - **Épico 1 — Fundação** (`plans/2026-06-22-epic-01-fundacao.md`): Next.js + TypeScript +
   Tailwind, Vitest + Playwright, Prisma + Postgres (Supabase) com parâmetros padrão,
   autenticação Supabase Auth com proteção de rotas, casca do app com navegação.
@@ -33,8 +33,16 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   atualização de status de item e arquivamento/reabertura reversível. `SKIP_AUTH`
   agora liga no proxy de autenticação, para navegação manual sem login em dev local
   (a suíte e2e força `SKIP_AUTH=false`).
+- **Épico 4 — Conferência de NFe** (`plans/2026-07-04-epico-04-conferencia-nfe.md`):
+  parser de XML de NFe (`fast-xml-parser`); conferência item a item por CNPJ +
+  referência + quantidade + valor unitário (RN04); baixa parcial progressiva de item
+  por várias NFes (RF09/RN11); vínculo de uma NFe a vários pedidos do mesmo cliente
+  (RN10, `NotaFiscalPedido`); schema de `NotaFiscal`/`ItemFaturado`; tela de
+  conferência com upload → grade de divergências → confirmação manual da baixa
+  (RF15/RF16); relatório de cruzamento por NFe e aba "Notas fiscais" no detalhe do
+  pedido (RF17).
 
-Próximo passo: expandir e executar o **Épico 4 — Conferência de NFe**
+Próximo passo: expandir e executar o **Épico 5 — Rastreio de NFe**
 (`plans/2026-06-22-epics-02-07-briefs.md`). Mantenha esta seção atualizada conforme os
 épicos forem concluídos.
 
