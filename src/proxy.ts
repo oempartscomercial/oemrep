@@ -5,6 +5,13 @@ import { rotaProtegida } from "@/lib/auth-guard";
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next();
 
+  // Só em dev local (.env), nunca em produção: permite navegar sem login para
+  // verificação visual manual. A suíte e2e força SKIP_AUTH=false (playwright.config.ts)
+  // para sempre testar o redirecionamento real.
+  if (process.env.SKIP_AUTH === "true") {
+    return response;
+  }
+
   if (!rotaProtegida(request.nextUrl.pathname)) {
     return response;
   }
