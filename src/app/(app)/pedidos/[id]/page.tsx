@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,12 @@ export default async function DetalhePedidoPage({ params }: { params: Promise<{ 
   const eventos = await prisma.eventoAuditoria.findMany({
     where: { entidade: "Pedido", entidadeId: pedido.id },
     orderBy: { criadoEm: "desc" },
+  });
+
+  const notasFiscais = await prisma.notaFiscalPedido.findMany({
+    where: { pedidoId: pedido.id },
+    include: { notaFiscal: true },
+    orderBy: { notaFiscal: { criadoEm: "desc" } },
   });
 
   return (
@@ -73,9 +80,36 @@ export default async function DetalhePedidoPage({ params }: { params: Promise<{ 
         </TabsContent>
 
         <TabsContent value="notas">
-          <p className="text-sm text-muted-foreground">
-            Nenhuma NFe vinculada ainda — chega no próximo épico.
-          </p>
+          {notasFiscais.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma NFe vinculada ainda.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Número</TableHead>
+                  <TableHead>Chave de acesso</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Cruzamento</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {notasFiscais.map(({ notaFiscal }) => (
+                  <TableRow key={notaFiscal.id}>
+                    <TableCell>{notaFiscal.numero}</TableCell>
+                    <TableCell>{notaFiscal.chaveAcesso}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{notaFiscal.status}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/conferencia/${notaFiscal.id}`} className="underline">
+                        Ver cruzamento
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </TabsContent>
 
         <TabsContent value="historico">
