@@ -18,3 +18,8 @@ test("visitante não logado é redirecionado de /cadastros/usuarios", async ({ p
   await page.goto("/cadastros/usuarios");
   await expect(page).toHaveURL(/\/login/);
 });
+
+test("visitante não logado é redirecionado de /pedidos/novo", async ({ page }) => {
+  await page.goto("/pedidos/novo");
+  await expect(page).toHaveURL(/\/login/);
+});
