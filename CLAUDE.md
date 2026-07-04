@@ -14,7 +14,7 @@
 **divergências viram chamados rastreáveis** e **toda alteração fica auditada** —
 substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
 
-**Estado atual do desenvolvimento:** **Épicos 1 e 2 concluídos.**
+**Estado atual do desenvolvimento:** **Épicos 1, 2 e 3 concluídos.**
 - **Épico 1 — Fundação** (`plans/2026-06-22-epic-01-fundacao.md`): Next.js + TypeScript +
   Tailwind, Vitest + Playwright, Prisma + Postgres (Supabase) com parâmetros padrão,
   autenticação Supabase Auth com proteção de rotas, casca do app com navegação.
@@ -24,8 +24,17 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   (perfil + permissão por fábrica). Cadastro de usuário **sem convite por e-mail**
   (ADR-010): cria o registro e vincula ao login Supabase no 1º acesso, pelo e-mail.
   Primeiro ADMIN criado via `prisma/bootstrap-admin.ts`.
+- **Épico 3 — Pedidos** (`plans/2026-07-04-epico-03-pedidos.md`): shadcn/ui como base
+  visual do app; schema de `Pedido`/`ItemPedido` com ciclo de vida
+  (`SEM_NFE → PARCIAL → COMPLETO → ARQUIVADO`, ADR-005) e snapshot de pendência
+  congelada por não-faturamento (ADR-008); criação manual de pedido com `S/N`;
+  importação de pedido via planilha Excel (upload → revisão → confirmação); lista com
+  filtros por situação; tela de detalhe com abas (Itens/Notas fiscais/Histórico),
+  atualização de status de item e arquivamento/reabertura reversível. `SKIP_AUTH`
+  agora liga no proxy de autenticação, para navegação manual sem login em dev local
+  (a suíte e2e força `SKIP_AUTH=false`).
 
-Próximo passo: expandir e executar o **Épico 3 — Pedidos**
+Próximo passo: expandir e executar o **Épico 4 — Conferência de NFe**
 (`plans/2026-06-22-epics-02-07-briefs.md`). Mantenha esta seção atualizada conforme os
 épicos forem concluídos.
 
