@@ -111,17 +111,18 @@ enum StatusItemPedido {
 }
 
 model Pedido {
-  id        String       @id @default(cuid())
-  numero    String?
-  semNumero Boolean      @default(false)
-  origem    OrigemPedido
-  estado    EstadoPedido @default(SEM_NFE)
-  fabricaId String
-  clienteId String
-  fabrica   Fabrica      @relation(fields: [fabricaId], references: [id])
-  cliente   Cliente      @relation(fields: [clienteId], references: [id])
-  itens     ItemPedido[]
-  criadoEm  DateTime     @default(now())
+  id           String             @id @default(cuid())
+  numero       String?
+  semNumero    Boolean            @default(false)
+  origem       OrigemPedido
+  estado       EstadoPedido       @default(SEM_NFE)
+  fabricaId    String
+  clienteId    String
+  fabrica      Fabrica            @relation(fields: [fabricaId], references: [id])
+  cliente      Cliente            @relation(fields: [clienteId], references: [id])
+  itens        ItemPedido[]
+  notasFiscais NotaFiscalPedido[]
+  criadoEm     DateTime           @default(now())
 }
 
 model ItemPedido {
@@ -136,5 +137,48 @@ model ItemPedido {
   status               StatusItemPedido @default(PENDENTE)
   observacao           String?
   qtdPendenteCongelada Int?
+  itensFaturados       ItemFaturado[]
   criadoEm             DateTime         @default(now())
+}
+
+enum StatusRastreio {
+  TRANSITO
+  RECEBIDA
+  ARMAZENADA
+  EXTRAVIADO
+}
+
+model NotaFiscal {
+  id               String             @id @default(cuid())
+  numero           String
+  chaveAcesso      String             @unique
+  emitenteCnpj     String
+  destinatarioCnpj String
+  dataEmissao      DateTime
+  totalProdutos    Decimal            @db.Decimal(12, 2)
+  totalNota        Decimal            @db.Decimal(12, 2)
+  status           StatusRastreio     @default(TRANSITO)
+  criadoEm         DateTime           @default(now())
+  pedidos          NotaFiscalPedido[]
+  itensFaturados   ItemFaturado[]
+}
+
+model NotaFiscalPedido {
+  id           String     @id @default(cuid())
+  notaFiscalId String
+  pedidoId     String
+  notaFiscal   NotaFiscal @relation(fields: [notaFiscalId], references: [id])
+  pedido       Pedido     @relation(fields: [pedidoId], references: [id])
+
+  @@unique([notaFiscalId, pedidoId])
+}
+
+model ItemFaturado {
+  id                 String     @id @default(cuid())
+  itemPedidoId       String
+  notaFiscalId       String
+  quantidadeFaturada Int
+  criadoEm           DateTime   @default(now())
+  itemPedido         ItemPedido @relation(fields: [itemPedidoId], references: [id])
+  notaFiscal         NotaFiscal @relation(fields: [notaFiscalId], references: [id])
 }
