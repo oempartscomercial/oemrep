@@ -32,6 +32,7 @@ model Fabrica {
   criadoEm        DateTime         @default(now())
   clientes        ClienteFabrica[]
   usuarios        UsuarioFabrica[]
+  pedidos         Pedido[]
 }
 
 model Cliente {
@@ -40,6 +41,7 @@ model Cliente {
   nomeFantasia String
   criadoEm     DateTime         @default(now())
   fabricas     ClienteFabrica[]
+  pedidos      Pedido[]
 }
 
 model ClienteFabrica {
@@ -87,4 +89,52 @@ model EventoAuditoria {
   criadoEm      DateTime @default(now())
 
   @@index([entidade, entidadeId])
+}
+
+enum EstadoPedido {
+  SEM_NFE
+  PARCIAL
+  COMPLETO
+  ARQUIVADO
+}
+
+enum OrigemPedido {
+  EXCEL
+  MANUAL
+}
+
+enum StatusItemPedido {
+  PENDENTE
+  OK
+  FORA_DE_FABRICACAO
+  DESISTENCIA
+}
+
+model Pedido {
+  id        String       @id @default(cuid())
+  numero    String?
+  semNumero Boolean      @default(false)
+  origem    OrigemPedido
+  estado    EstadoPedido @default(SEM_NFE)
+  fabricaId String
+  clienteId String
+  fabrica   Fabrica      @relation(fields: [fabricaId], references: [id])
+  cliente   Cliente      @relation(fields: [clienteId], references: [id])
+  itens     ItemPedido[]
+  criadoEm  DateTime     @default(now())
+}
+
+model ItemPedido {
+  id                   String           @id @default(cuid())
+  pedidoId             String
+  pedido               Pedido           @relation(fields: [pedidoId], references: [id])
+  referencia           String
+  descricao            String
+  quantidadePedida     Int
+  quantidadeFaturada   Int              @default(0)
+  valorUnitario        Decimal          @db.Decimal(12, 2)
+  status               StatusItemPedido @default(PENDENTE)
+  observacao           String?
+  qtdPendenteCongelada Int?
+  criadoEm             DateTime         @default(now())
 }
