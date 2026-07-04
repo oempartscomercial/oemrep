@@ -4,10 +4,10 @@ import { prisma } from "../prisma";
 describe("schema de NFe", () => {
   it("cria NotaFiscal vinculada a um pedido, com item faturado, e lê de volta", async () => {
     const fabrica = await prisma.fabrica.create({
-      data: { nome: "Fábrica Teste NFe", cnpj: "11444777000246" },
+      data: { nome: "Fábrica Teste NFe", cnpj: "22333444000175" },
     });
     const cliente = await prisma.cliente.create({
-      data: { cnpj: "11222333000262", nomeFantasia: "Cliente Teste NFe" },
+      data: { cnpj: "33222111000155", nomeFantasia: "Cliente Teste NFe" },
     });
     const pedido = await prisma.pedido.create({
       data: {
