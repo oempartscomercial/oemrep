@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado } from "@/lib/sessao";
+import { podeAcessarFabrica } from "@/lib/authz";
 import { extrairItensDaPlanilha, type ItemExtraido } from "@/domain/importacao/excel";
 import { validarDadosPedido } from "@/domain/pedido/pedido";
 import { compararCampos } from "@/domain/auditoria/evento";
@@ -49,6 +50,10 @@ export async function confirmarImportacao(dados: DadosConfirmacao): Promise<{ er
 
   const usuario = await obterUsuarioLogado();
   if (!usuario) return { erros: ["Sessão expirada. Faça login novamente."] };
+
+  if (!podeAcessarFabrica(usuario, dados.fabricaId)) {
+    return { erros: ["Você não tem permissão para importar pedidos para esta fábrica."] };
+  }
 
   const pedido = await prisma.pedido.create({
     data: {

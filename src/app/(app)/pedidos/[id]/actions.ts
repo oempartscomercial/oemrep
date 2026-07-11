@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado } from "@/lib/sessao";
+import { podeAcessarFabrica } from "@/lib/authz";
 import { recalcularEstado, transicaoValida, type StatusItemPedido } from "@/domain/pedido/estado";
 import { calcularQtdPendente, deveCongelarPendencia } from "@/domain/pedido/item";
 import { compararCampos } from "@/domain/auditoria/evento";
@@ -21,6 +22,10 @@ export async function atualizarStatusItem(
     include: { pedido: { include: { itens: true } } },
   });
   if (!item) return { erros: ["Item não encontrado."] };
+
+  if (!podeAcessarFabrica(usuario, item.pedido.fabricaId)) {
+    return { erros: ["Você não tem permissão para alterar itens desta fábrica."] };
+  }
 
   const congelar = deveCongelarPendencia(item.status, novoStatus);
   const qtdPendenteCongelada = congelar
@@ -61,6 +66,10 @@ async function mudarEstadoPedido(pedidoId: string, novoEstado: "ARQUIVADO" | "CO
 
   const pedido = await prisma.pedido.findUnique({ where: { id: pedidoId } });
   if (!pedido) return { erros: ["Pedido não encontrado."] };
+
+  if (!podeAcessarFabrica(usuario, pedido.fabricaId)) {
+    return { erros: ["Você não tem permissão para alterar pedidos desta fábrica."] };
+  }
 
   if (!transicaoValida(pedido.estado, novoEstado)) {
     return { erros: [`Não é possível mudar de ${pedido.estado} para ${novoEstado}.`] };

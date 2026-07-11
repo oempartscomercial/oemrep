@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado } from "@/lib/sessao";
+import { podeAcessarFabrica } from "@/lib/authz";
 import { validarDadosPedido, type ItemPedidoInput } from "@/domain/pedido/pedido";
 import { compararCampos } from "@/domain/auditoria/evento";
 import { registrarAlteracoes } from "@/lib/auditoria";
@@ -33,6 +34,10 @@ export async function criarPedidoManual(formData: FormData): Promise<{ erros: st
 
   const usuario = await obterUsuarioLogado();
   if (!usuario) return { erros: ["Sessão expirada. Faça login novamente."] };
+
+  if (!podeAcessarFabrica(usuario, fabricaId)) {
+    return { erros: ["Você não tem permissão para criar pedidos nesta fábrica."] };
+  }
 
   const pedido = await prisma.pedido.create({
     data: {
