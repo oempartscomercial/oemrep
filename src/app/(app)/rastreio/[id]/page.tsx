@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { obterUsuarioLogado } from "@/lib/sessao";
+import { buscarNotaFiscalComPermissao } from "../queries";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { proximosStatusRastreio, type StatusRastreio } from "@/domain/nfe/rastreio";
@@ -8,7 +10,10 @@ import { RastreioForm } from "./rastreio-form";
 export default async function DetalheRastreioPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const nota = await prisma.notaFiscal.findUnique({ where: { id } });
+  const usuario = await obterUsuarioLogado();
+  if (!usuario) notFound();
+
+  const nota = await buscarNotaFiscalComPermissao(id, usuario);
   if (!nota) notFound();
 
   const eventos = await prisma.eventoRastreio.findMany({

@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { obterUsuarioLogado } from "@/lib/sessao";
+import { buscarNotasFiscaisPermitidas } from "./queries";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default async function RastreioPage() {
-  const notas = await prisma.notaFiscal.findMany({ orderBy: { criadoEm: "desc" } });
+  const usuario = await obterUsuarioLogado();
+  if (!usuario) {
+    return <p className="text-sm text-red-600">Sessão expirada. Faça login novamente.</p>;
+  }
+
+  const notas = await buscarNotasFiscaisPermitidas(usuario);
 
   return (
     <div className="flex flex-col gap-4">
