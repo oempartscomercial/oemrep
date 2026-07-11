@@ -57,14 +57,15 @@ model ClienteFabrica {
 }
 
 model Usuario {
-  id             String            @id @default(cuid())
-  supabaseUserId String?           @unique // vínculo ao login Supabase no 1º acesso (ADR-010)
-  nome           String
-  email          String            @unique
-  perfil         PerfilUsuario     @default(OPERADOR)
-  criadoEm       DateTime          @default(now())
-  fabricas       UsuarioFabrica[]
-  eventos        EventoAuditoria[]
+  id              String            @id @default(cuid())
+  supabaseUserId  String?           @unique // vínculo ao login Supabase no 1º acesso (ADR-010)
+  nome            String
+  email           String            @unique
+  perfil          PerfilUsuario     @default(OPERADOR)
+  criadoEm        DateTime          @default(now())
+  fabricas        UsuarioFabrica[]
+  eventos         EventoAuditoria[]
+  eventosRastreio EventoRastreio[]
 }
 
 model UsuarioFabrica {
@@ -161,6 +162,7 @@ model NotaFiscal {
   criadoEm         DateTime           @default(now())
   pedidos          NotaFiscalPedido[]
   itensFaturados   ItemFaturado[]
+  eventosRastreio  EventoRastreio[]
 }
 
 model NotaFiscalPedido {
@@ -181,4 +183,19 @@ model ItemFaturado {
   criadoEm           DateTime   @default(now())
   itemPedido         ItemPedido @relation(fields: [itemPedidoId], references: [id])
   notaFiscal         NotaFiscal @relation(fields: [notaFiscalId], references: [id])
+}
+
+model EventoRastreio {
+  id             String         @id @default(cuid())
+  notaFiscalId   String
+  notaFiscal     NotaFiscal     @relation(fields: [notaFiscalId], references: [id])
+  statusAnterior StatusRastreio
+  status         StatusRastreio
+  observacao     String?
+  dataEvento     DateTime
+  usuarioId      String
+  usuario        Usuario        @relation(fields: [usuarioId], references: [id])
+  criadoEm       DateTime       @default(now())
+
+  @@index([notaFiscalId])
 }
