@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado } from "@/lib/sessao";
+import { podeAcessarFabrica } from "@/lib/authz";
 import { extrairNFeDoXml, type NFeExtraida } from "@/domain/nfe/parser";
 import { conferirItens, type PendenciaItem, type ResultadoConferenciaItem } from "@/domain/nfe/conferencia";
 import { validarVinculoPedidos } from "@/domain/nfe/vinculo";
@@ -71,6 +72,10 @@ export async function confirmarBaixaNFe(analise: AnaliseNFe): Promise<{ erros: s
   if (!usuario) return { erros: ["Sessão expirada. Faça login novamente."] };
   if (!analise.clienteId || !analise.fabricaId) {
     return { erros: ["Fábrica ou cliente não cadastrado para esta NFe."] };
+  }
+
+  if (!podeAcessarFabrica(usuario, analise.fabricaId)) {
+    return { erros: ["Você não tem permissão para confirmar baixas nesta fábrica."] };
   }
 
   const vinculados = analise.conferencia.filter((r) => r.pendencia !== null);
