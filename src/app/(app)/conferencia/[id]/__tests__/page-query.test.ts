@@ -19,16 +19,18 @@ describe("guard do relatório de cruzamento — autorização por fábrica (ADR-
       },
     });
 
-    const operadorSemAcesso = { perfil: "OPERADOR" as const, fabricasIds: ["outra"] };
-    const fabricaId = await obterFabricaIdDaNotaFiscal(nota.id);
+    try {
+      const operadorSemAcesso = { perfil: "OPERADOR" as const, fabricasIds: ["outra"] };
+      const fabricaId = await obterFabricaIdDaNotaFiscal(nota.id);
 
-    expect(fabricaId).toBe(fabrica.id);
-    expect(podeAcessarFabrica(operadorSemAcesso, fabricaId!)).toBe(false);
-
-    await prisma.notaFiscalPedido.deleteMany({ where: { notaFiscalId: nota.id } });
-    await prisma.notaFiscal.delete({ where: { id: nota.id } });
-    await prisma.pedido.delete({ where: { id: pedido.id } });
-    await prisma.cliente.delete({ where: { id: cliente.id } });
-    await prisma.fabrica.delete({ where: { id: fabrica.id } });
+      expect(fabricaId).toBe(fabrica.id);
+      expect(podeAcessarFabrica(operadorSemAcesso, fabricaId!)).toBe(false);
+    } finally {
+      await prisma.notaFiscalPedido.deleteMany({ where: { notaFiscalId: nota.id } });
+      await prisma.notaFiscal.delete({ where: { id: nota.id } });
+      await prisma.pedido.delete({ where: { id: pedido.id } });
+      await prisma.cliente.delete({ where: { id: cliente.id } });
+      await prisma.fabrica.delete({ where: { id: fabrica.id } });
+    }
   }, 15000);
 });
