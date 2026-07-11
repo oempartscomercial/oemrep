@@ -14,7 +14,7 @@
 **divergências viram chamados rastreáveis** e **toda alteração fica auditada** —
 substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
 
-**Estado atual do desenvolvimento:** **Épicos 1, 2, 3 e 4 concluídos.**
+**Estado atual do desenvolvimento:** **Épicos 1, 2, 3, 4 e 5 concluídos.**
 - **Épico 1 — Fundação** (`plans/2026-06-22-epic-01-fundacao.md`): Next.js + TypeScript +
   Tailwind, Vitest + Playwright, Prisma + Postgres (Supabase) com parâmetros padrão,
   autenticação Supabase Auth com proteção de rotas, casca do app com navegação.
@@ -41,8 +41,15 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   conferência com upload → grade de divergências → confirmação manual da baixa
   (RF15/RF16); relatório de cruzamento por NFe e aba "Notas fiscais" no detalhe do
   pedido (RF17).
+- **Épico 5 — Rastreio de NFe** (`plans/2026-07-11-epico-05-rastreio.md`): máquina de
+  estado logística da NFe (`TRANSITO → RECEBIDA → ARMAZENADA`, desvio `EXTRAVIADO`,
+  ADR-008) em `src/domain/nfe/rastreio.ts`; schema `EventoRastreio` (histórico de
+  transições com observação, data do evento e usuário); atualização manual de status
+  via `avancarRastreio` com auditoria (`EventoAuditoria`) em toda mudança de
+  `NotaFiscal.status`; telas `/rastreio` (lista) e `/rastreio/[id]` (detalhe com
+  timeline e formulário de avanço) (RF20).
 
-Próximo passo: expandir e executar o **Épico 5 — Rastreio de NFe**
+Próximo passo: expandir e executar o **Épico 6**
 (`plans/2026-06-22-epics-02-07-briefs.md`). Mantenha esta seção atualizada conforme os
 épicos forem concluídos.
 

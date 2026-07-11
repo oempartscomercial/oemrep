@@ -28,3 +28,8 @@ test("visitante não logado é redirecionado de /pedidos/importar", async ({ pag
   await page.goto("/pedidos/importar");
   await expect(page).toHaveURL(/\/login/);
 });
+
+test("visitante não logado é redirecionado de /rastreio", async ({ page }) => {
+  await page.goto("/rastreio");
+  await expect(page).toHaveURL(/\/login/);
+});
