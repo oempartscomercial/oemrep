@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { obterUsuarioLogado } from "@/lib/sessao";
+import { podeAcessarFabrica } from "@/lib/authz";
+import { obterFabricaIdDaNotaFiscal } from "@/lib/nota-fiscal-fabrica";
 import { agruparCruzamentoPorPedido, type LinhaFaturamento } from "@/domain/nfe/relatorio";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,11 +10,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 export default async function RelatorioCruzamentoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
+  const usuario = await obterUsuarioLogado();
+  if (!usuario) notFound();
+
   const notaFiscal = await prisma.notaFiscal.findUnique({
     where: { id },
     include: { itensFaturados: { include: { itemPedido: { include: { pedido: true } } } } },
   });
   if (!notaFiscal) notFound();
+
+  const fabricaId = await obterFabricaIdDaNotaFiscal(id);
+  if (!fabricaId || !podeAcessarFabrica(usuario, fabricaId)) notFound();
 
   const linhas: LinhaFaturamento[] = notaFiscal.itensFaturados.map((faturado) => ({
     pedidoId: faturado.itemPedido.pedidoId,
