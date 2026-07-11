@@ -9,3 +9,8 @@ export function podeAcessarFabrica(usuario: UsuarioAcesso, fabricaId: string): b
   if (usuario.perfil === "ADMIN") return true;
   return usuario.fabricasIds.includes(fabricaId);
 }
+
+export function filtroFabricasPermitidas(usuario: UsuarioAcesso): string[] | null {
+  if (usuario.perfil === "ADMIN") return null;
+  return usuario.fabricasIds;
+}
