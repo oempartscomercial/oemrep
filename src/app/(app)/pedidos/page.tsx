@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { obterUsuarioLogado } from "@/lib/sessao";
+import { buscarPedidosPermitidos } from "./queries";
 import { filtrarPedidos, type FiltroPedido } from "@/domain/pedido/filtro";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,11 +25,12 @@ export default async function PedidosPage({
   const { filtro: filtroBruto } = await searchParams;
   const filtro: FiltroPedido = filtroBruto && isFiltroPedido(filtroBruto) ? filtroBruto : "EM_ANDAMENTO";
 
-  const pedidos = await prisma.pedido.findMany({
-    include: { fabrica: true, cliente: true, itens: true },
-    orderBy: { criadoEm: "desc" },
-  });
+  const usuario = await obterUsuarioLogado();
+  if (!usuario) {
+    return <p className="text-sm text-red-600">Sessão expirada. Faça login novamente.</p>;
+  }
 
+  const pedidos = await buscarPedidosPermitidos(usuario);
   const filtrados = filtrarPedidos(pedidos, filtro);
 
   return (
