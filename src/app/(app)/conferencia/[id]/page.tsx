@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { podeAcessarFabrica } from "@/lib/authz";
@@ -38,9 +39,14 @@ export default async function RelatorioCruzamentoPage({ params }: { params: Prom
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader>
-          <CardTitle>Cruzamento — NFe {notaFiscal.numero}</CardTitle>
-          <p className="text-sm text-muted-foreground">Chave: {notaFiscal.chaveAcesso}</p>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Cruzamento — NFe {notaFiscal.numero}</CardTitle>
+            <p className="text-sm text-muted-foreground">Chave: {notaFiscal.chaveAcesso}</p>
+          </div>
+          <Link href={`/divergencias/nova?notaFiscalId=${notaFiscal.id}`} className="underline">
+            Abrir chamado
+          </Link>
         </CardHeader>
       </Card>
 
