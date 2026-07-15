@@ -66,6 +66,8 @@ model Usuario {
   fabricas        UsuarioFabrica[]
   eventos         EventoAuditoria[]
   eventosRastreio EventoRastreio[]
+  chamadosAbertos Chamado[]         @relation("ChamadoAbertoPor")
+  eventosChamado  EventoChamado[]
 }
 
 model UsuarioFabrica {
@@ -140,6 +142,7 @@ model ItemPedido {
   qtdPendenteCongelada Int?
   itensFaturados       ItemFaturado[]
   criadoEm             DateTime         @default(now())
+  chamadoItens         ChamadoItem[]
 }
 
 enum StatusRastreio {
@@ -163,6 +166,7 @@ model NotaFiscal {
   pedidos          NotaFiscalPedido[]
   itensFaturados   ItemFaturado[]
   eventosRastreio  EventoRastreio[]
+  chamados         Chamado[]
 }
 
 model NotaFiscalPedido {
@@ -198,4 +202,57 @@ model EventoRastreio {
   criadoEm       DateTime       @default(now())
 
   @@index([notaFiscalId])
+}
+
+model MotivoChamado {
+  id       String    @id @default(cuid())
+  nome     String    @unique
+  chamados Chamado[]
+}
+
+enum EstadoChamado {
+  ABERTO
+  EM_TRATATIVA
+  AGUARDANDO
+  RESOLVIDO
+}
+
+model Chamado {
+  id            String          @id @default(cuid())
+  notaFiscalId  String
+  notaFiscal    NotaFiscal      @relation(fields: [notaFiscalId], references: [id])
+  motivoId      String
+  motivo        MotivoChamado   @relation(fields: [motivoId], references: [id])
+  estado        EstadoChamado   @default(ABERTO)
+  abertoPorId   String
+  abertoPor     Usuario         @relation("ChamadoAbertoPor", fields: [abertoPorId], references: [id])
+  itensAfetados ChamadoItem[]
+  eventos       EventoChamado[]
+  criadoEm      DateTime        @default(now())
+
+  @@index([notaFiscalId])
+}
+
+model ChamadoItem {
+  id           String     @id @default(cuid())
+  chamadoId    String
+  chamado      Chamado    @relation(fields: [chamadoId], references: [id])
+  itemPedidoId String
+  itemPedido   ItemPedido @relation(fields: [itemPedidoId], references: [id])
+
+  @@unique([chamadoId, itemPedidoId])
+}
+
+model EventoChamado {
+  id             String         @id @default(cuid())
+  chamadoId      String
+  chamado        Chamado        @relation(fields: [chamadoId], references: [id])
+  estadoAnterior EstadoChamado?
+  estado         EstadoChamado
+  observacao     String
+  usuarioId      String
+  usuario        Usuario        @relation(fields: [usuarioId], references: [id])
+  criadoEm       DateTime       @default(now())
+
+  @@index([chamadoId])
 }
