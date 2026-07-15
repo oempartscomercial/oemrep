@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { obterUsuarioLogado } from "@/lib/sessao";
+import { buscarPedidoComPermissao } from "../queries";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,10 +13,10 @@ import { PedidoAcoes } from "./pedido-acoes";
 export default async function DetalhePedidoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const pedido = await prisma.pedido.findUnique({
-    where: { id },
-    include: { fabrica: true, cliente: true, itens: true },
-  });
+  const usuario = await obterUsuarioLogado();
+  if (!usuario) notFound();
+
+  const pedido = await buscarPedidoComPermissao(id, usuario);
   if (!pedido) notFound();
 
   const eventos = await prisma.eventoAuditoria.findMany({

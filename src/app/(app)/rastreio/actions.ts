@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado } from "@/lib/sessao";
+import { podeAcessarFabrica } from "@/lib/authz";
+import { obterFabricaIdDaNotaFiscal } from "@/lib/nota-fiscal-fabrica";
 import { transicaoRastreioValida, type StatusRastreio } from "@/domain/nfe/rastreio";
 import { compararCampos } from "@/domain/auditoria/evento";
 import { registrarAlteracoes } from "@/lib/auditoria";
@@ -18,6 +20,11 @@ export async function avancarRastreio(
 
   const nota = await prisma.notaFiscal.findUnique({ where: { id: notaFiscalId } });
   if (!nota) return { erros: ["NFe não encontrada."] };
+
+  const fabricaId = await obterFabricaIdDaNotaFiscal(notaFiscalId);
+  if (!fabricaId || !podeAcessarFabrica(usuario, fabricaId)) {
+    return { erros: ["Você não tem permissão para atualizar o rastreio desta NFe."] };
+  }
 
   const statusAtual = nota.status as StatusRastreio;
   if (!transicaoRastreioValida(statusAtual, novoStatus)) {
