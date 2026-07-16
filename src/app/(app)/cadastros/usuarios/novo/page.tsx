@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { criarUsuario } from "../actions";
+import { Button } from "@/components/ui/buttons/button";
+import { Input } from "@/components/ui/input/input";
+import { Select } from "@/components/ui/select/select";
+import { Checkbox } from "@/components/ui/checkbox/checkbox";
 
 type Fabrica = { id: string; nome: string };
 
@@ -12,9 +16,7 @@ export default function NovoUsuarioPage() {
   const [fabricas, setFabricas] = useState<Fabrica[]>([]);
 
   useEffect(() => {
-    fetch("/api/fabricas")
-      .then((r) => r.json())
-      .then(setFabricas);
+    fetch("/api/fabricas").then((r) => r.json()).then(setFabricas);
   }, []);
 
   async function handleSubmit(formData: FormData) {
@@ -27,32 +29,36 @@ export default function NovoUsuarioPage() {
   }
 
   return (
-    <form action={handleSubmit} className="flex max-w-sm flex-col gap-4">
-      <h1 className="text-lg font-semibold">Novo usuário</h1>
-      <input name="nome" placeholder="Nome" className="rounded border px-3 py-2" required />
-      <input name="email" type="email" placeholder="E-mail" className="rounded border px-3 py-2" required />
-      <select name="perfil" className="rounded border px-3 py-2">
-        <option value="OPERADOR">Operador</option>
-        <option value="ANALISTA">Analista</option>
-        <option value="ADMIN">Admin</option>
-      </select>
-      <fieldset className="flex flex-col gap-1">
-        <legend className="text-sm font-medium">Fábricas autorizadas</legend>
+    <form action={handleSubmit} className="flex max-w-lg flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
+      <h1 className="text-lg font-semibold text-primary">Novo usuário</h1>
+      <Input name="nome" label="Nome" placeholder="Nome completo" isRequired />
+      <Input name="email" type="email" label="E-mail" placeholder="pessoa@empresa.com.br" isRequired />
+
+      <Select name="perfil" label="Perfil" defaultSelectedKey="OPERADOR">
+        <Select.Item id="OPERADOR">Operador</Select.Item>
+        <Select.Item id="ANALISTA">Analista</Select.Item>
+        <Select.Item id="ADMIN">Admin</Select.Item>
+      </Select>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium text-secondary">Fábricas autorizadas</legend>
         {fabricas.map((f) => (
-          <label key={f.id} className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="fabricasIds" value={f.id} />
-            {f.nome}
-          </label>
+          <Checkbox key={f.id} name="fabricasIds" value={f.id} label={f.nome} />
         ))}
       </fieldset>
-      <p className="text-xs text-gray-500">
-        Crie a senha desta pessoa no painel do Supabase com o mesmo e-mail. O vínculo é
-        feito automaticamente no primeiro acesso.
+
+      <p className="rounded-lg bg-secondary/50 p-3 text-xs text-tertiary ring-1 ring-secondary">
+        Crie a senha desta pessoa no painel do Supabase com o mesmo e-mail. O vínculo é feito
+        automaticamente no primeiro acesso.
       </p>
-      {erros.map((erro) => (
-        <p key={erro} className="text-sm text-red-600">{erro}</p>
-      ))}
-      <button type="submit" className="rounded bg-black px-3 py-2 text-white">Salvar</button>
+
+      {erros.length > 0 && (
+        <ul className="flex flex-col gap-1">{erros.map((e) => <li key={e} className="text-sm text-error-primary">{e}</li>)}</ul>
+      )}
+      <div className="flex justify-end gap-3 border-t border-secondary pt-5">
+        <Button type="button" color="secondary" href="/cadastros/usuarios">Cancelar</Button>
+        <Button type="submit" color="primary">Salvar</Button>
+      </div>
     </form>
   );
 }

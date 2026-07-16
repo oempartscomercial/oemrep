@@ -1,33 +1,21 @@
-import Link from "next/link";
+import { Plus } from "@untitledui/icons";
 import { prisma } from "@/lib/prisma";
+import { PageHeader } from "@/components/patterns/page-header";
+import { Button } from "@/components/ui/buttons/button";
+import { FabricasTabela, type FabricaLinha } from "../cadastros-tabelas";
 
 export default async function FabricasPage() {
   const fabricas = await prisma.fabrica.findMany({ orderBy: { nome: "asc" } });
+  const linhas: FabricaLinha[] = fabricas.map((f) => ({ id: f.id, nome: f.nome, cnpj: f.cnpj }));
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Fábricas</h1>
-        <Link href="/cadastros/fabricas/novo" className="rounded bg-black px-3 py-2 text-white">
-          Nova fábrica
-        </Link>
-      </div>
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr>
-            <th className="border-b p-2">Nome</th>
-            <th className="border-b p-2">CNPJ</th>
-          </tr>
-        </thead>
-        <tbody>
-          {fabricas.map((f) => (
-            <tr key={f.id}>
-              <td className="border-b p-2">{f.nome}</td>
-              <td className="border-b p-2">{f.cnpj}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        titulo="Fábricas"
+        descricao="Fabricantes representados."
+        acoes={<Button color="primary" href="/cadastros/fabricas/novo" iconLeading={Plus}>Nova fábrica</Button>}
+      />
+      <FabricasTabela fabricas={linhas} />
     </div>
   );
 }

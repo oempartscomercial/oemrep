@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { criarFabrica } from "../actions";
+import { Button } from "@/components/ui/buttons/button";
+import { Input } from "@/components/ui/input/input";
 
 export default function NovaFabricaPage() {
   const router = useRouter();
@@ -18,14 +20,17 @@ export default function NovaFabricaPage() {
   }
 
   return (
-    <form action={handleSubmit} className="flex max-w-sm flex-col gap-4">
-      <h1 className="text-lg font-semibold">Nova fábrica</h1>
-      <input name="nome" placeholder="Nome" className="rounded border px-3 py-2" required />
-      <input name="cnpj" placeholder="CNPJ" className="rounded border px-3 py-2" required />
-      {erros.map((erro) => (
-        <p key={erro} className="text-sm text-red-600">{erro}</p>
-      ))}
-      <button type="submit" className="rounded bg-black px-3 py-2 text-white">Salvar</button>
+    <form action={handleSubmit} className="flex max-w-lg flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
+      <h1 className="text-lg font-semibold text-primary">Nova fábrica</h1>
+      <Input name="nome" label="Nome" placeholder="Nome da fábrica" isRequired />
+      <Input name="cnpj" label="CNPJ" placeholder="00.000.000/0000-00" isRequired />
+      {erros.length > 0 && (
+        <ul className="flex flex-col gap-1">{erros.map((e) => <li key={e} className="text-sm text-error-primary">{e}</li>)}</ul>
+      )}
+      <div className="flex justify-end gap-3 border-t border-secondary pt-5">
+        <Button type="button" color="secondary" href="/cadastros/fabricas">Cancelar</Button>
+        <Button type="submit" color="primary">Salvar</Button>
+      </div>
     </form>
   );
 }
