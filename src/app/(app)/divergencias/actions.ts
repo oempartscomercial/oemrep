@@ -27,6 +27,16 @@ export async function abrirChamado(formData: FormData): Promise<{ erros: string[
   const motivo = await prisma.motivoChamado.findUnique({ where: { id: motivoId } });
   if (!motivo) return { erros: ["Motivo inválido."] };
 
+  const itensFaturados = await prisma.itemFaturado.findMany({
+    where: { notaFiscalId },
+    select: { itemPedidoId: true },
+  });
+  const itemPedidoIdsValidos = new Set(itensFaturados.map((item) => item.itemPedidoId));
+  const algumItemNaoPertenceANota = itensAfetadosIds.some((id) => !itemPedidoIdsValidos.has(id));
+  if (algumItemNaoPertenceANota) {
+    return { erros: ["Um ou mais itens selecionados não pertencem a esta NFe."] };
+  }
+
   const chamado = await prisma.chamado.create({
     data: {
       notaFiscalId,
