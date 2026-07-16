@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { Plus, Upload01 } from "@untitledui/icons";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarPedidosPermitidos } from "./queries";
 import { filtrarPedidos, type FiltroPedido } from "@/domain/pedido/filtro";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageContainer } from "@/components/layouts/page-container";
+import { PageHeader } from "@/components/patterns/page-header";
+import { Button } from "@/components/ui/buttons/button";
+import { PedidosTabela, type PedidoLinha } from "./pedidos-tabela";
+import { cx } from "@/utils/cx";
 
 const ABAS: { valor: FiltroPedido; rotulo: string }[] = [
   { valor: "EM_ANDAMENTO", rotulo: "Em andamento" },
@@ -27,74 +30,58 @@ export default async function PedidosPage({
 
   const usuario = await obterUsuarioLogado();
   if (!usuario) {
-    return <p className="text-sm text-red-600">Sessão expirada. Faça login novamente.</p>;
+    return (
+      <PageContainer>
+        <p className="text-sm text-error-primary">Sessão expirada. Faça login novamente.</p>
+      </PageContainer>
+    );
   }
 
   const pedidos = await buscarPedidosPermitidos(usuario);
   const filtrados = filtrarPedidos(pedidos, filtro);
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Pedidos</h1>
-        <div className="flex gap-2">
-          <Link href="/pedidos/importar">
-            <Button variant="outline">Importar Excel</Button>
-          </Link>
-          <Link href="/pedidos/novo">
-            <Button>Novo pedido</Button>
-          </Link>
-        </div>
-      </div>
+  const linhas: PedidoLinha[] = filtrados.map((pedido) => ({
+    id: pedido.id,
+    numero: pedido.semNumero ? "S/N" : pedido.numero ?? "—",
+    fabrica: pedido.fabrica.nome,
+    cliente: pedido.cliente.nomeFantasia,
+    qtdItens: pedido.itens.length,
+    estado: pedido.estado,
+  }));
 
-      <div className="flex gap-2 border-b pb-2">
+  return (
+    <PageContainer>
+      <PageHeader
+        titulo="Pedidos"
+        descricao="Todos os pedidos das fábricas que você acompanha."
+        acoes={
+          <>
+            <Button color="secondary" href="/pedidos/importar" iconLeading={Upload01}>
+              Importar Excel
+            </Button>
+            <Button color="primary" href="/pedidos/novo" iconLeading={Plus}>
+              Novo pedido
+            </Button>
+          </>
+        }
+      />
+
+      <div className="flex flex-wrap gap-1 border-b border-secondary pb-3">
         {ABAS.map((aba) => (
           <Link
             key={aba.valor}
             href={`/pedidos?filtro=${aba.valor}`}
-            className={
-              filtro === aba.valor
-                ? "rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground"
-                : "rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
-            }
+            className={cx(
+              "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              filtro === aba.valor ? "bg-brand-solid text-white" : "text-tertiary hover:bg-primary_hover",
+            )}
           >
             {aba.rotulo}
           </Link>
         ))}
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Número</TableHead>
-            <TableHead>Fábrica</TableHead>
-            <TableHead>Cliente</TableHead>
-            <TableHead>Itens</TableHead>
-            <TableHead>Situação</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filtrados.map((pedido) => (
-            <TableRow key={pedido.id}>
-              <TableCell>
-                <Link href={`/pedidos/${pedido.id}`} className="underline">
-                  {pedido.semNumero ? "S/N" : pedido.numero}
-                </Link>
-              </TableCell>
-              <TableCell>{pedido.fabrica.nome}</TableCell>
-              <TableCell>{pedido.cliente.nomeFantasia}</TableCell>
-              <TableCell>{pedido.itens.length}</TableCell>
-              <TableCell>
-                <Badge variant="outline">{pedido.estado}</Badge>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      {filtrados.length === 0 && (
-        <p className="text-sm text-muted-foreground">Nenhum pedido nesta situação.</p>
-      )}
-    </div>
+      <PedidosTabela pedidos={linhas} />
+    </PageContainer>
   );
 }

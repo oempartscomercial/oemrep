@@ -4,20 +4,27 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { analisarPlanilha, confirmarImportacao } from "./actions";
 import type { ItemExtraido } from "@/domain/importacao/excel";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageContainer } from "@/components/layouts/page-container";
+import { PageHeader } from "@/components/patterns/page-header";
+import { Button } from "@/components/ui/buttons/button";
+import { Input } from "@/components/ui/input/input";
+import { Select } from "@/components/ui/select/select";
+import { Checkbox } from "@/components/ui/checkbox/checkbox";
+import { FileUploadDropZone } from "@/components/application/file-upload/file-upload-base";
+import { DataTable } from "@/components/patterns/data-table";
 
-type Opcao = { id: string; nome?: string; nomeFantasia?: string };
+type Fabrica = { id: string; nome: string };
+type Cliente = { id: string; nomeFantasia: string };
+type ItemLinha = ItemExtraido & { _id: string };
 
 export default function ImportarPedidoPage() {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [analisando, setAnalisando] = useState(false);
   const [itens, setItens] = useState<ItemExtraido[] | null>(null);
-  const [fabricas, setFabricas] = useState<Opcao[]>([]);
-  const [clientes, setClientes] = useState<Opcao[]>([]);
+  const [fabricas, setFabricas] = useState<Fabrica[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [fabricaId, setFabricaId] = useState("");
   const [clienteId, setClienteId] = useState("");
   const [numero, setNumero] = useState("");
@@ -35,9 +42,14 @@ export default function ImportarPedidoPage() {
     fetch(`/api/clientes?fabricaId=${fabricaId}`).then((r) => r.json()).then(setClientes);
   }, [fabricaId]);
 
-  async function handleAnalisar(formData: FormData) {
+  async function handleAnalisar() {
+    if (!arquivo) return;
     setErro(null);
+    setAnalisando(true);
+    const formData = new FormData();
+    formData.append("arquivo", arquivo);
     const resultado = await analisarPlanilha(formData);
+    setAnalisando(false);
     if (resultado.erro) {
       setErro(resultado.erro);
       return;
@@ -47,6 +59,7 @@ export default function ImportarPedidoPage() {
 
   async function handleConfirmar() {
     if (!itens) return;
+    setErro(null);
     const resultado = await confirmarImportacao({ fabricaId, clienteId, numero, semNumero, itens });
     if (resultado.erros.length > 0) {
       setErro(resultado.erros.join(" "));
@@ -55,107 +68,83 @@ export default function ImportarPedidoPage() {
     router.push("/pedidos");
   }
 
+  const linhas: ItemLinha[] = (itens ?? []).map((it, i) => ({ ...it, _id: String(i) }));
+
   return (
-    <Card className="max-w-2xl">
-      <CardHeader>
-        <CardTitle>Importar pedido (Excel)</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {!itens && (
-          <form action={handleAnalisar} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="arquivo">Planilha (.xlsx)</Label>
-              <Input id="arquivo" name="arquivo" type="file" accept=".xlsx" required />
-            </div>
-            {erro && <p className="text-sm text-destructive">{erro}</p>}
-            <Button type="submit">Analisar planilha</Button>
-          </form>
-        )}
+    <PageContainer>
+      <PageHeader titulo="Importar pedido (Excel)" descricao="Envie a planilha, revise os itens e confirme a criação." />
 
-        {itens && (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="fabricaId">Fábrica</Label>
-              <select
-                id="fabricaId"
-                className="rounded-md border px-3 py-2 text-sm"
-                value={fabricaId}
-                onChange={(e) => setFabricaId(e.target.value)}
+      {!itens && (
+        <div className="flex max-w-2xl flex-col gap-4 rounded-xl bg-primary p-6 ring-1 ring-secondary">
+          <FileUploadDropZone
+            accept=".xlsx"
+            allowsMultiple={false}
+            hint="Apenas arquivos .xlsx"
+            onDropFiles={(files) => setArquivo(files[0] ?? null)}
+          />
+          {arquivo && <p className="text-sm text-secondary">Selecionado: <span className="font-medium text-primary">{arquivo.name}</span></p>}
+          {erro && <p className="text-sm text-error-primary">{erro}</p>}
+          <div>
+            <Button color="primary" isDisabled={!arquivo} isLoading={analisando} onClick={handleAnalisar}>
+              Analisar planilha
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {itens && (
+        <div className="flex flex-col gap-6">
+          <div className="flex max-w-2xl flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Select
+                label="Fábrica"
+                placeholder="Selecione…"
+                selectedKey={fabricaId || null}
+                onSelectionChange={(key) => setFabricaId(key ? String(key) : "")}
+                items={fabricas.map((f) => ({ id: f.id, label: f.nome }))}
               >
-                <option value="">Selecione...</option>
-                {fabricas.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="clienteId">Cliente</Label>
-              <select
-                id="clienteId"
-                className="rounded-md border px-3 py-2 text-sm"
-                value={clienteId}
-                onChange={(e) => setClienteId(e.target.value)}
-                disabled={!fabricaId}
+                {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+              </Select>
+              <Select
+                label="Cliente"
+                placeholder={fabricaId ? "Selecione…" : "Escolha a fábrica primeiro"}
+                isDisabled={!fabricaId}
+                selectedKey={clienteId || null}
+                onSelectionChange={(key) => setClienteId(key ? String(key) : "")}
+                items={clientes.map((c) => ({ id: c.id, label: c.nomeFantasia }))}
               >
-                <option value="">Selecione...</option>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nomeFantasia}
-                  </option>
-                ))}
-              </select>
+                {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+              </Select>
             </div>
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Número do pedido"
-                value={numero}
-                onChange={(e) => setNumero(e.target.value)}
-                disabled={semNumero}
-                className="max-w-xs"
-              />
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={semNumero}
-                  onChange={(e) => setSemNumero(e.target.checked)}
-                />
-                S/N (sem número)
-              </label>
-            </div>
-
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Referência</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Qtd</TableHead>
-                  <TableHead>Valor unit.</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {itens.map((item, i) => (
-                  <TableRow key={i}>
-                    <TableCell>{item.referencia}</TableCell>
-                    <TableCell>{item.descricao}</TableCell>
-                    <TableCell>{item.quantidade}</TableCell>
-                    <TableCell>{item.valorUnitario}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            {erro && <p className="text-sm text-destructive">{erro}</p>}
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setItens(null)}>
-                Escolher outro arquivo
-              </Button>
-              <Button onClick={handleConfirmar}>Confirmar importação</Button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <Input label="Número do pedido" placeholder="Ex.: PED-1001" value={numero} onChange={setNumero} isDisabled={semNumero} className="sm:max-w-xs" />
+              <div className="pb-2.5">
+                <Checkbox isSelected={semNumero} onChange={setSemNumero} label="S/N (sem número)" />
+              </div>
             </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+
+          <DataTable<ItemLinha>
+            ariaLabel="Itens extraídos da planilha"
+            titulo="Itens da planilha"
+            contadorBadge={`${linhas.length} itens`}
+            data={linhas}
+            getRowId={(it) => it._id}
+            columns={[
+              { id: "referencia", header: "Referência", isRowHeader: true, render: (it) => <span className="font-medium text-primary">{it.referencia}</span> },
+              { id: "descricao", header: "Descrição", render: (it) => it.descricao },
+              { id: "quantidade", header: "Qtd", render: (it) => it.quantidade },
+              { id: "valor", header: "Valor unit.", render: (it) => it.valorUnitario },
+            ]}
+          />
+
+          {erro && <p className="text-sm text-error-primary">{erro}</p>}
+          <div className="flex justify-end gap-3">
+            <Button color="secondary" onClick={() => { setItens(null); setArquivo(null); }}>Escolher outro arquivo</Button>
+            <Button color="primary" onClick={handleConfirmar}>Confirmar importação</Button>
+          </div>
+        </div>
+      )}
+    </PageContainer>
   );
 }

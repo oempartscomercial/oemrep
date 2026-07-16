@@ -1,14 +1,11 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarPedidoComPermissao } from "../queries";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ItemStatusForm } from "./item-status-form";
+import { PageContainer } from "@/components/layouts/page-container";
+import { StatusBadge } from "@/components/patterns/status-badge";
 import { PedidoAcoes } from "./pedido-acoes";
+import { PedidoDetalheTabs, type EventoLinha, type ItemLinha, type NotaLinha } from "./pedido-detalhe-tabs";
 
 export default async function DetalhePedidoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,107 +27,47 @@ export default async function DetalhePedidoPage({ params }: { params: Promise<{ 
     orderBy: { notaFiscal: { criadoEm: "desc" } },
   });
 
+  const itens: ItemLinha[] = pedido.itens.map((item) => ({
+    id: item.id,
+    referencia: item.referencia,
+    descricao: item.descricao ?? "",
+    quantidadePedida: Number(item.quantidadePedida),
+    quantidadeFaturada: Number(item.quantidadeFaturada),
+    status: item.status,
+    observacao: item.observacao ?? "",
+  }));
+
+  const notas: NotaLinha[] = notasFiscais.map(({ notaFiscal }) => ({
+    id: notaFiscal.id,
+    numero: notaFiscal.numero,
+    chaveAcesso: notaFiscal.chaveAcesso,
+    status: notaFiscal.status,
+  }));
+
+  const eventosLinha: EventoLinha[] = eventos.map((ev) => ({
+    id: ev.id,
+    campo: ev.campo,
+    valorAnterior: ev.valorAnterior,
+    valorNovo: ev.valorNovo,
+    criadoEm: ev.criadoEm.toISOString(),
+  }));
+
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Pedido {pedido.semNumero ? "S/N" : pedido.numero}</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {pedido.fabrica.nome} · {pedido.cliente.nomeFantasia}
-            </p>
+    <PageContainer>
+      <div className="flex flex-col gap-4 border-b border-secondary pb-5 md:flex-row md:items-start md:justify-between">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <h1 className="text-display-xs font-semibold text-primary">Pedido {pedido.semNumero ? "S/N" : pedido.numero}</h1>
+            <StatusBadge tipo="pedido" valor={pedido.estado} size="md" />
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">{pedido.estado}</Badge>
-            <PedidoAcoes pedidoId={pedido.id} estado={pedido.estado} />
-          </div>
-        </CardHeader>
-      </Card>
+          <p className="text-md text-tertiary">
+            {pedido.fabrica.nome} · {pedido.cliente.nomeFantasia}
+          </p>
+        </div>
+        <PedidoAcoes pedidoId={pedido.id} estado={pedido.estado} />
+      </div>
 
-      <Tabs defaultValue="itens">
-        <TabsList>
-          <TabsTrigger value="itens">Itens</TabsTrigger>
-          <TabsTrigger value="notas">Notas fiscais</TabsTrigger>
-          <TabsTrigger value="historico">Histórico</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="itens">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Referência</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Pedida</TableHead>
-                <TableHead>Faturada</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pedido.itens.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.referencia}</TableCell>
-                  <TableCell>{item.descricao}</TableCell>
-                  <TableCell>{item.quantidadePedida}</TableCell>
-                  <TableCell>{item.quantidadeFaturada}</TableCell>
-                  <TableCell>
-                    <ItemStatusForm itemId={item.id} statusAtual={item.status} observacaoAtual={item.observacao ?? ""} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TabsContent>
-
-        <TabsContent value="notas">
-          {notasFiscais.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma NFe vinculada ainda.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Número</TableHead>
-                  <TableHead>Chave de acesso</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Cruzamento</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {notasFiscais.map(({ notaFiscal }) => (
-                  <TableRow key={notaFiscal.id}>
-                    <TableCell>{notaFiscal.numero}</TableCell>
-                    <TableCell>{notaFiscal.chaveAcesso}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{notaFiscal.status}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Link href={`/conferencia/${notaFiscal.id}`} className="underline">
-                        Ver cruzamento
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </TabsContent>
-
-        <TabsContent value="historico">
-          <ul className="flex flex-col gap-2 text-sm">
-            {eventos.map((evento) => (
-              <li key={evento.id} className="border-b pb-2">
-                <span className="font-medium">{evento.campo}</span>: {evento.valorAnterior ?? "—"} →{" "}
-                {evento.valorNovo ?? "—"}{" "}
-                <span className="text-muted-foreground">
-                  ({new Date(evento.criadoEm).toLocaleString("pt-BR")})
-                </span>
-              </li>
-            ))}
-            {eventos.length === 0 && (
-              <p className="text-muted-foreground">Nenhum evento registrado ainda.</p>
-            )}
-          </ul>
-        </TabsContent>
-      </Tabs>
-    </div>
+      <PedidoDetalheTabs itens={itens} notas={notas} eventos={eventosLinha} />
+    </PageContainer>
   );
 }

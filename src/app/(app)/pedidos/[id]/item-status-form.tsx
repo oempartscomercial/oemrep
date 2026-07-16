@@ -3,8 +3,15 @@
 import { useState } from "react";
 import { atualizarStatusItem } from "./actions";
 import type { StatusItemPedido } from "@/domain/pedido/estado";
+import { Select } from "@/components/ui/select/select";
+import { Input } from "@/components/ui/input/input";
 
-const OPCOES: StatusItemPedido[] = ["PENDENTE", "OK", "FORA_DE_FABRICACAO", "DESISTENCIA"];
+const OPCOES: { id: StatusItemPedido; label: string }[] = [
+  { id: "PENDENTE", label: "Pendente" },
+  { id: "OK", label: "OK" },
+  { id: "FORA_DE_FABRICACAO", label: "Fora de fabricação" },
+  { id: "DESISTENCIA", label: "Desistência" },
+];
 
 export function ItemStatusForm({
   itemId,
@@ -26,29 +33,30 @@ export function ItemStatusForm({
     else setErro(null);
   }
 
+  const precisaObservacao = status === "FORA_DE_FABRICACAO" || status === "DESISTENCIA";
+
   return (
-    <div className="flex flex-col gap-1">
-      <select
-        className="rounded-md border px-2 py-1 text-sm"
-        value={status}
-        onChange={(e) => handleChange(e.target.value as StatusItemPedido)}
+    <div className="flex min-w-44 flex-col gap-1.5">
+      <Select
+        size="sm"
+        aria-label="Status do item"
+        selectedKey={status}
+        onSelectionChange={(key) => handleChange(key as StatusItemPedido)}
+        items={OPCOES}
       >
-        {OPCOES.map((opcao) => (
-          <option key={opcao} value={opcao}>
-            {opcao}
-          </option>
-        ))}
-      </select>
-      {(status === "FORA_DE_FABRICACAO" || status === "DESISTENCIA") && (
-        <input
-          className="rounded-md border px-2 py-1 text-xs"
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select>
+      {precisaObservacao && (
+        <Input
+          size="sm"
+          aria-label="Observação"
           placeholder="Observação"
           value={observacao}
-          onChange={(e) => setObservacao(e.target.value)}
+          onChange={setObservacao}
           onBlur={() => atualizarStatusItem(itemId, status, observacao)}
         />
       )}
-      {erro && <p className="text-xs text-destructive">{erro}</p>}
+      {erro && <p className="text-xs text-error-primary">{erro}</p>}
     </div>
   );
 }
