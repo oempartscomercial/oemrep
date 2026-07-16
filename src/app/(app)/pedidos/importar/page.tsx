@@ -35,11 +35,12 @@ export default function ImportarPedidoPage() {
   }, []);
 
   useEffect(() => {
-    if (!fabricaId) {
-      setClientes([]);
-      return;
-    }
-    fetch(`/api/clientes?fabricaId=${fabricaId}`).then((r) => r.json()).then(setClientes);
+    if (!fabricaId) return;
+    let ativo = true;
+    fetch(`/api/clientes?fabricaId=${fabricaId}`)
+      .then((r) => r.json())
+      .then((d) => { if (ativo) setClientes(d); });
+    return () => { ativo = false; };
   }, [fabricaId]);
 
   async function handleAnalisar() {

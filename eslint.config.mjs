@@ -13,6 +13,27 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    // Componentes/utilitários VENDORED do Untitled UI (código MIT copiado verbatim via
+    // `npx untitledui add`). Mantemos o estilo do upstream — não é nosso código de
+    // aplicação. As regras abaixo refletem padrões do próprio Untitled UI. O código do
+    // produto (app/, components/{patterns,layouts}, domain/, lib/) segue o lint estrito.
+    files: [
+      "src/components/ui/**",
+      "src/components/application/**",
+      "src/components/foundations/**",
+      "src/components/shared-assets/**",
+      "src/hooks/**",
+      "src/utils/cx.ts",
+    ],
+    rules: {
+      "@next/next/no-img-element": "off",
+      "@typescript-eslint/no-empty-object-type": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/exhaustive-deps": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
