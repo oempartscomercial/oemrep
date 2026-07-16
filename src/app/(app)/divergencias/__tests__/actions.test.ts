@@ -8,7 +8,7 @@ vi.mock("@/lib/sessao", () => ({
   obterUsuarioLogado: () => obterUsuarioLogadoMock(),
 }));
 
-import { abrirChamado } from "../actions";
+import { abrirChamado, registrarEventoChamado } from "../actions";
 
 describe("abrirChamado — autorização por fábrica (ADR-009) e regras (RF25/RF30)", () => {
   it("recusa abrir chamado quando o usuário não tem permissão na fábrica da NFe", async () => {
@@ -193,6 +193,58 @@ describe("abrirChamado — autorização por fábrica (ADR-009) e regras (RF25/R
       await prisma.pedido.delete({ where: { id: pedidoAlheio.id } });
       await prisma.itemPedido.deleteMany({ where: { pedidoId: pedido.id } });
       await prisma.pedido.delete({ where: { id: pedido.id } });
+      await prisma.cliente.delete({ where: { id: cliente.id } });
+      await prisma.fabrica.delete({ where: { id: fabrica.id } });
+    }
+  }, 15000);
+});
+
+describe("registrarEventoChamado — autorização por fábrica (ADR-009)", () => {
+  it("recusa registrar andamento quando o usuário não tem permissão na fábrica da NFe", async () => {
+    const fabrica = await prisma.fabrica.create({ data: { nome: "Fábrica Chamado Evento", cnpj: "90000000002176" } });
+    const cliente = await prisma.cliente.create({ data: { cnpj: "90000000002257", nomeFantasia: "Cliente Chamado Evento" } });
+    const usuarioAbertura = await prisma.usuario.create({ data: { nome: "Abertura", email: "chamado-evento-abertura@teste.dev" } });
+    const pedido = await prisma.pedido.create({
+      data: { numero: "PED-CHEV-1", origem: "MANUAL", fabricaId: fabrica.id, clienteId: cliente.id },
+    });
+    const nota = await prisma.notaFiscal.create({
+      data: {
+        numero: "9302", chaveAcesso: "35260790000000002176550010000093021123456789",
+        emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj,
+        dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 50, totalNota: 55,
+        pedidos: { create: [{ pedidoId: pedido.id }] },
+      },
+    });
+    const motivo = await prisma.motivoChamado.create({ data: { nome: "Item faltando (teste evento)" } });
+    const chamado = await prisma.chamado.create({
+      data: {
+        notaFiscalId: nota.id,
+        motivoId: motivo.id,
+        abertoPorId: usuarioAbertura.id,
+        eventos: { create: [{ estado: "ABERTO", estadoAnterior: null, observacao: "Faltou item.", usuarioId: usuarioAbertura.id }] },
+      },
+    });
+
+    try {
+      obterUsuarioLogadoMock.mockResolvedValue({ id: "u2", nome: "Op2", perfil: "OPERADOR", fabricasIds: ["outra"] });
+
+      const resultado = await registrarEventoChamado(chamado.id, "EM_TRATATIVA", "Assumindo o caso.");
+
+      expect(resultado.erros).toEqual(["Você não tem permissão para atualizar este chamado."]);
+
+      const chamadoInalterado = await prisma.chamado.findUnique({ where: { id: chamado.id } });
+      expect(chamadoInalterado?.estado).toBe("ABERTO");
+
+      const eventos = await prisma.eventoChamado.findMany({ where: { chamadoId: chamado.id } });
+      expect(eventos).toHaveLength(1);
+    } finally {
+      await prisma.eventoChamado.deleteMany({ where: { chamadoId: chamado.id } });
+      await prisma.chamado.delete({ where: { id: chamado.id } });
+      await prisma.motivoChamado.delete({ where: { id: motivo.id } });
+      await prisma.notaFiscalPedido.deleteMany({ where: { notaFiscalId: nota.id } });
+      await prisma.notaFiscal.delete({ where: { id: nota.id } });
+      await prisma.pedido.delete({ where: { id: pedido.id } });
+      await prisma.usuario.delete({ where: { id: usuarioAbertura.id } });
       await prisma.cliente.delete({ where: { id: cliente.id } });
       await prisma.fabrica.delete({ where: { id: fabrica.id } });
     }

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { UsuarioSessao } from "@/lib/sessao";
-import { podeAcessarFabrica } from "@/lib/authz";
+import { filtroFabricasPermitidas, podeAcessarFabrica } from "@/lib/authz";
 import { obterFabricaIdDaNotaFiscal } from "@/lib/nota-fiscal-fabrica";
 
 export async function buscarContextoAberturaChamado(notaFiscalId: string, usuario: UsuarioSessao) {
@@ -18,5 +18,35 @@ export async function buscarContextoAberturaChamado(notaFiscalId: string, usuari
   return { notaFiscal, motivos };
 }
 
-// As demais funções deste arquivo (buscarChamadosPermitidos, buscarChamadoComPermissao)
-// são adicionadas na Task 6, quando a lista/detalhe existirem.
+export async function buscarChamadosPermitidos(usuario: UsuarioSessao) {
+  const fabricasPermitidas = filtroFabricasPermitidas(usuario);
+  return prisma.chamado.findMany({
+    where: fabricasPermitidas
+      ? { notaFiscal: { pedidos: { some: { pedido: { fabricaId: { in: fabricasPermitidas } } } } } }
+      : {},
+    include: {
+      notaFiscal: true,
+      motivo: true,
+      eventos: { orderBy: { criadoEm: "desc" }, take: 1 },
+    },
+    orderBy: { criadoEm: "desc" },
+  });
+}
+
+export async function buscarChamadoComPermissao(id: string, usuario: UsuarioSessao) {
+  const chamado = await prisma.chamado.findUnique({
+    where: { id },
+    include: {
+      notaFiscal: true,
+      motivo: true,
+      itensAfetados: { include: { itemPedido: true } },
+      eventos: { orderBy: { criadoEm: "desc" }, include: { usuario: true } },
+    },
+  });
+  if (!chamado) return null;
+
+  const fabricaId = await obterFabricaIdDaNotaFiscal(chamado.notaFiscalId);
+  if (!fabricaId || !podeAcessarFabrica(usuario, fabricaId)) return null;
+
+  return chamado;
+}
