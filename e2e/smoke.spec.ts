@@ -33,3 +33,13 @@ test("visitante não logado é redirecionado de /rastreio", async ({ page }) => 
   await page.goto("/rastreio");
   await expect(page).toHaveURL(/\/login/);
 });
+
+test("visitante não logado é redirecionado de /divergencias", async ({ page }) => {
+  await page.goto("/divergencias");
+  await expect(page).toHaveURL(/\/login/);
+});
+
+test("visitante não logado é redirecionado de /divergencias/nova", async ({ page }) => {
+  await page.goto("/divergencias/nova");
+  await expect(page).toHaveURL(/\/login/);
+});

@@ -13,6 +13,18 @@ async function main() {
     update: { valor: "30" },
     create: { chave: "prazo_chamado_critico_dias", valor: "30" },
   });
+
+  const motivosDivergencia = [
+    "Itens errados",
+    "Item faltando",
+    "Item quebrado",
+    "Acionar garantia",
+    "NFe com valor errado",
+    "Extravio",
+  ];
+  for (const nome of motivosDivergencia) {
+    await prisma.motivoChamado.upsert({ where: { nome }, update: {}, create: { nome } });
+  }
 }
 
 main()

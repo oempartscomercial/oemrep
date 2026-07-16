@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
+import { AlertTriangle } from "@untitledui/icons";
 import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { podeAcessarFabrica } from "@/lib/authz";
 import { obterFabricaIdDaNotaFiscal } from "@/lib/nota-fiscal-fabrica";
 import { agruparCruzamentoPorPedido, type LinhaFaturamento } from "@/domain/nfe/relatorio";
 import { PageContainer } from "@/components/layouts/page-container";
+import { Button } from "@/components/ui/buttons/button";
 import { CruzamentoRelatorio } from "./cruzamento-relatorio";
 
 export default async function RelatorioCruzamentoPage({ params }: { params: Promise<{ id: string }> }) {
@@ -37,9 +39,14 @@ export default async function RelatorioCruzamentoPage({ params }: { params: Prom
 
   return (
     <PageContainer>
-      <div className="flex flex-col gap-1 border-b border-secondary pb-5">
-        <h1 className="text-display-xs font-semibold text-primary">Cruzamento — NFe {notaFiscal.numero}</h1>
-        <p className="text-sm text-tertiary">Chave: {notaFiscal.chaveAcesso}</p>
+      <div className="flex flex-col gap-4 border-b border-secondary pb-5 md:flex-row md:items-start md:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-display-xs font-semibold text-primary">Cruzamento — NFe {notaFiscal.numero}</h1>
+          <p className="text-sm text-tertiary">Chave: {notaFiscal.chaveAcesso}</p>
+        </div>
+        <Button color="secondary" href={`/divergencias/nova?notaFiscalId=${notaFiscal.id}`} iconLeading={AlertTriangle}>
+          Abrir chamado
+        </Button>
       </div>
 
       <CruzamentoRelatorio grupos={grupos} />
