@@ -1,12 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { SearchLg } from "@untitledui/icons";
-import { Input } from "@/components/ui/input/input";
-import { UntitledLogo } from "@/components/foundations/logo/untitledui-logo";
+import { OemLogo } from "@/components/foundations/logo/oem-logo";
 import { cx } from "@/utils/cx";
 import { MobileNavigationHeader } from "../base-components/mobile-header";
-import { NavAccountCard } from "../base-components/nav-account-card";
 import { NavItemBase } from "../base-components/nav-item";
 import { NavList } from "../base-components/nav-list";
 import type { NavItemType } from "../config";
@@ -20,34 +17,18 @@ interface SidebarNavigationProps {
     footerItems?: NavItemType[];
     /** Feature card to display. */
     featureCard?: ReactNode;
-    /** Whether to show the account card. */
-    showAccountCard?: boolean;
     /** Whether to hide the right side border. */
     hideBorder?: boolean;
     /** Additional CSS classes to apply to the sidebar. */
     className?: string;
-    /** Whether to round the account card avatar. */
-    avatarRounded?: boolean;
 }
 
-export const SidebarNavigationSimple = ({
-    activeUrl,
-    items,
-    footerItems = [],
-    featureCard,
-    showAccountCard = true,
-    hideBorder = false,
-    className,
-}: SidebarNavigationProps) => {
+export const SidebarNavigationSimple = ({ activeUrl, items, footerItems = [], featureCard, hideBorder = false, className }: SidebarNavigationProps) => {
     const MAIN_SIDEBAR_WIDTH = 280;
 
     const content = (
         <aside
-            style={
-                {
-                    "--width": `${MAIN_SIDEBAR_WIDTH}px`,
-                } as React.CSSProperties
-            }
+            style={{ "--width": `${MAIN_SIDEBAR_WIDTH}px` } as React.CSSProperties}
             className={cx(
                 "flex h-full w-full max-w-full flex-col justify-between overflow-auto bg-primary pt-4 lg:w-(--width) lg:pt-5",
                 !hideBorder && "border-secondary md:border-r",
@@ -55,13 +36,7 @@ export const SidebarNavigationSimple = ({
             )}
         >
             <div className="flex flex-col gap-5 px-4 lg:px-5">
-                <UntitledLogo className="h-6" />
-
-                {/* Mobile search input */}
-                <Input size="md" aria-label="Search" placeholder="Search" icon={SearchLg} className="md:hidden" />
-
-                {/* Desktop search input */}
-                <Input shortcut size="sm" aria-label="Search" placeholder="Search" icon={SearchLg} className="max-md:hidden" />
+                <OemLogo />
             </div>
 
             <NavList activeUrl={activeUrl} items={items} />
@@ -80,27 +55,20 @@ export const SidebarNavigationSimple = ({
                 )}
 
                 {featureCard}
-
-                {showAccountCard && <NavAccountCard />}
             </div>
         </aside>
     );
 
     return (
         <>
-            {/* Mobile header navigation */}
+            {/* Cabeçalho de navegação mobile */}
             <MobileNavigationHeader>{content}</MobileNavigationHeader>
 
-            {/* Desktop sidebar navigation */}
+            {/* Sidebar desktop */}
             <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex">{content}</div>
 
-            {/* Placeholder to take up physical space because the real sidebar has `fixed` position. */}
-            <div
-                style={{
-                    paddingLeft: MAIN_SIDEBAR_WIDTH,
-                }}
-                className="invisible hidden lg:sticky lg:top-0 lg:bottom-0 lg:left-0 lg:block"
-            />
+            {/* Espaçador (a sidebar real é fixed). */}
+            <div style={{ paddingLeft: MAIN_SIDEBAR_WIDTH }} className="invisible hidden lg:sticky lg:top-0 lg:bottom-0 lg:left-0 lg:block" />
         </>
     );
 };
