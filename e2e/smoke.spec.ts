@@ -43,3 +43,8 @@ test("visitante não logado é redirecionado de /divergencias/nova", async ({ pa
   await page.goto("/divergencias/nova");
   await expect(page).toHaveURL(/\/login/);
 });
+
+test("visitante não logado é redirecionado de /pedidos-x-nfe", async ({ page }) => {
+  await page.goto("/pedidos-x-nfe");
+  await expect(page).toHaveURL(/\/login/);
+});
