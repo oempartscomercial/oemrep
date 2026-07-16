@@ -2,9 +2,11 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarNotaFiscalComPermissao } from "../queries";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { proximosStatusRastreio, type StatusRastreio } from "@/domain/nfe/rastreio";
+import { PageContainer } from "@/components/layouts/page-container";
+import { StatusBadge } from "@/components/patterns/status-badge";
+import { statusBadgeConfig } from "@/components/patterns/status-badge.config";
+import { Timeline, type TimelineItem } from "@/components/patterns/timeline";
 import { RastreioForm } from "./rastreio-form";
 
 export default async function DetalheRastreioPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,47 +26,41 @@ export default async function DetalheRastreioPage({ params }: { params: Promise<
 
   const proximos = proximosStatusRastreio(nota.status as StatusRastreio);
 
+  const timeline: TimelineItem[] = eventos.map((evento) => ({
+    id: evento.id,
+    titulo: `${statusBadgeConfig("nfe", evento.statusAnterior ?? "").label} → ${statusBadgeConfig("nfe", evento.status).label}`,
+    data: new Date(evento.dataEvento).toLocaleDateString("pt-BR"),
+    autor: evento.usuario.nome,
+    descricao: evento.observacao || undefined,
+    destaque: evento.status === "EXTRAVIADO",
+  }));
+
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>NFe {nota.numero}</CardTitle>
-            <p className="text-sm text-muted-foreground">{nota.chaveAcesso}</p>
+    <PageContainer>
+      <div className="flex flex-col gap-4 border-b border-secondary pb-5 md:flex-row md:items-start md:justify-between">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <h1 className="text-display-xs font-semibold text-primary">NFe {nota.numero}</h1>
+            <StatusBadge tipo="nfe" valor={nota.status} size="md" />
           </div>
-          <Badge variant="outline">{nota.status}</Badge>
-        </CardHeader>
-      </Card>
+          <p className="text-sm text-tertiary">{nota.chaveAcesso}</p>
+        </div>
+      </div>
 
       {proximos.length > 0 ? (
         <RastreioForm notaFiscalId={nota.id} proximos={proximos} />
       ) : (
-        <p className="text-sm text-muted-foreground">
-          Rastreio finalizado ({nota.status}). Não há próximas transições.
-        </p>
+        <p className="text-sm text-tertiary">Rastreio finalizado ({statusBadgeConfig("nfe", nota.status).label}). Não há próximas transições.</p>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Timeline</CardTitle>
-        </CardHeader>
-        <ul className="flex flex-col gap-2 px-6 pb-6 text-sm">
-          {eventos.map((evento) => (
-            <li key={evento.id} className="border-b pb-2">
-              <span className="font-medium">
-                {evento.statusAnterior} → {evento.status}
-              </span>{" "}
-              <span className="text-muted-foreground">
-                ({new Date(evento.dataEvento).toLocaleDateString("pt-BR")} · {evento.usuario.nome})
-              </span>
-              {evento.observacao && <p className="text-muted-foreground">{evento.observacao}</p>}
-            </li>
-          ))}
-          {eventos.length === 0 && (
-            <p className="text-muted-foreground">Nenhum evento de rastreio ainda.</p>
-          )}
-        </ul>
-      </Card>
-    </div>
+      <div className="flex flex-col gap-4 rounded-xl bg-primary p-6 ring-1 ring-secondary">
+        <h2 className="text-lg font-semibold text-primary">Histórico</h2>
+        {timeline.length === 0 ? (
+          <p className="text-sm text-tertiary">Nenhum evento de rastreio ainda.</p>
+        ) : (
+          <Timeline eventos={timeline} />
+        )}
+      </div>
+    </PageContainer>
   );
 }

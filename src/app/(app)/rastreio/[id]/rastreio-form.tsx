@@ -4,9 +4,10 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { avancarRastreio } from "../actions";
 import type { StatusRastreio } from "@/domain/nfe/rastreio";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { statusBadgeConfig } from "@/components/patterns/status-badge.config";
+import { Button } from "@/components/ui/buttons/button";
+import { Input } from "@/components/ui/input/input";
+import { Select } from "@/components/ui/select/select";
 
 export function RastreioForm({
   notaFiscalId,
@@ -37,40 +38,23 @@ export function RastreioForm({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Atualizar status</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2">
-          <select
-            className="rounded-md border px-2 py-1 text-sm"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as StatusRastreio)}
-          >
-            {proximos.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <Input
-            type="date"
-            value={dataEvento}
-            onChange={(e) => setDataEvento(e.target.value)}
-            required
-          />
-          <Input
-            placeholder="Observação (opcional)"
-            value={observacao}
-            onChange={(e) => setObservacao(e.target.value)}
-          />
-          <Button type="submit" disabled={enviando}>
-            Registrar
-          </Button>
-        </form>
-        {erro && <p className="mt-2 text-sm text-destructive">{erro}</p>}
-      </CardContent>
-    </Card>
+    <div className="flex flex-col gap-4 rounded-xl bg-primary p-6 ring-1 ring-secondary">
+      <h2 className="text-lg font-semibold text-primary">Atualizar status</h2>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <Select
+          label="Novo status"
+          className="sm:w-52"
+          selectedKey={status}
+          onSelectionChange={(key) => setStatus(key as StatusRastreio)}
+          items={proximos.map((s) => ({ id: s, label: statusBadgeConfig("nfe", s).label }))}
+        >
+          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+        </Select>
+        <Input type="date" label="Data do evento" value={dataEvento} onChange={setDataEvento} isRequired className="sm:w-44" />
+        <Input label="Observação" placeholder="Opcional" value={observacao} onChange={setObservacao} className="sm:flex-1" />
+        <Button type="submit" color="primary" isLoading={enviando}>Registrar</Button>
+      </form>
+      {erro && <p className="text-sm text-error-primary">{erro}</p>}
+    </div>
   );
 }
