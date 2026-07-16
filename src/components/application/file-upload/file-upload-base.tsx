@@ -223,13 +223,13 @@ export const FileUploadDropZone = ({
                     />
                     <label htmlFor={id} className="flex cursor-pointer">
                         <Button color="link-color" size="md" isDisabled={isDisabled} onClick={() => inputRef.current?.click()}>
-                            Click to upload <span className="md:hidden">and attach files</span>
+                            Clique para enviar <span className="md:hidden">e anexar arquivos</span>
                         </Button>
                     </label>
-                    <span className="text-sm max-md:hidden">or drag and drop</span>
+                    <span className="text-sm max-md:hidden">ou arraste e solte</span>
                 </div>
                 <p className={cx("text-xs transition duration-100 ease-linear", isInvalid && "text-error-primary")}>
-                    {hint || "SVG, PNG, JPG or GIF (max. 800x400px)"}
+                    {hint || "Arraste um arquivo aqui"}
                 </p>
             </div>
         </div>
