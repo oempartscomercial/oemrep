@@ -18,9 +18,15 @@ export async function buscarEventosAuditoria(filtro: FiltroAuditoria) {
 
   if (filtro.de || filtro.ate) {
     const criadoEm: Prisma.DateTimeFilter = {};
-    if (filtro.de) criadoEm.gte = new Date(`${filtro.de}T00:00:00`);
-    if (filtro.ate) criadoEm.lte = new Date(`${filtro.ate}T23:59:59`);
-    where.criadoEm = criadoEm;
+    if (filtro.de) {
+      const de = new Date(`${filtro.de}T00:00:00Z`);
+      if (!Number.isNaN(de.getTime())) criadoEm.gte = de;
+    }
+    if (filtro.ate) {
+      const ate = new Date(`${filtro.ate}T23:59:59Z`);
+      if (!Number.isNaN(ate.getTime())) criadoEm.lte = ate;
+    }
+    if (criadoEm.gte !== undefined || criadoEm.lte !== undefined) where.criadoEm = criadoEm;
   }
 
   return prisma.eventoAuditoria.findMany({
