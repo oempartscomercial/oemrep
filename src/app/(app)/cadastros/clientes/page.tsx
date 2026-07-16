@@ -4,6 +4,9 @@ import { PageHeader } from "@/components/patterns/page-header";
 import { Button } from "@/components/ui/buttons/button";
 import { ClientesTabela, type ClienteLinha } from "../cadastros-tabelas";
 
+// Lista de dados vivos do banco: sempre renderizar por requisição (nunca estática).
+export const dynamic = "force-dynamic";
+
 export default async function ClientesPage() {
   const clientes = await prisma.cliente.findMany({
     orderBy: { nomeFantasia: "asc" },
