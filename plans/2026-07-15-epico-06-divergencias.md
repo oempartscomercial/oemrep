@@ -1,5 +1,11 @@
 # Épico 6 — Divergências (Chamados) — Implementation Plan
 
+> **Status: CONCLUÍDO.** As 7 tarefas foram executadas e estão em `main` (commits
+> `0a11359`…`620422c`, mais os fixes de revisão `8e5935e` e `f5c1ca2`). As telas
+> (`Parte D` das Tasks 4 e 6) nasceram no **Untitled UI**, não nos trechos shadcn/ui
+> mostrados abaixo — o layout real está em `src/app/(app)/divergencias/`. Mantido aqui
+> como registro histórico das tarefas/testes de domínio, que continuam válidos.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Permitir abrir um chamado de divergência a partir de uma NFe (com motivo e itens afetados), acompanhar seu andamento numa thread de eventos com auditoria de usuário/data, e sinalizar como **crítico** — reaparecendo em destaque na fila — todo chamado sem novo evento há 30 dias (RF25–RF30, ADR-004, ADR-006).
@@ -66,7 +72,7 @@
   - `function transicaoChamadoValida(de: EstadoChamado, para: EstadoChamado): boolean`
   - `function proximosEstadosChamado(de: EstadoChamado): EstadoChamado[]`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/domain/chamado/__tests__/estado.test.ts`:
 
@@ -128,12 +134,12 @@ describe("catálogo de estados", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm test -- src/domain/chamado/__tests__/estado.test.ts`
 Expected: FAIL — `Failed to resolve import "../estado"` (arquivo ainda não existe).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `src/domain/chamado/estado.ts`:
 
@@ -166,12 +172,12 @@ export function transicaoChamadoValida(de: EstadoChamado, para: EstadoChamado): 
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npm test -- src/domain/chamado/__tests__/estado.test.ts`
 Expected: PASS (todos os casos verdes).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/domain/chamado/estado.ts src/domain/chamado/__tests__/estado.test.ts
@@ -190,7 +196,7 @@ git commit -m "feat: máquina de estado do chamado de divergência (ADR-004)"
 - Consumes: nada (função pura de datas, sem dependências).
 - Produces: `function estaCritico(dataUltimoEvento: Date, hoje: Date, prazoDias?: number): boolean` (padrão `prazoDias = 30`, ADR-006).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/domain/chamado/__tests__/inatividade.test.ts`:
 
@@ -231,12 +237,12 @@ describe("estaCritico (ADR-006: 30 dias, padrão único global)", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm test -- src/domain/chamado/__tests__/inatividade.test.ts`
 Expected: FAIL — `Failed to resolve import "../inatividade"` (arquivo ainda não existe).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `src/domain/chamado/inatividade.ts`:
 
@@ -251,12 +257,12 @@ export function estaCritico(dataUltimoEvento: Date, hoje: Date, prazoDias: numbe
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npm test -- src/domain/chamado/__tests__/inatividade.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/domain/chamado/inatividade.ts src/domain/chamado/__tests__/inatividade.test.ts
@@ -280,7 +286,7 @@ git commit -m "feat: regra de inatividade/crítico do chamado (ADR-006)"
 - Consumes: modelos `NotaFiscal`, `ItemPedido`, `Usuario` já existentes.
 - Produces: modelos Prisma `MotivoChamado`, `Chamado`, `ChamadoItem`, `EventoChamado`, enum `EstadoChamado`. Delegates: `prisma.motivoChamado`, `prisma.chamado`, `prisma.chamadoItem`, `prisma.eventoChamado`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/lib/__tests__/chamado-schema.test.ts`:
 
@@ -383,12 +389,12 @@ describe("schema de Chamado/MotivoChamado/ChamadoItem/EventoChamado", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm test -- src/lib/__tests__/chamado-schema.test.ts`
 Expected: FAIL — TypeScript/Prisma erro `Property 'motivoChamado'/'chamado' does not exist` (os modelos ainda não existem no client).
 
-- [ ] **Step 3: Add the models to the schema**
+- [x] **Step 3: Add the models to the schema**
 
 Em `prisma/schema.prisma`, adicione a back-relation em `Usuario` (após a linha `eventosRastreio EventoRastreio[]`, linha ~68):
 
@@ -466,19 +472,19 @@ model EventoChamado {
 }
 ```
 
-- [ ] **Step 4: Generate the migration and Prisma client**
+- [x] **Step 4: Generate the migration and Prisma client**
 
 Run: `npx prisma migrate dev --name chamado_divergencia`
 Expected: cria `prisma/migrations/<timestamp>_chamado_divergencia/migration.sql` (com `CREATE TABLE "MotivoChamado"`, `"Chamado"`, `"ChamadoItem"`, `"EventoChamado"` e o enum `EstadoChamado`), aplica no banco e regenera o Prisma Client. Nenhum prompt de perda de dados (é só adição de tabelas).
 
 > Se o CLI perguntar sobre seed, responda que sim (ou rode `npx prisma db seed` manualmente depois) — o seed dos motivos entra na Task 5.
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npm test -- src/lib/__tests__/chamado-schema.test.ts`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add prisma/schema.prisma prisma/migrations src/lib/__tests__/chamado-schema.test.ts
@@ -511,7 +517,7 @@ git commit -m "feat: schema de Chamado/MotivoChamado/ChamadoItem/EventoChamado (
 
 ### Parte A — Validação de domínio (TDD)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/domain/chamado/__tests__/validacao.test.ts`:
 
@@ -557,12 +563,12 @@ describe("validarAberturaChamado (RF25/RF30)", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm test -- src/domain/chamado/__tests__/validacao.test.ts`
 Expected: FAIL — `Failed to resolve import "../validacao"`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `src/domain/chamado/validacao.ts`:
 
@@ -586,12 +592,12 @@ export function validarAberturaChamado(dados: DadosAberturaChamado): string[] {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npm test -- src/domain/chamado/__tests__/validacao.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/domain/chamado/validacao.ts src/domain/chamado/__tests__/validacao.test.ts
@@ -600,7 +606,7 @@ git commit -m "feat: validação de abertura de chamado (RF25/RF30)"
 
 ### Parte B — Teste de integração de `abrirChamado` (RED)
 
-- [ ] **Step 6: Write the failing test**
+- [x] **Step 6: Write the failing test**
 
 Create `src/app/(app)/divergencias/__tests__/actions.test.ts`:
 
@@ -669,14 +675,14 @@ describe("abrirChamado — autorização por fábrica (ADR-009) e regras (RF25/R
 });
 ```
 
-- [ ] **Step 7: Run test to verify it fails**
+- [x] **Step 7: Run test to verify it fails**
 
 Run: `npm test -- src/app/\(app\)/divergencias/__tests__/actions.test.ts`
 Expected: FAIL — `Failed to resolve import "../actions"` (o arquivo ainda não existe).
 
 ### Parte C — Queries de contexto + server action `abrirChamado` (GREEN)
 
-- [ ] **Step 8: Create the queries file**
+- [x] **Step 8: Create the queries file**
 
 Create `src/app/(app)/divergencias/queries.ts`:
 
@@ -704,7 +710,7 @@ export async function buscarContextoAberturaChamado(notaFiscalId: string, usuari
 
 > As demais funções deste arquivo (`buscarChamadosPermitidos`, `buscarChamadoComPermissao`) são adicionadas na Task 6, quando a lista/detalhe existirem.
 
-- [ ] **Step 9: Create the actions file**
+- [x] **Step 9: Create the actions file**
 
 Create `src/app/(app)/divergencias/actions.ts`:
 
@@ -762,7 +768,7 @@ export async function abrirChamado(formData: FormData): Promise<{ erros: string[
 }
 ```
 
-- [ ] **Step 10: Run test to verify it passes**
+- [x] **Step 10: Run test to verify it passes**
 
 Run: `npm test -- src/app/\(app\)/divergencias/__tests__/actions.test.ts`
 Expected: PASS.
@@ -771,7 +777,7 @@ Expected: PASS.
 
 > Sem teste unitário dedicado — são server/client components de apresentação sem ramificação de regra própria (a validação e a autorização já estão cobertas nas Partes A/B/C), seguindo o precedente do repositório (`rastreio/[id]/page.tsx`, `rastreio-form.tsx`).
 
-- [ ] **Step 11: Create the "nova" page**
+- [x] **Step 11: Create the "nova" page**
 
 Create `src/app/(app)/divergencias/nova/page.tsx`:
 
@@ -822,7 +828,7 @@ export default async function NovoChamadoPage({
 }
 ```
 
-- [ ] **Step 12: Create the client form**
+- [x] **Step 12: Create the client form**
 
 Create `src/app/(app)/divergencias/nova/chamado-form.tsx`:
 
@@ -917,7 +923,7 @@ export function ChamadoForm({
 }
 ```
 
-- [ ] **Step 13: Add the entry point on the NFe cruzamento screen**
+- [x] **Step 13: Add the entry point on the NFe cruzamento screen**
 
 Em `src/app/(app)/conferencia/[id]/page.tsx`, adicione o import de `Link` (se ainda não houver) e o link no cabeçalho. Localize o bloco:
 
@@ -948,12 +954,12 @@ Substitua por:
 
 E adicione `import Link from "next/link";` junto aos demais imports no topo do arquivo.
 
-- [ ] **Step 14: Run the full test suite once more**
+- [x] **Step 14: Run the full test suite once more**
 
 Run: `npm test`
 Expected: PASS (o teste de autorização da Parte B continua verde; as telas não têm teste próprio, verificação manual fica para a Definition of Done do épico).
 
-- [ ] **Step 15: Commit**
+- [x] **Step 15: Commit**
 
 ```bash
 git add src/app/\(app\)/divergencias/queries.ts src/app/\(app\)/divergencias/actions.ts \
@@ -974,7 +980,7 @@ git commit -m "feat: abrir chamado de divergência a partir da NFe (RF25/RF30)"
 - Consumes: `prisma.motivoChamado` (Task 3).
 - Produces: 6 linhas seedadas em `MotivoChamado` (RF26).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/lib/__tests__/motivos-chamado.test.ts`:
 
@@ -1000,12 +1006,12 @@ describe("seed de motivos de divergência (RF26)", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm test -- src/lib/__tests__/motivos-chamado.test.ts`
 Expected: FAIL — array vazio, os motivos ainda não foram seedados.
 
-- [ ] **Step 3: Add the seed**
+- [x] **Step 3: Add the seed**
 
 Em `prisma/seed.ts`, adicione dentro de `main()` (após os `upsert` de `Parametro` existentes):
 
@@ -1023,17 +1029,17 @@ Em `prisma/seed.ts`, adicione dentro de `main()` (após os `upsert` de `Parametr
   }
 ```
 
-- [ ] **Step 4: Run the seed**
+- [x] **Step 4: Run the seed**
 
 Run: `npx prisma db seed`
 Expected: `Running seed command \`tsx prisma/seed.ts\` ...` seguido de sucesso, sem erros.
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npm test -- src/lib/__tests__/motivos-chamado.test.ts`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add prisma/seed.ts src/lib/__tests__/motivos-chamado.test.ts
@@ -1064,7 +1070,7 @@ git commit -m "feat: seed dos motivos de divergência (RF26)"
 
 ### Parte A — Queries de lista/detalhe
 
-- [ ] **Step 1: Extend the queries file**
+- [x] **Step 1: Extend the queries file**
 
 Em `src/app/(app)/divergencias/queries.ts`, adicione ao final do arquivo:
 
@@ -1111,7 +1117,7 @@ import { filtroFabricasPermitidas, podeAcessarFabrica } from "@/lib/authz";
 
 ### Parte B — Teste de integração de `registrarEventoChamado` (RED)
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Em `src/app/(app)/divergencias/__tests__/actions.test.ts`, troque o import de `abrirChamado` por:
 
@@ -1175,14 +1181,14 @@ describe("registrarEventoChamado — autorização por fábrica (ADR-009)", () =
 });
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `npm test -- src/app/\(app\)/divergencias/__tests__/actions.test.ts`
 Expected: FAIL — `registrarEventoChamado` não é exportado por `../actions` (a função ainda não existe).
 
 ### Parte C — Server action `registrarEventoChamado` (GREEN)
 
-- [ ] **Step 4: Extend the actions file**
+- [x] **Step 4: Extend the actions file**
 
 Em `src/app/(app)/divergencias/actions.ts`, adicione ao final do arquivo:
 
@@ -1235,14 +1241,14 @@ E adicione ao topo do arquivo, junto aos demais imports:
 import { transicaoChamadoValida, type EstadoChamado } from "@/domain/chamado/estado";
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npm test -- src/app/\(app\)/divergencias/__tests__/actions.test.ts`
 Expected: PASS (os dois `describe`, `abrirChamado` e `registrarEventoChamado`).
 
 ### Parte D — Telas
 
-- [ ] **Step 6: Create the list page**
+- [x] **Step 6: Create the list page**
 
 Create `src/app/(app)/divergencias/page.tsx`:
 
@@ -1310,7 +1316,7 @@ export default async function DivergenciasPage() {
 
 > O campo `chamado.critico` só existe a partir da Task 7. Como este plano é executado tarefa a tarefa em ordem, ao terminar a Task 6 o TypeScript vai reclamar de `critico` não existir no tipo retornado por `buscarChamadosPermitidos` — isso é esperado e resolvido na Task 7, Step 3 (não é um erro a corrigir aqui).
 
-- [ ] **Step 7: Create the detail page**
+- [x] **Step 7: Create the detail page**
 
 Create `src/app/(app)/divergencias/[id]/page.tsx`:
 
@@ -1390,7 +1396,7 @@ export default async function DetalheChamadoPage({ params }: { params: Promise<{
 }
 ```
 
-- [ ] **Step 8: Create the client form for advancing the chamado**
+- [x] **Step 8: Create the client form for advancing the chamado**
 
 Create `src/app/(app)/divergencias/[id]/chamado-evento-form.tsx`:
 
@@ -1472,7 +1478,7 @@ export function ChamadoEventoForm({
 
 ### Parte E — Smoke e2e
 
-- [ ] **Step 9: Add the redirect checks**
+- [x] **Step 9: Add the redirect checks**
 
 Em `e2e/smoke.spec.ts`, adicione ao final do arquivo:
 
@@ -1488,12 +1494,12 @@ test("visitante não logado é redirecionado de /divergencias/nova", async ({ pa
 });
 ```
 
-- [ ] **Step 10: Run the e2e suite**
+- [x] **Step 10: Run the e2e suite**
 
 Run: `npm run e2e`
 Expected: PASS (todos os redirecionamentos, incluindo os dois novos).
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add src/app/\(app\)/divergencias/queries.ts src/app/\(app\)/divergencias/actions.ts \
@@ -1520,7 +1526,7 @@ git commit -m "feat: lista e thread de andamento de divergências (RF27/RF28)"
 
 ### Parte A — Helper de parâmetro (TDD)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/lib/__tests__/parametros.test.ts`:
 
@@ -1563,12 +1569,12 @@ describe("obterParametroNumero (ADR-006: prazos configuráveis)", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm test -- src/lib/__tests__/parametros.test.ts`
 Expected: FAIL — `Failed to resolve import "../parametros"`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `src/lib/parametros.ts`:
 
@@ -1584,12 +1590,12 @@ export async function obterParametroNumero(chave: string, padrao: number): Promi
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npm test -- src/lib/__tests__/parametros.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/parametros.ts src/lib/__tests__/parametros.test.ts
@@ -1598,7 +1604,7 @@ git commit -m "feat: leitura de parâmetros configuráveis com fallback (ADR-006
 
 ### Parte B — Wiring na lista de divergências
 
-- [ ] **Step 6: Write the failing test**
+- [x] **Step 6: Write the failing test**
 
 Create `src/app/(app)/divergencias/__tests__/queries.test.ts`:
 
@@ -1671,12 +1677,12 @@ describe("buscarChamadosPermitidos — sinalização de crítico (RF29)", () => 
 });
 ```
 
-- [ ] **Step 7: Run test to verify it fails**
+- [x] **Step 7: Run test to verify it fails**
 
 Run: `npm test -- src/app/\(app\)/divergencias/__tests__/queries.test.ts`
 Expected: FAIL — `chamado.critico` é `undefined` (a lista ainda não calcula o campo).
 
-- [ ] **Step 8: Wire `estaCritico` into `buscarChamadosPermitidos`**
+- [x] **Step 8: Wire `estaCritico` into `buscarChamadosPermitidos`**
 
 Em `src/app/(app)/divergencias/queries.ts`, substitua a função `buscarChamadosPermitidos` (criada na Task 6) por:
 
@@ -1718,17 +1724,17 @@ import { estaCritico } from "@/domain/chamado/inatividade";
 import { obterParametroNumero } from "@/lib/parametros";
 ```
 
-- [ ] **Step 9: Run test to verify it passes**
+- [x] **Step 9: Run test to verify it passes**
 
 Run: `npm test -- src/app/\(app\)/divergencias/__tests__/queries.test.ts`
 Expected: PASS.
 
-- [ ] **Step 10: Run the full test suite**
+- [x] **Step 10: Run the full test suite**
 
 Run: `npm test`
 Expected: PASS (todos os testes do repositório, incluindo os das Tasks 1-6 e o teste de tipos de `divergencias/page.tsx` — o campo `critico` agora existe no tipo retornado).
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add src/app/\(app\)/divergencias/queries.ts src/app/\(app\)/divergencias/__tests__/queries.test.ts
@@ -1739,8 +1745,8 @@ git commit -m "feat: sinaliza e ordena chamados críticos na fila de divergênci
 
 ## Definition of Done do Épico 6
 
-- [ ] `npm test` verde (unidade + integração contra Postgres real).
-- [ ] `npm run e2e` verde (redirecionamentos de `/divergencias` e `/divergencias/nova`).
-- [ ] Fluxo demonstrável manualmente: abrir `/conferencia/[id]` de uma NFe → "Abrir chamado" → selecionar motivo + itens → salvar → cai em `/divergencias/[id]` com o evento de abertura na thread → avançar estado com observação → `/divergencias` mostra o chamado com o estado atualizado e, se sem evento há 30+ dias, com o badge CRÍTICO no topo da lista.
-- [ ] RF25, RF26, RF27, RF28, RF29, RF30 cobertos por teste.
-- [ ] `finishing-a-development-branch` executado (merge para `main`, branch encerrada).
+- [x] `npm test` verde (unidade + integração contra Postgres real).
+- [x] `npm run e2e` verde (redirecionamentos de `/divergencias` e `/divergencias/nova`).
+- [x] Fluxo demonstrável manualmente: abrir `/conferencia/[id]` de uma NFe → "Abrir chamado" → selecionar motivo + itens → salvar → cai em `/divergencias/[id]` com o evento de abertura na thread → avançar estado com observação → `/divergencias` mostra o chamado com o estado atualizado e, se sem evento há 30+ dias, com o badge CRÍTICO no topo da lista.
+- [x] RF25, RF26, RF27, RF28, RF29, RF30 cobertos por teste.
+- [x] `finishing-a-development-branch` executado (merge para `main`, branch encerrada).

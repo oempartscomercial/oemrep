@@ -14,7 +14,7 @@
 **divergências viram chamados rastreáveis** e **toda alteração fica auditada** —
 substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
 
-**Estado atual do desenvolvimento:** **Épicos 1, 2, 3, 4 e 5 concluídos.**
+**Estado atual do desenvolvimento:** **Épicos 1, 2, 3, 4, 5 e 6 concluídos.**
 - **Épico 1 — Fundação** (`plans/2026-06-22-epic-01-fundacao.md`): Next.js + TypeScript +
   Tailwind, Vitest + Playwright, Prisma + Postgres (Supabase) com parâmetros padrão,
   autenticação Supabase Auth com proteção de rotas, casca do app com navegação.
@@ -48,6 +48,18 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   via `avancarRastreio` com auditoria (`EventoAuditoria`) em toda mudança de
   `NotaFiscal.status`; telas `/rastreio` (lista) e `/rastreio/[id]` (detalhe com
   timeline e formulário de avanço) (RF20).
+- **Épico 6 — Divergências (Chamados)** (`plans/2026-07-15-epico-06-divergencias.md`,
+  ADR-004, ADR-006): chamado nasce de uma `NotaFiscal` (nunca do pedido) com motivo
+  (`MotivoChamado`, tabela seedada — não enum) e itens afetados (`ChamadoItem`); máquina
+  de estado pura em `src/domain/chamado/estado.ts`
+  (`ABERTO → EM_TRATATIVA → {AGUARDANDO, RESOLVIDO}`, com volta de `AGUARDANDO` para
+  `EM_TRATATIVA`); thread de andamento (`EventoChamado`, observação obrigatória em cada
+  evento, incluindo o de abertura) substitui auditoria própria (RF28); sinalização
+  `crítico` (RF29) calculada a partir do último evento e do parâmetro
+  `prazo_chamado_critico_dias` (30, `src/lib/parametros.ts`), ordenando a fila de
+  `/divergencias`. Entrada pelo botão "Abrir chamado" na tela de cruzamento de NFe
+  (`/conferencia/[id]`); telas `/divergencias`, `/divergencias/nova` e
+  `/divergencias/[id]` já nasceram no Untitled UI (RF25–RF30).
 - **Design System — Untitled UI** (`docs/adr/ADR-011`,
   `docs/superpowers/plans/2026-07-15-untitled-ui-design-system.md`): **Untitled UI React
   OSS (MIT)** substitui o shadcn/ui como fonte visual única. Identidade da OEM (grafite +
@@ -56,8 +68,8 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   migradas; catálogo em `/design-system`; guia em `DESIGN_SYSTEM.md`. Regras/rotas/APIs/
   permissões/estados/auditoria preservadas.
 
-Próximo passo: expandir e executar o **Épico 6**
-(`plans/2026-06-22-epics-02-07-briefs.md`). Mantenha esta seção atualizada conforme os
+Próximo passo: expandir e executar o **Épico 7** (Análise, Alertas & Auditoria —
+`plans/2026-06-22-epics-02-07-briefs.md`). Mantenha esta seção atualizada conforme os
 épicos forem concluídos.
 
 ## 2. Como o agente deve trabalhar aqui (fases × skills do Superpowers)
