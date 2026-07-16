@@ -14,7 +14,7 @@
 **divergências viram chamados rastreáveis** e **toda alteração fica auditada** —
 substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
 
-**Estado atual do desenvolvimento:** **Épicos 1, 2, 3, 4, 5 e 6 concluídos.**
+**Estado atual do desenvolvimento:** **Épicos 1–7 concluídos — MVP completo.**
 - **Épico 1 — Fundação** (`plans/2026-06-22-epic-01-fundacao.md`): Next.js + TypeScript +
   Tailwind, Vitest + Playwright, Prisma + Postgres (Supabase) com parâmetros padrão,
   autenticação Supabase Auth com proteção de rotas, casca do app com navegação.
@@ -60,6 +60,19 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   `/divergencias`. Entrada pelo botão "Abrir chamado" na tela de cruzamento de NFe
   (`/conferencia/[id]`); telas `/divergencias`, `/divergencias/nova` e
   `/divergencias/[id]` já nasceram no Untitled UI (RF25–RF30).
+- **Épico 7 — Análise, Alertas & Auditoria**
+  (`docs/superpowers/plans/2026-07-16-epico-07-analise-alertas-auditoria.md`, ADR-006/007/009):
+  três funções puras de domínio — cálculo do gap de faturamento só de produtos
+  (`src/domain/analise/gap.ts`, ADR-007, item a item agrupado por mês/fábrica/cliente),
+  regra de alerta de pedido sem NFe (`src/domain/alerta/semNfe.ts`, 7 dias, ADR-006) e
+  gerador de XLSX genérico (`src/domain/export/xlsx.ts`, ExcelJS). Telas: painel
+  `/pedidos-x-nfe` (gap com filtros fábrica/cliente/mês + resumo mensal em barras CSS +
+  export, RF31), central `/alertas` (pedidos sem NFe vencidos, RF34), dashboard `/` com
+  KPIs reais + fila do dia combinando sem-NFe e chamados críticos, e consulta
+  `/auditoria` (`EventoAuditoria` filtrado por período/usuário/tipo — log transversal, não
+  escopado por fábrica, RF32). Exportação XLSX via route handlers `/api/export/*` com
+  botão nas listas de painel, pedidos e divergências (RF33). Toda consulta de dados de
+  produto respeita `filtroFabricasPermitidas` (ADR-009).
 - **Design System — Untitled UI** (`docs/adr/ADR-011`,
   `docs/superpowers/plans/2026-07-15-untitled-ui-design-system.md`): **Untitled UI React
   OSS (MIT)** substitui o shadcn/ui como fonte visual única. Identidade da OEM (grafite +
@@ -68,9 +81,10 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   migradas; catálogo em `/design-system`; guia em `DESIGN_SYSTEM.md`. Regras/rotas/APIs/
   permissões/estados/auditoria preservadas.
 
-Próximo passo: expandir e executar o **Épico 7** (Análise, Alertas & Auditoria —
-`plans/2026-06-22-epics-02-07-briefs.md`). Mantenha esta seção atualizada conforme os
-épicos forem concluídos.
+Próximo passo: **MVP completo (Épicos 1–7).** Os 7 épicos do roteiro estão concluídos.
+Evoluções futuras (V2+) — conciliação Autoflex, OCR de DANFE, CCe, parâmetros por
+fábrica/motivo — não têm épico aberto. Mantenha esta seção atualizada conforme novos
+trabalhos forem concluídos.
 
 ## 2. Como o agente deve trabalhar aqui (fases × skills do Superpowers)
 
