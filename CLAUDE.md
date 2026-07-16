@@ -48,6 +48,13 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   via `avancarRastreio` com auditoria (`EventoAuditoria`) em toda mudança de
   `NotaFiscal.status`; telas `/rastreio` (lista) e `/rastreio/[id]` (detalhe com
   timeline e formulário de avanço) (RF20).
+- **Design System — Untitled UI** (`docs/adr/ADR-011`,
+  `docs/superpowers/plans/2026-07-15-untitled-ui-design-system.md`): **Untitled UI React
+  OSS (MIT)** substitui o shadcn/ui como fonte visual única. Identidade da OEM (grafite +
+  vermelho, só tema claro) em `src/styles/theme.css`; componentes em
+  `src/components/{ui,application,patterns,layouts}` (React Aria); todas as 18 telas
+  migradas; catálogo em `/design-system`; guia em `DESIGN_SYSTEM.md`. Regras/rotas/APIs/
+  permissões/estados/auditoria preservadas.
 
 Próximo passo: expandir e executar o **Épico 6**
 (`plans/2026-06-22-epics-02-07-briefs.md`). Mantenha esta seção atualizada conforme os
@@ -81,7 +88,8 @@ antes de agir.**
 
 - **Linguagem única:** TypeScript (strict). **Web:** Next.js (App Router, `src/`).
 - **Banco:** PostgreSQL (Supabase) via **Prisma**. **Auth:** Supabase Auth.
-- **Telas:** Tailwind + shadcn/ui. **XML NFe:** fast-xml-parser. **XLSX:** ExcelJS.
+- **Telas:** Tailwind v4 + **Untitled UI React OSS/MIT** (React Aria) — ver ADR-011 e
+  `DESIGN_SYSTEM.md`. shadcn/ui foi removido. **XML NFe:** fast-xml-parser. **XLSX:** ExcelJS.
 - **Testes:** Vitest (unidade/integração) + Playwright (e2e).
 - **Hospedagem:** Vercel + Supabase (planos gratuitos).
 
