@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import type { UsuarioSessao } from "@/lib/sessao";
 import { filtroFabricasPermitidas, podeAcessarFabrica } from "@/lib/authz";
 import { obterFabricaIdDaNotaFiscal } from "@/lib/nota-fiscal-fabrica";
+import { estaCritico } from "@/domain/chamado/inatividade";
+import { obterParametroNumero } from "@/lib/parametros";
 
 export async function buscarContextoAberturaChamado(notaFiscalId: string, usuario: UsuarioSessao) {
   const notaFiscal = await prisma.notaFiscal.findUnique({
@@ -20,7 +22,9 @@ export async function buscarContextoAberturaChamado(notaFiscalId: string, usuari
 
 export async function buscarChamadosPermitidos(usuario: UsuarioSessao) {
   const fabricasPermitidas = filtroFabricasPermitidas(usuario);
-  return prisma.chamado.findMany({
+  const prazoDias = await obterParametroNumero("prazo_chamado_critico_dias", 30);
+
+  const chamados = await prisma.chamado.findMany({
     where: fabricasPermitidas
       ? { notaFiscal: { pedidos: { some: { pedido: { fabricaId: { in: fabricasPermitidas } } } } } }
       : {},
@@ -31,6 +35,23 @@ export async function buscarChamadosPermitidos(usuario: UsuarioSessao) {
     },
     orderBy: { criadoEm: "desc" },
   });
+
+  const agora = new Date();
+  return chamados
+    .map((chamado) => {
+      // Salvaguarda: todo chamado nasce com um EventoChamado (abrirChamado), então
+      // eventos[0] deveria sempre existir; o fallback evita quebrar a fila caso
+      // esse invariante seja violado (ex.: dado corrompido).
+      const dataUltimoEvento = chamado.eventos[0]?.criadoEm ?? chamado.criadoEm;
+      return {
+        ...chamado,
+        critico: chamado.estado !== "RESOLVIDO" && estaCritico(dataUltimoEvento, agora, prazoDias),
+      };
+    })
+    .sort((a, b) => {
+      if (a.critico !== b.critico) return a.critico ? -1 : 1;
+      return b.criadoEm.getTime() - a.criadoEm.getTime();
+    });
 }
 
 export async function buscarChamadoComPermissao(id: string, usuario: UsuarioSessao) {
