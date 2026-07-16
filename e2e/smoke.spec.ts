@@ -53,3 +53,8 @@ test("visitante não logado é redirecionado de /alertas", async ({ page }) => {
   await page.goto("/alertas");
   await expect(page).toHaveURL(/\/login/);
 });
+
+test("visitante não logado é redirecionado de /auditoria", async ({ page }) => {
+  await page.goto("/auditoria");
+  await expect(page).toHaveURL(/\/login/);
+});

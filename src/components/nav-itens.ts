@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChartSquare02, Bell01, FileCheck02, Home01, Package, Settings01, Truck01 } from "@untitledui/icons";
+import { AlertTriangle, BarChartSquare02, Bell01, FileCheck02, FileSearch02, Home01, Package, Settings01, Truck01 } from "@untitledui/icons";
 import type { NavItemType } from "@/components/application/app-navigation/config";
 
 export const ITENS_MENU: NavItemType[] = [
@@ -9,5 +9,6 @@ export const ITENS_MENU: NavItemType[] = [
   { href: "/divergencias", label: "Divergências", icon: AlertTriangle },
   { href: "/pedidos-x-nfe", label: "Pedidos × NFe", icon: BarChartSquare02 },
   { href: "/alertas", label: "Alertas", icon: Bell01 },
+  { href: "/auditoria", label: "Auditoria", icon: FileSearch02 },
   { href: "/cadastros", label: "Cadastros", icon: Settings01 },
 ];
