@@ -1,7 +1,9 @@
+import { Download01 } from "@untitledui/icons";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarChamadosPermitidos } from "./queries";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
+import { Button } from "@/components/ui/buttons/button";
 import { ChamadosTabela, type ChamadoLinha } from "./chamados-tabela";
 
 export default async function DivergenciasPage() {
@@ -25,7 +27,15 @@ export default async function DivergenciasPage() {
 
   return (
     <PageContainer>
-      <PageHeader titulo="Divergências" descricao="Chamados abertos a partir de notas fiscais." />
+      <PageHeader
+        titulo="Divergências"
+        descricao="Chamados abertos a partir de notas fiscais."
+        acoes={
+          <Button color="secondary" href="/api/export/divergencias" iconLeading={Download01}>
+            Exportar XLSX
+          </Button>
+        }
+      />
       <ChamadosTabela chamados={linhas} />
     </PageContainer>
   );

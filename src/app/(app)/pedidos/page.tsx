@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Upload01 } from "@untitledui/icons";
+import { Download01, Plus, Upload01 } from "@untitledui/icons";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarPedidosPermitidos } from "./queries";
 import { filtrarPedidos, type FiltroPedido } from "@/domain/pedido/filtro";
@@ -56,6 +56,9 @@ export default async function PedidosPage({
         descricao="Todos os pedidos das fábricas que você acompanha."
         acoes={
           <>
+            <Button color="secondary" href={`/api/export/pedidos?filtro=${filtro}`} iconLeading={Download01}>
+              Exportar XLSX
+            </Button>
             <Button color="secondary" href="/pedidos/importar" iconLeading={Upload01}>
               Importar Excel
             </Button>
