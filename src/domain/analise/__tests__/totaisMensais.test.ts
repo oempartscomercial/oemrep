@@ -19,11 +19,11 @@ describe("calcularTotaisMensaisAoVivo", () => {
 });
 
 describe("combinarSeries", () => {
-  it("mescla histórico e ao vivo por mês e ordena crescente", () => {
+  it("mescla histórico e ao vivo por mês e ordena crescente mesmo com entrada fora de ordem", () => {
     const historico: HistoricoMensalRow[] = [
+      { ano: 2026, mes: 2, tipo: "PEDIDO", valor: 500 },
       { ano: 2026, mes: 1, tipo: "PEDIDO", valor: 1000 },
       { ano: 2026, mes: 1, tipo: "NFE", valor: 800 },
-      { ano: 2026, mes: 2, tipo: "PEDIDO", valor: 500 },
     ];
     const aoVivo = [{ mes: "2026-07", valorPedido: 55, valorNfe: 100 }];
 
