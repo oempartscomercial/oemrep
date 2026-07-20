@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, Bell01, Package, Truck01 } from "@untitledui/icons";
 import { obterUsuarioLogado } from "@/lib/sessao";
-import { buscarResumoDashboard } from "./queries";
+import { buscarResumoDashboard, buscarSerieMensal } from "./queries";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 
@@ -18,6 +18,14 @@ export default async function DashboardPage() {
   }
 
   const { kpis, fila } = await buscarResumoDashboard(usuario);
+
+  const serie = await buscarSerieMensal(usuario);
+  const serieMax = Math.max(1, ...serie.map((p) => Math.max(p.valorPedido, p.valorNfe)));
+  const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const rotuloMes = (mes: string) => {
+    const [ano, m] = mes.split("-");
+    return `${["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"][Number(m)]}/${ano.slice(2)}`;
+  };
 
   const cartoes = [
     { rotulo: "Pedidos ativos", valor: kpis.pedidosAtivos, icone: Package, dica: "Ainda não arquivados", alerta: false },
@@ -48,6 +56,39 @@ export default async function DashboardPage() {
             </div>
           );
         })}
+      </div>
+
+      <div className="flex flex-col gap-4 rounded-xl bg-primary p-6 ring-1 ring-secondary">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold text-primary">Pedidos × NFes por mês</h2>
+          {usuario.perfil === "ADMIN" && (
+            <Link href="/historico/importar" className="text-sm text-brand-secondary hover:underline">
+              Importar histórico
+            </Link>
+          )}
+        </div>
+
+        {serie.length === 0 ? (
+          <p className="text-sm text-tertiary">Sem dados ainda. Importe o histórico ou registre pedidos e NFes.</p>
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {serie.map((p) => (
+              <li key={p.mes} className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-tertiary">{rotuloMes(p.mes)}</span>
+                <div className="flex items-center gap-3">
+                  <span className="w-10 shrink-0 text-xs text-quaternary">Ped.</span>
+                  <span className="h-3 rounded-full bg-fg-brand-primary" style={{ width: `${Math.max(2, (p.valorPedido / serieMax) * 100)}%` }} aria-hidden />
+                  <span className="text-sm text-primary">{brl(p.valorPedido)}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="w-10 shrink-0 text-xs text-quaternary">NFe</span>
+                  <span className="h-3 rounded-full bg-fg-success-primary" style={{ width: `${Math.max(2, (p.valorNfe / serieMax) * 100)}%` }} aria-hidden />
+                  <span className="text-sm text-primary">{brl(p.valorNfe)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="flex flex-col gap-4 rounded-xl bg-primary p-6 ring-1 ring-secondary">

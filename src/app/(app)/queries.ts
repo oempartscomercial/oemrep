@@ -5,6 +5,12 @@ import { obterParametroNumero } from "@/lib/parametros";
 import { buscarPedidosParaAlerta } from "./alertas/queries";
 import { pedidosSemNfeVencidos } from "@/domain/alerta/semNfe";
 import { buscarChamadosPermitidos } from "./divergencias/queries";
+import {
+  calcularTotaisMensaisAoVivo,
+  combinarSeries,
+  type HistoricoMensalRow,
+  type PontoMensal,
+} from "@/domain/analise/totaisMensais";
 
 export type ItemFila = {
   tipo: "SEM_NFE" | "CRITICO";
@@ -61,4 +67,42 @@ export async function buscarResumoDashboard(usuario: UsuarioSessao): Promise<Res
     kpis: { pedidosAtivos, nfesTransito, divergenciasAbertas: abertos.length, alertas: vencidos.length },
     fila,
   };
+}
+
+export async function buscarSerieMensal(usuario: UsuarioSessao): Promise<PontoMensal[]> {
+  const fabricasPermitidas = filtroFabricasPermitidas(usuario);
+  const wherePedidoFabrica = fabricasPermitidas ? { fabricaId: { in: fabricasPermitidas } } : {};
+  const whereNotaFabrica = fabricasPermitidas
+    ? { pedidos: { some: { pedido: { fabricaId: { in: fabricasPermitidas } } } } }
+    : {};
+  const whereHistoricoFabrica = fabricasPermitidas ? { fabricaId: { in: fabricasPermitidas } } : {};
+
+  const [historicoRaw, pedidos, notas] = await Promise.all([
+    prisma.historicoMensal.findMany({ where: whereHistoricoFabrica }),
+    prisma.pedido.findMany({
+      where: wherePedidoFabrica,
+      include: { itens: true },
+    }),
+    prisma.notaFiscal.findMany({ where: whereNotaFabrica }),
+  ]);
+
+  const historico: HistoricoMensalRow[] = historicoRaw.map((h) => ({
+    ano: h.ano,
+    mes: h.mes,
+    tipo: h.tipo,
+    valor: Number(h.valor),
+  }));
+
+  const aoVivo = calcularTotaisMensaisAoVivo(
+    pedidos.map((p) => ({
+      criadoEm: p.criadoEm,
+      itens: p.itens.map((i) => ({
+        quantidadePedida: i.quantidadePedida,
+        valorUnitario: Number(i.valorUnitario),
+      })),
+    })),
+    notas.map((n) => ({ dataEmissao: n.dataEmissao, totalNota: Number(n.totalNota) })),
+  );
+
+  return combinarSeries(historico, aoVivo);
 }
