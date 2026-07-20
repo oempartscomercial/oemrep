@@ -8,7 +8,6 @@ import { extrairTotaisNFe } from "@/domain/historico/nfe";
 import { resolverFabricas, type LinhaHistorico } from "@/domain/historico/resolucao";
 import type { TotalMensal } from "@/domain/historico/tipos";
 import { compararCampos } from "@/domain/auditoria/evento";
-import { registrarAlteracoes } from "@/lib/auditoria";
 
 export type ResultadoAnalise = {
   erro?: string;
@@ -62,46 +61,53 @@ export async function confirmarImportacaoHistorico(
     return { erros: ["Há fábricas não cadastradas. Resolva as pendências antes de importar."] };
   }
 
-  for (const linha of linhas) {
-    const anterior = await prisma.historicoMensal.findUnique({
-      where: {
-        ano_mes_fabricaId_tipo: {
-          ano: linha.ano,
-          mes: linha.mes,
-          fabricaId: linha.fabricaId,
-          tipo: linha.tipo,
-        },
-      },
-    });
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const linha of linhas) {
+        const anterior = await tx.historicoMensal.findUnique({
+          where: {
+            ano_mes_fabricaId_tipo: {
+              ano: linha.ano,
+              mes: linha.mes,
+              fabricaId: linha.fabricaId,
+              tipo: linha.tipo,
+            },
+          },
+        });
 
-    const registro = await prisma.historicoMensal.upsert({
-      where: {
-        ano_mes_fabricaId_tipo: {
-          ano: linha.ano,
-          mes: linha.mes,
-          fabricaId: linha.fabricaId,
-          tipo: linha.tipo,
-        },
-      },
-      create: {
-        ano: linha.ano,
-        mes: linha.mes,
-        fabricaId: linha.fabricaId,
-        tipo: linha.tipo,
-        valor: linha.valor,
-      },
-      update: { valor: linha.valor },
-    });
+        const registro = await tx.historicoMensal.upsert({
+          where: {
+            ano_mes_fabricaId_tipo: {
+              ano: linha.ano,
+              mes: linha.mes,
+              fabricaId: linha.fabricaId,
+              tipo: linha.tipo,
+            },
+          },
+          create: {
+            ano: linha.ano,
+            mes: linha.mes,
+            fabricaId: linha.fabricaId,
+            tipo: linha.tipo,
+            valor: linha.valor,
+          },
+          update: { valor: linha.valor },
+        });
 
-    await registrarAlteracoes(
-      compararCampos(
-        "HistoricoMensal",
-        registro.id,
-        usuario.id,
-        { valor: anterior ? Number(anterior.valor) : null },
-        { valor: linha.valor },
-      ),
-    );
+        const eventos = compararCampos(
+          "HistoricoMensal",
+          registro.id,
+          usuario.id,
+          { valor: anterior ? Number(anterior.valor) : null },
+          { valor: linha.valor },
+        );
+        if (eventos.length > 0) {
+          await tx.eventoAuditoria.createMany({ data: eventos });
+        }
+      }
+    });
+  } catch {
+    return { erros: ["Falha ao gravar o histórico. Nada foi salvo — tente novamente."] };
   }
 
   revalidatePath("/");
