@@ -16,8 +16,9 @@ async function planilhaNfe(): Promise<Buffer> {
     ws.addRow([new Date(Date.UTC(2026, 2, 3)), "MARÇO", 200, 6600, ""]);
   }
   const resumo = wb.addWorksheet("RESUMO GERAL");
-  resumo.addRow(["qualquer", "coisa"]);
-  resumo.addRow([888888, 1]);
+  resumo.addRow(["algum título"]);
+  resumo.addRow(["DIA", "MÊS", "VALOR", "NFE", "CLIENTE"]);
+  resumo.addRow([new Date(Date.UTC(2026, 0, 5)), "JANEIRO", 888888, 1, ""]);
   const ab = await wb.xlsx.writeBuffer();
   return Buffer.from(ab);
 }
@@ -35,5 +36,18 @@ describe("extrairTotaisNFe", () => {
     const totais = await extrairTotaisNFe(await planilhaNfe());
     expect(totais.some((t) => t.fabricaNome === "RESUMO GERAL")).toBe(false);
     expect(totais.some((t) => t.valor === 888888)).toBe(false);
+  });
+
+  it("aceita DIA como serial numérico do Excel (célula sem estilo de data)", async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("AUTOFLEX");
+    ws.addRow(["NOTAS EMITIDAS - 2026"]);
+    ws.addRow(["DIA", "MÊS", "VALOR", "NFE", "CLIENTE"]);
+    const serial = (Date.UTC(2026, 4, 20) - Date.UTC(1899, 11, 30)) / 86400000;
+    ws.addRow([serial, "MAIO", 300, 7000, ""]);
+    const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+
+    const totais = await extrairTotaisNFe(buffer);
+    expect(totais).toContainEqual({ ano: 2026, mes: 5, fabricaNome: "AUTOFLEX", valor: 300 });
   });
 });

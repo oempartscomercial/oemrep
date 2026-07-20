@@ -41,7 +41,13 @@ function localizarCabecalho(ws: ExcelJS.Worksheet): { indices: Indices; linha: n
 }
 
 function comoData(valor: unknown): Date | null {
-  return valor instanceof Date ? valor : null;
+  if (valor instanceof Date) return valor;
+  if (typeof valor === "number" && Number.isFinite(valor) && valor > 0) {
+    // Excel serial → Date (epoch 1899-12-30, cobre o bug do ano-1900). Base em UTC
+    // para casar com getUTCFullYear/getUTCMonth usados no agrupamento.
+    return new Date(Date.UTC(1899, 11, 30) + valor * 86400000);
+  }
+  return null;
 }
 
 export async function extrairTotaisNFe(buffer: Buffer): Promise<TotalMensal[]> {
