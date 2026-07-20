@@ -25,14 +25,15 @@ enum TipoConfirmacaoEstoque {
 }
 
 model Fabrica {
-  id              String           @id @default(cuid())
+  id              String            @id @default(cuid())
   nome            String
-  cnpj            String           @unique
-  flagConciliacao Boolean          @default(false)
-  criadoEm        DateTime         @default(now())
+  cnpj            String            @unique
+  flagConciliacao Boolean           @default(false)
+  criadoEm        DateTime          @default(now())
   clientes        ClienteFabrica[]
   usuarios        UsuarioFabrica[]
   pedidos         Pedido[]
+  historicoMensal HistoricoMensal[]
 }
 
 model Cliente {
@@ -255,4 +256,22 @@ model EventoChamado {
   criadoEm       DateTime       @default(now())
 
   @@index([chamadoId])
+}
+
+enum TipoHistoricoMensal {
+  PEDIDO
+  NFE
+}
+
+model HistoricoMensal {
+  id        String              @id @default(cuid())
+  ano       Int
+  mes       Int
+  fabricaId String
+  fabrica   Fabrica             @relation(fields: [fabricaId], references: [id])
+  tipo      TipoHistoricoMensal
+  valor     Decimal             @db.Decimal(14, 2)
+  criadoEm  DateTime            @default(now())
+
+  @@unique([ano, mes, fabricaId, tipo])
 }
