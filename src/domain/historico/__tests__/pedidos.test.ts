@@ -46,4 +46,29 @@ describe("extrairTotaisPedidos", () => {
     const buffer = Buffer.from(await wb.xlsx.writeBuffer());
     await expect(extrairTotaisPedidos(buffer)).rejects.toThrow(/cabeçalho de pedidos/);
   });
+
+  it("aceita a coluna DIA como serial numérico do Excel, agrupando no ano/mês certo", async () => {
+    const serial = (Date.UTC(2026, 2, 15) - Date.UTC(1899, 11, 30)) / 86400000; // 15/Mar/2026
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("OEM REP - PEDIDOS RECEBIDOS 26");
+    ws.addRow(["ACOMPANHAMENTO 2026"]);
+    ws.addRow(["MÊS PEDIDO", "DIA PEDIDO", "FABRICANTE", "CLIENTE", "VR PEDIDO (S/IMP)"]);
+    ws.addRow(["MARÇO", serial, "AUTOFLEX", "ARAUTHO - TO", 1234]);
+    const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+
+    const totais = await extrairTotaisPedidos(buffer);
+    expect(totais).toContainEqual({ ano: 2026, mes: 3, fabricaNome: "AUTOFLEX", valor: 1234 });
+  });
+
+  it("não trata como aba de pedidos um cabeçalho incompleto (sem DIA PEDIDO)", async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("QUASE PEDIDOS");
+    ws.addRow(["ACOMPANHAMENTO 2026"]);
+    ws.addRow(["MÊS PEDIDO", "FABRICANTE", "CLIENTE", "VR PEDIDO (S/IMP)"]); // sem DIA PEDIDO
+    ws.addRow(["JANEIRO", "AUTOFLEX", "ARAUTHO - TO", 555]);
+    const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+
+    // matcher rejeita cabeçalho parcial → nenhuma aba de pedidos → erro
+    await expect(extrairTotaisPedidos(buffer)).rejects.toThrow(/cabeçalho de pedidos/);
+  });
 });

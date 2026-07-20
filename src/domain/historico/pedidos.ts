@@ -38,6 +38,11 @@ function localizarCabecalho(ws: ExcelJS.Worksheet): { indices: Indices; linha: n
 
 function comoData(valor: unknown): Date | null {
   if (valor instanceof Date) return valor;
+  if (typeof valor === "number" && Number.isFinite(valor) && valor > 0) {
+    // Excel serial → Date (epoch 1899-12-30, cobre o bug do ano-1900). Base em UTC
+    // para casar com getUTCFullYear/getUTCMonth usados no agrupamento.
+    return new Date(Date.UTC(1899, 11, 30) + valor * 86400000);
+  }
   return null;
 }
 
@@ -65,6 +70,7 @@ export async function extrairTotaisPedidos(buffer: Buffer): Promise<TotalMensal[
     const data = comoData(row.getCell(indices.dia).value);
     const fabricaNome = String(row.getCell(indices.fabricante).value ?? "").trim();
     const valor = Number(row.getCell(indices.valor).value ?? 0);
+    // Células cuja DIA não é uma data reconhecível são intencionalmente ignoradas.
     if (!data || !fabricaNome || !Number.isFinite(valor)) return;
 
     const ano = data.getUTCFullYear();
