@@ -25,7 +25,7 @@ export default async function ClientesPage() {
       <PageHeader
         titulo="Clientes"
         descricao="Clientes atendidos (podem pertencer a várias fábricas)."
-        acoes={<Button color="primary" href="/cadastros/clientes/novo" iconLeading={Plus}>Novo cliente</Button>}
+        acoes={<Button color="primary" href="/cadastros/clientes/novo" iconLeading={<Plus />}>Novo cliente</Button>}
       />
       <ClientesTabela clientes={linhas} />
     </div>

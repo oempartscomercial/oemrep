@@ -65,7 +65,7 @@ export default async function PedidosXNfePage({
         titulo="Pedidos × NFe"
         descricao="Gap de faturamento (valor de produtos) por mês, fábrica e cliente."
         acoes={
-          <Button color="secondary" href={`/api/export/pedidos-x-nfe?${qs.toString()}`} iconLeading={Download01}>
+          <Button color="secondary" href={`/api/export/pedidos-x-nfe?${qs.toString()}`} iconLeading={<Download01 />}>
             Exportar XLSX
           </Button>
         }

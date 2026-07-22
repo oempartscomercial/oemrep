@@ -16,7 +16,7 @@ export default async function FabricasPage() {
       <PageHeader
         titulo="Fábricas"
         descricao="Fabricantes representados."
-        acoes={<Button color="primary" href="/cadastros/fabricas/novo" iconLeading={Plus}>Nova fábrica</Button>}
+        acoes={<Button color="primary" href="/cadastros/fabricas/novo" iconLeading={<Plus />}>Nova fábrica</Button>}
       />
       <FabricasTabela fabricas={linhas} />
     </div>

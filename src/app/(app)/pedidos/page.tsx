@@ -56,13 +56,13 @@ export default async function PedidosPage({
         descricao="Todos os pedidos das fábricas que você acompanha."
         acoes={
           <>
-            <Button color="secondary" href={`/api/export/pedidos?filtro=${filtro}`} iconLeading={Download01}>
+            <Button color="secondary" href={`/api/export/pedidos?filtro=${filtro}`} iconLeading={<Download01 />}>
               Exportar XLSX
             </Button>
-            <Button color="secondary" href="/pedidos/importar" iconLeading={Upload01}>
+            <Button color="secondary" href="/pedidos/importar" iconLeading={<Upload01 />}>
               Importar Excel
             </Button>
-            <Button color="primary" href="/pedidos/novo" iconLeading={Plus}>
+            <Button color="primary" href="/pedidos/novo" iconLeading={<Plus />}>
               Novo pedido
             </Button>
           </>

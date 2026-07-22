@@ -44,7 +44,7 @@ export default async function RelatorioCruzamentoPage({ params }: { params: Prom
           <h1 className="text-display-xs font-semibold text-primary">Cruzamento — NFe {notaFiscal.numero}</h1>
           <p className="text-sm text-tertiary">Chave: {notaFiscal.chaveAcesso}</p>
         </div>
-        <Button color="secondary" href={`/divergencias/nova?notaFiscalId=${notaFiscal.id}`} iconLeading={AlertTriangle}>
+        <Button color="secondary" href={`/divergencias/nova?notaFiscalId=${notaFiscal.id}`} iconLeading={<AlertTriangle />}>
           Abrir chamado
         </Button>
       </div>

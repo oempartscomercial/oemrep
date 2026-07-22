@@ -30,7 +30,7 @@ export default async function UsuariosPage() {
       <PageHeader
         titulo="Usuários"
         descricao="Acesso e permissão por fábrica."
-        acoes={<Button color="primary" href="/cadastros/usuarios/novo" iconLeading={Plus}>Novo usuário</Button>}
+        acoes={<Button color="primary" href="/cadastros/usuarios/novo" iconLeading={<Plus />}>Novo usuário</Button>}
       />
       <UsuariosTabela usuarios={linhas} />
     </div>

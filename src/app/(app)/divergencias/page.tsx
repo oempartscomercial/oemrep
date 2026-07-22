@@ -31,7 +31,7 @@ export default async function DivergenciasPage() {
         titulo="Divergências"
         descricao="Chamados abertos a partir de notas fiscais."
         acoes={
-          <Button color="secondary" href="/api/export/divergencias" iconLeading={Download01}>
+          <Button color="secondary" href="/api/export/divergencias" iconLeading={<Download01 />}>
             Exportar XLSX
           </Button>
         }
