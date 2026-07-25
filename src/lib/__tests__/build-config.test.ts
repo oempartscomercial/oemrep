@@ -14,4 +14,10 @@ describe("configuração de build", () => {
     const passos = [pkg.scripts.postinstall, pkg.scripts.build].filter(Boolean).join(" && ");
     expect(passos).toMatch(/prisma\s+generate/);
   });
+
+  // Sem isto, um modelo novo no schema chega à produção sem a tabela correspondente:
+  // o build passa e a tela quebra em runtime (foi o caso de HistoricoMensal).
+  it("aplica as migrações pendentes antes de compilar", () => {
+    expect(pkg.scripts.build).toMatch(/prisma\s+migrate\s+deploy.*&&.*next\s+build/);
+  });
 });
