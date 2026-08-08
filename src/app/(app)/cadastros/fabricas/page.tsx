@@ -1,5 +1,6 @@
 import { Plus } from "@untitledui/icons";
 import { prisma } from "@/lib/prisma";
+import { obterUsuarioLogado } from "@/lib/sessao";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Button } from "@/components/ui/buttons/button";
 import { FabricasTabela, type FabricaLinha } from "../cadastros-tabelas";
@@ -8,6 +9,12 @@ import { FabricasTabela, type FabricaLinha } from "../cadastros-tabelas";
 export const dynamic = "force-dynamic";
 
 export default async function FabricasPage() {
+  const usuarioLogado = await obterUsuarioLogado();
+
+  if (!usuarioLogado || usuarioLogado.perfil !== "ADMIN") {
+    return <p className="text-sm text-error-primary">Acesso restrito a administradores.</p>;
+  }
+
   const fabricas = await prisma.fabrica.findMany({ orderBy: { nome: "asc" } });
   const linhas: FabricaLinha[] = fabricas.map((f) => ({ id: f.id, nome: f.nome, cnpj: f.cnpj }));
 

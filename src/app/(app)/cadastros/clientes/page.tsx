@@ -1,5 +1,6 @@
 import { Plus } from "@untitledui/icons";
 import { prisma } from "@/lib/prisma";
+import { obterUsuarioLogado } from "@/lib/sessao";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Button } from "@/components/ui/buttons/button";
 import { ClientesTabela, type ClienteLinha } from "../cadastros-tabelas";
@@ -8,6 +9,12 @@ import { ClientesTabela, type ClienteLinha } from "../cadastros-tabelas";
 export const dynamic = "force-dynamic";
 
 export default async function ClientesPage() {
+  const usuarioLogado = await obterUsuarioLogado();
+
+  if (!usuarioLogado || usuarioLogado.perfil !== "ADMIN") {
+    return <p className="text-sm text-error-primary">Acesso restrito a administradores.</p>;
+  }
+
   const clientes = await prisma.cliente.findMany({
     orderBy: { nomeFantasia: "asc" },
     include: { fabricas: { include: { fabrica: true } } },
