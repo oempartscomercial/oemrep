@@ -2,6 +2,7 @@
 
 import { DataTable } from "@/components/patterns/data-table";
 import type { LinhaFaturamento } from "@/domain/nfe/relatorio";
+import { formatarReais } from "@/domain/formato/moeda";
 
 export interface GrupoCruzamento {
   pedidoId: string;
@@ -24,11 +25,11 @@ export function CruzamentoRelatorio({ grupos }: { grupos: GrupoCruzamento[] }) {
               { id: "referencia", header: "Referência", isRowHeader: true, render: (l) => <span className="font-medium text-primary">{l.referencia}</span> },
               { id: "descricao", header: "Descrição", render: (l) => l.descricao },
               { id: "qtd", header: "Qtd. faturada", render: (l) => l.quantidadeFaturada },
-              { id: "valor", header: "Valor unit.", render: (l) => `R$ ${l.valorUnitario.toFixed(2)}` },
+              { id: "valor", header: "Valor unit.", render: (l) => formatarReais(l.valorUnitario) },
             ]}
           />
           <p className="text-sm text-tertiary">
-            Total faturado neste pedido: <span className="font-semibold text-primary">R$ {grupo.totalFaturado.toFixed(2)}</span>
+            Total faturado neste pedido: <span className="font-semibold text-primary">{formatarReais(grupo.totalFaturado)}</span>
           </p>
         </div>
       ))}

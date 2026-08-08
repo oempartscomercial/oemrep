@@ -4,6 +4,7 @@ import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarResumoDashboard, buscarSerieMensal } from "./queries";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
+import { formatarReais } from "@/domain/formato/moeda";
 
 const FILA_MAX = 8;
 
@@ -21,7 +22,7 @@ export default async function DashboardPage() {
 
   const serie = await buscarSerieMensal(usuario);
   const serieMax = Math.max(1, ...serie.map((p) => Math.max(p.valorPedido, p.valorNfe)));
-  const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const brl = formatarReais;
   const rotuloMes = (mes: string) => {
     const [ano, m] = mes.split("-");
     return `${["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"][Number(m)]}/${ano.slice(2)}`;

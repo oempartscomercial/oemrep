@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/buttons/button";
 import { Badge } from "@/components/ui/badges/badges";
 import { FileUploadDropZone } from "@/components/application/file-upload/file-upload-base";
 import { DataTable } from "@/components/patterns/data-table";
+import { formatarReais } from "@/domain/formato/moeda";
 
 type ConferenciaLinha = AnaliseNFe["conferencia"][number] & { _id: string };
 
@@ -90,7 +91,7 @@ export default function ConferenciaNFePage() {
               { id: "referencia", header: "Referência", isRowHeader: true, render: (r) => <span className="font-medium text-primary">{r.itemNFe.referencia}</span> },
               { id: "descricao", header: "Descrição", render: (r) => r.itemNFe.descricao },
               { id: "qtd", header: "Qtd. NFe", render: (r) => r.itemNFe.quantidade },
-              { id: "valor", header: "Valor unit.", render: (r) => `R$ ${r.itemNFe.valorUnitario.toFixed(2)}` },
+              { id: "valor", header: "Valor unit.", render: (r) => formatarReais(r.itemNFe.valorUnitario) },
               {
                 id: "diverg",
                 header: "Divergências",
