@@ -4,6 +4,7 @@ import { pedidosSemNfeVencidos } from "@/domain/alerta/semNfe";
 import { obterParametroNumero } from "@/lib/parametros";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
+import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
 import { AlertasTabela, type AlertaLinha } from "./alertas-tabela";
 
 export default async function AlertasPage() {
@@ -11,7 +12,7 @@ export default async function AlertasPage() {
   if (!usuario) {
     return (
       <PageContainer>
-        <p className="text-sm text-error-primary">Sessão expirada. Faça login novamente.</p>
+        <SessaoExpirada />
       </PageContainer>
     );
   }

@@ -2,6 +2,7 @@ import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarNotasFiscaisPermitidas } from "./queries";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
+import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
 import { RastreioTabela, type NotaRastreioLinha } from "./rastreio-tabela";
 
 export default async function RastreioPage() {
@@ -9,7 +10,7 @@ export default async function RastreioPage() {
   if (!usuario) {
     return (
       <PageContainer>
-        <p className="text-sm text-error-primary">Sessão expirada. Faça login novamente.</p>
+        <SessaoExpirada />
       </PageContainer>
     );
   }

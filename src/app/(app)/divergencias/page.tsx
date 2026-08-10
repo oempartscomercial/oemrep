@@ -3,6 +3,7 @@ import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarChamadosPermitidos } from "./queries";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
+import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
 import { Button } from "@/components/ui/buttons/button";
 import { ChamadosTabela, type ChamadoLinha } from "./chamados-tabela";
 
@@ -11,7 +12,7 @@ export default async function DivergenciasPage() {
   if (!usuario) {
     return (
       <PageContainer>
-        <p className="text-sm text-error-primary">Sessão expirada. Faça login novamente.</p>
+        <SessaoExpirada />
       </PageContainer>
     );
   }
