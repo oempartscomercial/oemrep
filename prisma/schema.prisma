@@ -34,15 +34,17 @@ model Fabrica {
   usuarios        UsuarioFabrica[]
   pedidos         Pedido[]
   historicoMensal HistoricoMensal[]
+  importacoes     ImportacaoPedido[]
 }
 
 model Cliente {
   id           String           @id @default(cuid())
   cnpj         String           @unique
   nomeFantasia String
-  criadoEm     DateTime         @default(now())
+  criadoEm     DateTime           @default(now())
   fabricas     ClienteFabrica[]
   pedidos      Pedido[]
+  importacoes  ImportacaoPedido[]
 }
 
 model ClienteFabrica {
@@ -64,11 +66,13 @@ model Usuario {
   email           String            @unique
   perfil          PerfilUsuario     @default(OPERADOR)
   criadoEm        DateTime          @default(now())
-  fabricas        UsuarioFabrica[]
-  eventos         EventoAuditoria[]
-  eventosRastreio EventoRastreio[]
-  chamadosAbertos Chamado[]         @relation("ChamadoAbertoPor")
-  eventosChamado  EventoChamado[]
+  fabricas          UsuarioFabrica[]
+  eventos           EventoAuditoria[]
+  eventosRastreio   EventoRastreio[]
+  chamadosAbertos   Chamado[]          @relation("ChamadoAbertoPor")
+  eventosChamado    EventoChamado[]
+  arquivosEnviados  ArquivoImportado[]
+  importacoesPedido ImportacaoPedido[]
 }
 
 model UsuarioFabrica {
@@ -105,6 +109,15 @@ enum EstadoPedido {
 enum OrigemPedido {
   EXCEL
   MANUAL
+  PDF
+}
+
+enum EstadoImportacao {
+  EXTRAINDO
+  AGUARDANDO_REVISAO
+  CONFIRMADA
+  DESCARTADA
+  FALHOU
 }
 
 enum StatusItemPedido {
@@ -115,35 +128,57 @@ enum StatusItemPedido {
 }
 
 model Pedido {
-  id           String             @id @default(cuid())
-  numero       String?
-  semNumero    Boolean            @default(false)
-  origem       OrigemPedido
-  estado       EstadoPedido       @default(SEM_NFE)
-  fabricaId    String
-  clienteId    String
-  fabrica      Fabrica            @relation(fields: [fabricaId], references: [id])
-  cliente      Cliente            @relation(fields: [clienteId], references: [id])
-  itens        ItemPedido[]
-  notasFiscais NotaFiscalPedido[]
-  criadoEm     DateTime           @default(now())
+  id              String             @id @default(cuid())
+  numero          String?
+  semNumero       Boolean            @default(false)
+  origem          OrigemPedido
+  estado          EstadoPedido       @default(SEM_NFE)
+  fabricaId       String
+  clienteId       String
+  fabrica         Fabrica            @relation(fields: [fabricaId], references: [id])
+  cliente         Cliente            @relation(fields: [clienteId], references: [id])
+  itens           ItemPedido[]
+  notasFiscais    NotaFiscalPedido[]
+  arquivoOrigemId String?
+  arquivoOrigem   ArquivoImportado?  @relation(fields: [arquivoOrigemId], references: [id])
+  importacao      ImportacaoPedido?
+  criadoEm        DateTime           @default(now())
+
+  // Reimportar o mesmo arquivo por engano criava um segundo pedido idêntico, que ficava
+  // SEM_NFE para sempre inflando os alertas e dobrando o valor no painel de gap. Número
+  // nulo (S/N) não colide: o Postgres trata NULLs como distintos.
+  @@unique([fabricaId, clienteId, numero])
+  @@index([fabricaId])
+  @@index([clienteId])
+  @@index([estado])
+  @@index([criadoEm])
+  @@index([arquivoOrigemId])
 }
 
 model ItemPedido {
-  id                   String           @id @default(cuid())
-  pedidoId             String
-  pedido               Pedido           @relation(fields: [pedidoId], references: [id])
-  referencia           String
-  descricao            String
-  quantidadePedida     Int
-  quantidadeFaturada   Int              @default(0)
-  valorUnitario        Decimal          @db.Decimal(12, 2)
+  id                 String @id @default(cuid())
+  pedidoId           String
+  pedido             Pedido @relation(fields: [pedidoId], references: [id])
+  referencia         String
+  descricao          String
+  quantidadePedida   Int
+  quantidadeFaturada Int    @default(0)
+
+  // Quatro casas, não duas: o pedido de venda da Bowden imprime valor unitário com quatro
+  // decimais (205,5690). Truncado em centavos, uma linha de 40 unidades erra R$ 0,04 — e
+  // esse valor errado é o que a conferência compara contra o vUnCom da NFe.
+  valorUnitario Decimal @db.Decimal(12, 4)
+
   status               StatusItemPedido @default(PENDENTE)
   observacao           String?
   qtdPendenteCongelada Int?
   itensFaturados       ItemFaturado[]
   criadoEm             DateTime         @default(now())
   chamadoItens         ChamadoItem[]
+
+  @@index([pedidoId])
+  @@index([referencia])
+  @@index([status])
 }
 
 enum StatusRastreio {
@@ -181,13 +216,83 @@ model NotaFiscalPedido {
 }
 
 model ItemFaturado {
-  id                 String     @id @default(cuid())
+  id                 String @id @default(cuid())
   itemPedidoId       String
   notaFiscalId       String
   quantidadeFaturada Int
-  criadoEm           DateTime   @default(now())
-  itemPedido         ItemPedido @relation(fields: [itemPedidoId], references: [id])
-  notaFiscal         NotaFiscal @relation(fields: [notaFiscalId], references: [id])
+
+  // O preço REALMENTE faturado, que antes não era gravado em lugar nenhum. Sem ele o painel
+  // de gap valorizava o faturado pelo preço do pedido: a fábrica faturava mais caro, o
+  // operador aceitava a divergência, e o gap aparecia R$ 0,00 — mascarando exatamente o
+  // sobrefaturamento que o painel existe para achar.
+  valorUnitario Decimal @db.Decimal(12, 4)
+
+  criadoEm   DateTime   @default(now())
+  itemPedido ItemPedido @relation(fields: [itemPedidoId], references: [id])
+  notaFiscal NotaFiscal @relation(fields: [notaFiscalId], references: [id])
+
+  // Uma linha por par item×nota: defesa de banco contra a baixa dobrada que o .find() da
+  // conferência permitia quando a NFe repetia o mesmo código em duas linhas.
+  @@unique([itemPedidoId, notaFiscalId])
+  @@index([notaFiscalId])
+}
+
+/**
+ * O documento que originou uma importação, guardado para conferência.
+ *
+ * Separado de Pedido porque o arquivo existe ANTES do pedido — durante a extração e a
+ * revisão, quando pedido ainda não há — e porque um PDF pode gerar mais de um pedido.
+ */
+model ArquivoImportado {
+  id             String   @id @default(cuid())
+  nomeOriginal   String
+  caminhoStorage String   @unique
+  tamanhoBytes   Int
+  mimeType       String
+  enviadoPorId   String
+  enviadoPor     Usuario  @relation(fields: [enviadoPorId], references: [id])
+  criadoEm       DateTime @default(now())
+
+  importacoes ImportacaoPedido[]
+  pedidos     Pedido[]
+
+  @@index([enviadoPorId])
+}
+
+/**
+ * Rascunho durável de uma importação por PDF.
+ *
+ * Antes as linhas extraídas viviam só em estado React: um F5 no meio da revisão perdia
+ * tudo. Com Excel isso custava um reupload de dois segundos; com PDF custa uma extração
+ * já paga, e a revisão é mais longa porque há mais campo para conferir.
+ *
+ * As duas colunas Json são de propósito: `extracaoBruta` é o que a leitura devolveu,
+ * imutável — é a evidência de auditoria e a base para medir a acurácia real ao longo do
+ * tempo; `revisaoAtual` é o que o operador está editando. Guardar as duas responde
+ * "o que o sistema leu vs. o que o humano corrigiu".
+ */
+model ImportacaoPedido {
+  id            String           @id @default(cuid())
+  arquivoId     String
+  arquivo       ArquivoImportado @relation(fields: [arquivoId], references: [id])
+  estado        EstadoImportacao @default(EXTRAINDO)
+  extracaoBruta Json?
+  revisaoAtual  Json?
+  erro          String?
+  fabricaId     String?
+  fabrica       Fabrica?         @relation(fields: [fabricaId], references: [id])
+  clienteId     String?
+  cliente       Cliente?         @relation(fields: [clienteId], references: [id])
+  pedidoId      String?          @unique
+  pedido        Pedido?          @relation(fields: [pedidoId], references: [id])
+  criadoPorId   String
+  criadoPor     Usuario          @relation(fields: [criadoPorId], references: [id])
+  criadoEm      DateTime         @default(now())
+  atualizadoEm  DateTime         @updatedAt
+
+  @@index([arquivoId])
+  @@index([estado])
+  @@index([criadoPorId])
 }
 
 model EventoRastreio {
