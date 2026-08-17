@@ -16,6 +16,17 @@ export async function extrairPedidoDoTextoPdf(pdf: Buffer): Promise<ExtracaoBrut
   // Import dinâmico: o pdfjs é pesado e só carrega quando alguém importa um PDF.
   const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
+  // No Node, o pdfjs sobe um "fake worker" importando pdf.worker.mjs por um caminho
+  // calculado em runtime — que empacotadores (a lambda da Vercel inclusive) não rastreiam,
+  // e a leitura morria com "Setting up fake worker failed". Com globalThis.pdfjsWorker
+  // definido, o pdfjs usa o handler direto e nunca tenta esse import. O especificador
+  // literal abaixo é rastreável por qualquer bundler.
+  if (!(globalThis as { pdfjsWorker?: unknown }).pdfjsWorker) {
+    (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = await import(
+      "pdfjs-dist/legacy/build/pdf.worker.mjs"
+    );
+  }
+
   const task = getDocument({ data: new Uint8Array(pdf), useSystemFonts: true });
   const doc = await task.promise;
 
