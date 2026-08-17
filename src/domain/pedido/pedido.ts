@@ -25,8 +25,13 @@ export function validarDadosPedido(dados: DadosPedido): string[] {
 
   dados.itens.forEach((item, i) => {
     if (!item.referencia.trim()) erros.push(`Item ${i + 1}: referência é obrigatória.`);
-    if (item.quantidade <= 0) erros.push(`Item ${i + 1}: quantidade deve ser maior que zero.`);
-    if (item.valorUnitario < 0) erros.push(`Item ${i + 1}: valor unitário não pode ser negativo.`);
+    // NaN/Infinity precisam de teste próprio: toda comparação com NaN é falsa, então
+    // `<= 0` deixaria passar um valor que só quebra na hora de gravar.
+    if (!Number.isFinite(item.quantidade)) erros.push(`Item ${i + 1}: quantidade inválida.`);
+    else if (item.quantidade <= 0) erros.push(`Item ${i + 1}: quantidade deve ser maior que zero.`);
+    if (!Number.isFinite(item.valorUnitario)) erros.push(`Item ${i + 1}: valor unitário inválido.`);
+    else if (item.valorUnitario < 0)
+      erros.push(`Item ${i + 1}: valor unitário não pode ser negativo.`);
   });
 
   return erros;

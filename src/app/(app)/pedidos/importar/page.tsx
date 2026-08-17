@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { analisarPlanilha, confirmarImportacao } from "./actions";
+import { executarConfirmacao } from "./confirmar";
 import type { ItemExtraido } from "@/domain/importacao/excel";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
@@ -61,9 +62,11 @@ export default function ImportarPedidoPage() {
   async function handleConfirmar() {
     if (!itens) return;
     setErro(null);
-    const resultado = await confirmarImportacao({ fabricaId, clienteId, numero, semNumero, itens });
-    if (resultado.erros.length > 0) {
-      setErro(resultado.erros.join(" "));
+    const mensagem = await executarConfirmacao(() =>
+      confirmarImportacao({ fabricaId, clienteId, numero, semNumero, itens }),
+    );
+    if (mensagem) {
+      setErro(mensagem);
       return;
     }
     router.push("/pedidos");
