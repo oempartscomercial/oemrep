@@ -75,6 +75,28 @@ describe("validarDadosPedido", () => {
     expect(erros).toContain("Item 1: quantidade deve ser maior que zero.");
   });
 
+  it("rejeita item com quantidade não numérica", () => {
+    const erros = validarDadosPedido({
+      numero: "PED-001",
+      semNumero: false,
+      fabricaId: "fab-1",
+      clienteId: "cli-1",
+      itens: [{ ...ITEM_VALIDO, quantidade: Number("dez") }],
+    });
+    expect(erros).toContain("Item 1: quantidade inválida.");
+  });
+
+  it("rejeita item com valor unitário não numérico", () => {
+    const erros = validarDadosPedido({
+      numero: "PED-001",
+      semNumero: false,
+      fabricaId: "fab-1",
+      clienteId: "cli-1",
+      itens: [{ ...ITEM_VALIDO, valorUnitario: Number("a combinar") }],
+    });
+    expect(erros).toContain("Item 1: valor unitário inválido.");
+  });
+
   it("rejeita item sem referência", () => {
     const erros = validarDadosPedido({
       numero: "PED-001",
