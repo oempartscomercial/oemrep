@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download01, Plus, Upload01 } from "@untitledui/icons";
+import { Download01, FilePlus02, Plus, Upload01 } from "@untitledui/icons";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarPedidosPermitidos } from "./queries";
 import { filtrarPedidos, type FiltroPedido } from "@/domain/pedido/filtro";
@@ -62,8 +62,11 @@ export default async function PedidosPage({
             <Button color="secondary" href="/pedidos/importar" iconLeading={<Upload01 />}>
               Importar Excel
             </Button>
-            <Button color="primary" href="/pedidos/novo" iconLeading={<Plus />}>
+            <Button color="secondary" href="/pedidos/novo" iconLeading={<Plus />}>
               Novo pedido
+            </Button>
+            <Button color="primary" href="/pedidos/importar-pdf" iconLeading={<FilePlus02 />}>
+              Importar PDF
             </Button>
           </>
         }
