@@ -272,9 +272,11 @@ model ArquivoImportado {
  * "o que o sistema leu vs. o que o humano corrigiu".
  */
 model ImportacaoPedido {
-  id            String           @id @default(cuid())
-  arquivoId     String
-  arquivo       ArquivoImportado @relation(fields: [arquivoId], references: [id])
+  id            String            @id @default(cuid())
+  // Anulável: quando o armazenamento de arquivo não está configurado, a importação roda
+  // e cria o pedido sem reter o PDF — o documento-fonte é guardado só quando dá.
+  arquivoId     String?
+  arquivo       ArquivoImportado? @relation(fields: [arquivoId], references: [id])
   estado        EstadoImportacao @default(EXTRAINDO)
   extracaoBruta Json?
   revisaoAtual  Json?

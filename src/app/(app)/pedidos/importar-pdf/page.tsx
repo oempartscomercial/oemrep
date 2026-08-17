@@ -155,6 +155,9 @@ export default function ImportarPdfPage() {
           />
           {arquivo && <p className="text-sm text-secondary">Selecionado: <span className="font-medium text-primary">{arquivo.name}</span></p>}
           {erro && <p role="alert" className="text-sm text-error-primary">{erro}</p>}
+          <p className="text-xs text-tertiary">
+            Os itens são lidos do texto do PDF. Confira tudo na próxima tela antes de confirmar — PDF escaneado (foto) não tem texto para ler.
+          </p>
           <div>
             <Button color="primary" isDisabled={!arquivo} isLoading={lendo} onClick={handleLer}>
               {lendo ? "Lendo o pedido…" : "Ler pedido"}

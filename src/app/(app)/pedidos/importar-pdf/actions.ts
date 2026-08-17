@@ -9,7 +9,7 @@ import { normalizarExtracao, type ItemRevisao } from "@/domain/importacao/pdf";
 import { compararCampos } from "@/domain/auditoria/evento";
 import { registrarAlteracoes } from "@/lib/auditoria";
 import { guardarPdf } from "@/lib/storage";
-import { extrairPedidoDoPdf, ExtracaoPdfIndisponivel, ExtracaoPdfRecusada } from "@/lib/extracao-pdf";
+import { extrairPedidoDoTextoPdf, ExtracaoPdfSemTexto } from "@/lib/extracao-pdf-texto";
 
 export type RascunhoPdf = {
   importacaoId: string;
@@ -36,19 +36,34 @@ export async function iniciarExtracaoPdf(formData: FormData): Promise<{ erro?: s
 
   const buffer = Buffer.from(await arquivo.arrayBuffer());
 
-  let guardado;
-  try {
-    guardado = await guardarPdf(buffer, arquivo.name);
-  } catch (erro) {
-    return { erro: erro instanceof Error ? erro.message : "Falha ao guardar o PDF." };
-  }
-
+  // Lê os itens da camada de texto do PDF (grátis, offline). Isto tem de dar certo para
+  // o fluxo seguir; falha em PDF escaneado, que a mensagem explica.
   let bruta;
   try {
-    bruta = await extrairPedidoDoPdf(buffer, arquivo.name);
+    bruta = await extrairPedidoDoTextoPdf(buffer);
   } catch (erro) {
-    if (erro instanceof ExtracaoPdfIndisponivel || erro instanceof ExtracaoPdfRecusada) return { erro: erro.message };
-    return { erro: "Não foi possível ler o PDF automaticamente. Tente de novo." };
+    if (erro instanceof ExtracaoPdfSemTexto) return { erro: erro.message };
+    return { erro: "Não foi possível ler o PDF. Confira se é o arquivo do pedido." };
+  }
+
+  // Guardar o arquivo é o passo bônus: se o armazenamento não está configurado, a
+  // importação segue sem reter o PDF em vez de travar.
+  let arquivoImportadoId: string | null = null;
+  try {
+    const guardado = await guardarPdf(buffer, arquivo.name);
+    const arquivoImportado = await prisma.arquivoImportado.create({
+      data: {
+        nomeOriginal: arquivo.name,
+        caminhoStorage: guardado.caminho,
+        tamanhoBytes: guardado.tamanhoBytes,
+        mimeType: guardado.mimeType,
+        enviadoPorId: usuario.id,
+      },
+    });
+    arquivoImportadoId = arquivoImportado.id;
+  } catch {
+    // Sem armazenamento configurado: não retém o PDF, mas a importação continua.
+    arquivoImportadoId = null;
   }
 
   const normalizada = normalizarExtracao(bruta);
@@ -64,19 +79,9 @@ export async function iniciarExtracaoPdf(formData: FormData): Promise<{ erro?: s
   ]);
   const fabricaPermitida = fabrica && podeAcessarFabrica(usuario, fabrica.id) ? fabrica : null;
 
-  const arquivoImportado = await prisma.arquivoImportado.create({
-    data: {
-      nomeOriginal: arquivo.name,
-      caminhoStorage: guardado.caminho,
-      tamanhoBytes: guardado.tamanhoBytes,
-      mimeType: guardado.mimeType,
-      enviadoPorId: usuario.id,
-    },
-  });
-
   const importacao = await prisma.importacaoPedido.create({
     data: {
-      arquivoId: arquivoImportado.id,
+      arquivoId: arquivoImportadoId,
       estado: "AGUARDANDO_REVISAO",
       extracaoBruta: bruta as object,
       criadoPorId: usuario.id,
