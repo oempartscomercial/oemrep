@@ -37,7 +37,7 @@ describe("schema de Chamado/MotivoChamado/ChamadoItem/EventoChamado", () => {
         totalNota: 55,
         pedidos: { create: [{ pedidoId: pedido.id }] },
         itensFaturados: {
-          create: [{ itemPedidoId: pedido.itens[0].id, quantidadeFaturada: 10 }],
+          create: [{ itemPedidoId: pedido.itens[0].id, quantidadeFaturada: 10, valorUnitario: 25 }],
         },
       },
     });

@@ -33,7 +33,7 @@ describe("abrirChamado — autorização por fábrica (ADR-009) e regras (RF25/R
           emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj,
           dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 50, totalNota: 55,
           pedidos: { create: [{ pedidoId: pedido.id }] },
-          itensFaturados: { create: [{ itemPedidoId: pedido.itens[0].id, quantidadeFaturada: 5 }] },
+          itensFaturados: { create: [{ itemPedidoId: pedido.itens[0].id, quantidadeFaturada: 5, valorUnitario: 25 }] },
         },
       });
       motivo = await prisma.motivoChamado.create({ data: { nome: "Extravio (teste ação)" } });
@@ -90,7 +90,7 @@ describe("abrirChamado — autorização por fábrica (ADR-009) e regras (RF25/R
           emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj,
           dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 50, totalNota: 55,
           pedidos: { create: [{ pedidoId: pedido.id }] },
-          itensFaturados: { create: [{ itemPedidoId: pedido.itens[0].id, quantidadeFaturada: 5 }] },
+          itensFaturados: { create: [{ itemPedidoId: pedido.itens[0].id, quantidadeFaturada: 5, valorUnitario: 25 }] },
         },
       });
       motivo = await prisma.motivoChamado.create({ data: { nome: "Extravio (teste ação OK)" } });
@@ -170,7 +170,7 @@ describe("abrirChamado — autorização por fábrica (ADR-009) e regras (RF25/R
           emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj,
           dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 50, totalNota: 55,
           pedidos: { create: [{ pedidoId: pedido.id }] },
-          itensFaturados: { create: [{ itemPedidoId: pedido.itens[0].id, quantidadeFaturada: 5 }] },
+          itensFaturados: { create: [{ itemPedidoId: pedido.itens[0].id, quantidadeFaturada: 5, valorUnitario: 25 }] },
         },
       });
       // Pedido/item completamente alheio à NFe acima — não está em itensFaturados.

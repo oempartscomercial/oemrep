@@ -26,7 +26,8 @@ export async function buscarPedidosParaGap(usuario: UsuarioSessao): Promise<Pedi
     itensFaturados: pedido.itens.flatMap((item) =>
       item.itensFaturados.map((faturado) => ({
         quantidadeFaturada: faturado.quantidadeFaturada,
-        valorUnitario: Number(item.valorUnitario),
+        // Preço da NFe, não do pedido: é o que revela o sobrefaturamento no gap.
+        valorUnitario: Number(faturado.valorUnitario),
       })),
     ),
   }));

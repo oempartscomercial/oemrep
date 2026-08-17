@@ -35,4 +35,45 @@ describe("buscarPedidosParaGap", () => {
       await prisma.fabrica.deleteMany({ where: { id: { in: [fabricaA.id, fabricaB.id] } } });
     }
   }, 15000);
+
+  // O painel de gap valorizava o faturado pelo preço do PEDIDO, então um item pedido a
+  // R$100 e faturado a R$120 aparecia com faturado R$100 e gap R$0 — mascarando o
+  // sobrefaturamento que o painel existe para achar. Agora usa o preço gravado na baixa.
+  it("valoriza o faturado pelo preço da nota, não pelo preço do pedido", async () => {
+    const fabrica = await prisma.fabrica.create({ data: { nome: "Fábrica Gap Preço", cnpj: "91000001000191" } });
+    const cliente = await prisma.cliente.create({ data: { cnpj: "91000002000136", nomeFantasia: "Cliente Gap Preço" } });
+    const nota = await prisma.notaFiscal.create({
+      data: {
+        numero: "9001", chaveAcesso: "35260791000001000191550010000090011000000001",
+        emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj, dataEmissao: new Date("2026-07-01"),
+        totalProdutos: 1200, totalNota: 1200,
+      },
+    });
+    const pedido = await prisma.pedido.create({
+      data: {
+        numero: "PED-GAP-PRECO", origem: "MANUAL", fabricaId: fabrica.id, clienteId: cliente.id,
+        itens: { create: [{ referencia: "REF-1", descricao: "Peça", quantidadePedida: 10, quantidadeFaturada: 10, valorUnitario: 100, status: "OK" }] },
+      },
+      include: { itens: true },
+    });
+    const faturado = await prisma.itemFaturado.create({
+      data: { itemPedidoId: pedido.itens[0].id, notaFiscalId: nota.id, quantidadeFaturada: 10, valorUnitario: 120 },
+    });
+
+    try {
+      const admin = { id: "u1", nome: "Chefe", perfil: "ADMIN" as const, fabricasIds: [] };
+
+      const lista = await buscarPedidosParaGap(admin);
+      const linha = lista.find((p) => p.cliente === cliente.nomeFantasia);
+
+      expect(linha?.itensFaturados[0].valorUnitario).toBe(120);
+    } finally {
+      await prisma.itemFaturado.delete({ where: { id: faturado.id } });
+      await prisma.itemPedido.deleteMany({ where: { pedidoId: pedido.id } });
+      await prisma.pedido.delete({ where: { id: pedido.id } });
+      await prisma.notaFiscal.delete({ where: { id: nota.id } });
+      await prisma.cliente.delete({ where: { id: cliente.id } });
+      await prisma.fabrica.delete({ where: { id: fabrica.id } });
+    }
+  }, 15000);
 });

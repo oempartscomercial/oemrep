@@ -35,7 +35,7 @@ describe("schema de NFe", () => {
         totalProdutos: 255,
         totalNota: 260,
         pedidos: { create: [{ pedidoId: pedido.id }] },
-        itensFaturados: { create: [{ itemPedidoId: item.id, quantidadeFaturada: 10 }] },
+        itensFaturados: { create: [{ itemPedidoId: item.id, quantidadeFaturada: 10, valorUnitario: 25 }] },
       },
     });
 

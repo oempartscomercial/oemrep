@@ -106,7 +106,14 @@ export async function confirmarBaixaNFe(analise: AnaliseNFe): Promise<{ erros: s
     const { quantidadeFaturada, status } = aplicarBaixaItem(item, resultado.itemNFe.quantidade);
 
     await prisma.itemFaturado.create({
-      data: { itemPedidoId: item.id, notaFiscalId: notaFiscal.id, quantidadeFaturada: resultado.itemNFe.quantidade },
+      data: {
+        itemPedidoId: item.id,
+        notaFiscalId: notaFiscal.id,
+        quantidadeFaturada: resultado.itemNFe.quantidade,
+        // O preço REALMENTE faturado, vindo da NFe — não o do pedido. É o que permite o
+        // painel de gap enxergar sobrefaturamento em vez de mostrar sempre R$ 0.
+        valorUnitario: resultado.itemNFe.valorUnitario,
+      },
     });
     await prisma.itemPedido.update({ where: { id: item.id }, data: { quantidadeFaturada, status } });
     await registrarAlteracoes(
