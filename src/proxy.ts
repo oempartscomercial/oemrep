@@ -8,6 +8,9 @@ export async function proxy(request: NextRequest) {
   // Só em dev local (.env), nunca em produção: permite navegar sem login para
   // verificação visual manual. A suíte e2e força SKIP_AUTH=false (playwright.config.ts)
   // para sempre testar o redirecionamento real.
+  // Pular o redirect aqui não basta: as telas resolvem a sessão por conta própria.
+  // Quem monta a sessão de dev é obterUsuarioLogado (src/lib/sessao.ts), a partir
+  // de SKIP_AUTH_EMAIL — sem essa variável as telas ficam sem usuário.
   if (process.env.SKIP_AUTH === "true") {
     return response;
   }

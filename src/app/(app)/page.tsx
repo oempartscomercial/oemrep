@@ -4,6 +4,7 @@ import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarResumoDashboard, buscarSerieMensal } from "./queries";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
+import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
 import { formatarReais } from "@/domain/formato/moeda";
 
 const FILA_MAX = 8;
@@ -13,7 +14,7 @@ export default async function DashboardPage() {
   if (!usuario) {
     return (
       <PageContainer>
-        <p className="text-sm text-error-primary">Sessão expirada. Faça login novamente.</p>
+        <SessaoExpirada />
       </PageContainer>
     );
   }

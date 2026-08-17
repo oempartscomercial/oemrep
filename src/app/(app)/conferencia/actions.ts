@@ -11,7 +11,6 @@ import { aplicarBaixaItem } from "@/domain/nfe/baixa";
 import { calcularQtdPendente } from "@/domain/pedido/item";
 import { recalcularEstado } from "@/domain/pedido/estado";
 import { compararCampos } from "@/domain/auditoria/evento";
-import { registrarAlteracoes } from "@/lib/auditoria";
 
 export type AnaliseNFe = {
   nfe: NFeExtraida;
@@ -85,76 +84,89 @@ export async function confirmarBaixaNFe(analise: AnaliseNFe): Promise<{ erros: s
   const erros = validarVinculoPedidos(pedidosIds.map((id) => ({ id, clienteId: analise.clienteId! })));
   if (erros.length > 0) return { erros };
 
-  const notaFiscal = await prisma.notaFiscal.create({
-    data: {
-      numero: analise.nfe.numero,
-      chaveAcesso: analise.nfe.chaveAcesso,
-      emitenteCnpj: analise.nfe.emitenteCnpj,
-      destinatarioCnpj: analise.nfe.destinatarioCnpj,
-      dataEmissao: new Date(analise.nfe.dataEmissao),
-      totalProdutos: analise.nfe.totalProdutos,
-      totalNota: analise.nfe.totalNota,
-      pedidos: { create: pedidosIds.map((pedidoId) => ({ pedidoId })) },
-    },
-  });
+  // Nota fiscal, baixa de itens, recálculo de estado do pedido e auditoria formam uma
+  // única unidade de trabalho: uma falha no meio (ex.: violação de FK na auditoria)
+  // não pode deixar uma baixa parcial gravada sem o pedido saber (regra 4 do CLAUDE.md).
+  try {
+    await prisma.$transaction(async (tx) => {
+      const notaFiscal = await tx.notaFiscal.create({
+        data: {
+          numero: analise.nfe.numero,
+          chaveAcesso: analise.nfe.chaveAcesso,
+          emitenteCnpj: analise.nfe.emitenteCnpj,
+          destinatarioCnpj: analise.nfe.destinatarioCnpj,
+          dataEmissao: new Date(analise.nfe.dataEmissao),
+          totalProdutos: analise.nfe.totalProdutos,
+          totalNota: analise.nfe.totalNota,
+          pedidos: { create: pedidosIds.map((pedidoId) => ({ pedidoId })) },
+        },
+      });
 
-  for (const resultado of vinculados) {
-    const pendencia = resultado.pendencia!;
-    const item = await prisma.itemPedido.findUnique({ where: { id: pendencia.itemPedidoId } });
-    if (!item) continue;
+      for (const resultado of vinculados) {
+        const pendencia = resultado.pendencia!;
+        const item = await tx.itemPedido.findUnique({ where: { id: pendencia.itemPedidoId } });
+        if (!item) continue;
 
-    const { quantidadeFaturada, status } = aplicarBaixaItem(item, resultado.itemNFe.quantidade);
+        const { quantidadeFaturada, status } = aplicarBaixaItem(item, resultado.itemNFe.quantidade);
 
-    await prisma.itemFaturado.create({
-      data: {
-        itemPedidoId: item.id,
-        notaFiscalId: notaFiscal.id,
-        quantidadeFaturada: resultado.itemNFe.quantidade,
-        // O preço REALMENTE faturado, vindo da NFe — não o do pedido. É o que permite o
-        // painel de gap enxergar sobrefaturamento em vez de mostrar sempre R$ 0.
-        valorUnitario: resultado.itemNFe.valorUnitario,
-      },
-    });
-    await prisma.itemPedido.update({ where: { id: item.id }, data: { quantidadeFaturada, status } });
-    await registrarAlteracoes(
-      compararCampos(
-        "ItemPedido",
-        item.id,
+        await tx.itemFaturado.create({
+          data: {
+            itemPedidoId: item.id,
+            notaFiscalId: notaFiscal.id,
+            quantidadeFaturada: resultado.itemNFe.quantidade,
+            // O preço REALMENTE faturado, vindo da NFe — não o do pedido. É o que permite
+            // o painel de gap enxergar sobrefaturamento em vez de mostrar sempre R$ 0.
+            valorUnitario: resultado.itemNFe.valorUnitario,
+          },
+        });
+        await tx.itemPedido.update({ where: { id: item.id }, data: { quantidadeFaturada, status } });
+        const eventosItem = compararCampos(
+          "ItemPedido",
+          item.id,
+          usuario.id,
+          { quantidadeFaturada: item.quantidadeFaturada, status: item.status },
+          { quantidadeFaturada, status },
+        );
+        if (eventosItem.length > 0) await tx.eventoAuditoria.createMany({ data: eventosItem });
+      }
+
+      for (const pedidoId of pedidosIds) {
+        const pedido = await tx.pedido.findUnique({ where: { id: pedidoId }, include: { itens: true } });
+        if (!pedido) continue;
+
+        // ADR-008: o pedido só sai de SEM_NFE quando a 1ª NFe é vinculada. A partir
+        // daí, recalcularEstado decide entre PARCIAL/COMPLETO olhando só os itens
+        // (ADR-005).
+        const baseParaRecalculo = pedido.estado === "SEM_NFE" ? "PARCIAL" : pedido.estado;
+        const novoEstado = recalcularEstado(baseParaRecalculo, pedido.itens);
+
+        if (novoEstado !== pedido.estado) {
+          await tx.pedido.update({ where: { id: pedidoId }, data: { estado: novoEstado } });
+          const eventosPedido = compararCampos(
+            "Pedido",
+            pedidoId,
+            usuario.id,
+            { estado: pedido.estado },
+            { estado: novoEstado },
+          );
+          if (eventosPedido.length > 0) await tx.eventoAuditoria.createMany({ data: eventosPedido });
+        }
+      }
+
+      const eventosNota = compararCampos(
+        "NotaFiscal",
+        notaFiscal.id,
         usuario.id,
-        { quantidadeFaturada: item.quantidadeFaturada, status: item.status },
-        { quantidadeFaturada, status },
-      ),
-    );
-  }
-
-  for (const pedidoId of pedidosIds) {
-    const pedido = await prisma.pedido.findUnique({ where: { id: pedidoId }, include: { itens: true } });
-    if (!pedido) continue;
-
-    // ADR-008: o pedido só sai de SEM_NFE quando a 1ª NFe é vinculada. A partir daí,
-    // recalcularEstado decide entre PARCIAL/COMPLETO olhando só os itens (ADR-005).
-    const baseParaRecalculo = pedido.estado === "SEM_NFE" ? "PARCIAL" : pedido.estado;
-    const novoEstado = recalcularEstado(baseParaRecalculo, pedido.itens);
-
-    if (novoEstado !== pedido.estado) {
-      await prisma.pedido.update({ where: { id: pedidoId }, data: { estado: novoEstado } });
-      await registrarAlteracoes(
-        compararCampos("Pedido", pedidoId, usuario.id, { estado: pedido.estado }, { estado: novoEstado }),
+        {},
+        { chaveAcesso: notaFiscal.chaveAcesso, numero: notaFiscal.numero },
       );
-    }
-    revalidatePath(`/pedidos/${pedidoId}`);
+      if (eventosNota.length > 0) await tx.eventoAuditoria.createMany({ data: eventosNota });
+    });
+  } catch {
+    return { erros: ["Falha ao gravar a baixa da NFe. Nada foi salvo — tente novamente."] };
   }
 
-  await registrarAlteracoes(
-    compararCampos(
-      "NotaFiscal",
-      notaFiscal.id,
-      usuario.id,
-      {},
-      { chaveAcesso: notaFiscal.chaveAcesso, numero: notaFiscal.numero },
-    ),
-  );
-
+  for (const pedidoId of pedidosIds) revalidatePath(`/pedidos/${pedidoId}`);
   revalidatePath("/pedidos");
   return { erros: [] };
 }

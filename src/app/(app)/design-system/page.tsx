@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/patterns/status-badge";
 import { DataTable } from "@/components/patterns/data-table";
 import { FormField } from "@/components/patterns/form-field";
 import { Timeline } from "@/components/patterns/timeline";
+import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
 import { Button } from "@/components/ui/buttons/button";
 import { Input } from "@/components/ui/input/input";
 import { TextArea } from "@/components/ui/textarea/textarea";
@@ -146,6 +147,10 @@ export default function DesignSystemPage() {
             { id: "3", titulo: "Extraviado", data: "13/07/2026", autor: "Carlos", destaque: true, descricao: "Divergência aberta." },
           ]}
         />
+      </Secao>
+
+      <Secao titulo="Sessão expirada (fallback das telas)">
+        <SessaoExpirada />
       </Secao>
 
       <Secao titulo="Modal">

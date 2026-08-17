@@ -7,6 +7,7 @@ import {
 } from "./queries";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
+import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
 import { AuditoriaFiltros } from "./auditoria-filtros";
 import { AuditoriaTabela, type EventoAuditoriaLinha } from "./auditoria-tabela";
 
@@ -21,7 +22,7 @@ export default async function AuditoriaPage({
   if (!usuario) {
     return (
       <PageContainer>
-        <p className="text-sm text-error-primary">Sessão expirada. Faça login novamente.</p>
+        <SessaoExpirada />
       </PageContainer>
     );
   }

@@ -57,6 +57,9 @@ src/providers/     # RouteProvider (integra React Aria ao router do Next)
 - **`FormField`** — rótulo + controle + erro/ajuda.
 - **`FiltrosBar`** — barra de filtros das listas.
 - **`Timeline`** — histórico de eventos (rastreio).
+- **`SessaoExpirada`** — fallback das telas sem sessão; mensagem + botão para `/login`.
+  Use sempre este componente no `if (!usuario)` das páginas, nunca um texto solto: sem
+  o botão o usuário fica sem saída.
 
 ## Convenções
 

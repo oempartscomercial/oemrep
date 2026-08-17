@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle } from "@untitledui/icons";
 import { analisarXmlNFe, confirmarBaixaNFe, type AnaliseNFe } from "./actions";
+import { executarConfirmacaoBaixa } from "./confirmar";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Button } from "@/components/ui/buttons/button";
@@ -41,10 +42,10 @@ export default function ConferenciaNFePage() {
   async function handleConfirmar() {
     if (!analise) return;
     setEnviando(true);
-    const resultado = await confirmarBaixaNFe(analise);
+    const mensagem = await executarConfirmacaoBaixa(() => confirmarBaixaNFe(analise));
     setEnviando(false);
-    if (resultado.erros.length > 0) {
-      setErro(resultado.erros.join(" "));
+    if (mensagem) {
+      setErro(mensagem);
       return;
     }
     router.push("/pedidos");

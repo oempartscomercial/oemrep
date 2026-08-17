@@ -5,6 +5,7 @@ import { buscarPedidosPermitidos } from "./queries";
 import { filtrarPedidos, type FiltroPedido } from "@/domain/pedido/filtro";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
+import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
 import { Button } from "@/components/ui/buttons/button";
 import { PedidosTabela, type PedidoLinha } from "./pedidos-tabela";
 import { cx } from "@/utils/cx";
@@ -32,7 +33,7 @@ export default async function PedidosPage({
   if (!usuario) {
     return (
       <PageContainer>
-        <p className="text-sm text-error-primary">Sessão expirada. Faça login novamente.</p>
+        <SessaoExpirada />
       </PageContainer>
     );
   }

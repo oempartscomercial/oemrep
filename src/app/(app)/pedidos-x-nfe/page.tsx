@@ -4,6 +4,7 @@ import { buscarPedidosParaGap } from "./queries";
 import { calcularGap, type LinhaGap } from "@/domain/analise/gap";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
+import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
 import { Button } from "@/components/ui/buttons/button";
 import { PedidosXNfeFiltros } from "./pedidos-x-nfe-filtros";
 import { PedidosXNfeTabela, type LinhaGapView } from "./pedidos-x-nfe-tabela";
@@ -24,7 +25,7 @@ export default async function PedidosXNfePage({
   if (!usuario) {
     return (
       <PageContainer>
-        <p className="text-sm text-error-primary">Sessão expirada. Faça login novamente.</p>
+        <SessaoExpirada />
       </PageContainer>
     );
   }
