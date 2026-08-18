@@ -12,7 +12,31 @@ import type { ExtracaoBrutaPdf } from "@/domain/importacao/pdf";
  */
 export class ExtracaoPdfSemTexto extends Error {}
 
+/**
+ * O pdf.mjs cria um `new DOMMatrix()` no escopo do módulo. No Node, o pdfjs polyfilla
+ * isso com o pacote opcional @napi-rs/canvas — presente no dev local, mas o binário
+ * nativo não é levado para a lambda da Vercel, e o import inteiro morria com
+ * "ReferenceError: DOMMatrix is not defined" (erro visto em produção).
+ *
+ * Como só extraímos TEXTO (nada é desenhado), um stub identidade basta: o único uso da
+ * matriz no pdfjs é em desenho de path, caminho que a extração de texto nunca executa.
+ */
+function polyfillDomMatrix(): void {
+  const g = globalThis as { DOMMatrix?: unknown };
+  if (g.DOMMatrix) return;
+  g.DOMMatrix = class DOMMatrixStub {
+    a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+    translate() { return this; }
+    scale() { return this; }
+    multiplySelf() { return this; }
+    preMultiplySelf() { return this; }
+    invertSelf() { return this; }
+  };
+}
+
 export async function extrairPedidoDoTextoPdf(pdf: Buffer): Promise<ExtracaoBrutaPdf> {
+  polyfillDomMatrix();
+
   // Import dinâmico: o pdfjs é pesado e só carrega quando alguém importa um PDF.
   const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
