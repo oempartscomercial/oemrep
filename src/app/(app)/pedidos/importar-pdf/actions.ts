@@ -43,7 +43,10 @@ export async function iniciarExtracaoPdf(formData: FormData): Promise<{ erro?: s
     bruta = await extrairPedidoDoTextoPdf(buffer);
   } catch (erro) {
     if (erro instanceof ExtracaoPdfSemTexto) return { erro: erro.message };
-    return { erro: "Não foi possível ler o PDF. Confira se é o arquivo do pedido." };
+    // TEMPORÁRIO (diagnóstico): expõe o erro real da lambda enquanto não há acesso aos
+    // logs da Vercel. Voltar à mensagem genérica depois.
+    const detalhe = erro instanceof Error ? `${erro.name}: ${erro.message}` : String(erro);
+    return { erro: `Não foi possível ler o PDF. [debug: ${detalhe}]` };
   }
 
   // Guardar o arquivo é o passo bônus: se o armazenamento não está configurado, a
