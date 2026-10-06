@@ -13,7 +13,7 @@ describe("guard do relatório de cruzamento — autorização por fábrica (ADR-
     const nota = await prisma.notaFiscal.create({
       data: {
         numero: "9301", chaveAcesso: "35260780000000002336550010000093011123456789",
-        emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj,
+        emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj!,
         dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 100, totalNota: 110,
         pedidos: { create: [{ pedidoId: pedido.id }] },
       },

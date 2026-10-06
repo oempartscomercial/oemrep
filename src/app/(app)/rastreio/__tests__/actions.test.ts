@@ -18,7 +18,7 @@ describe("avancarRastreio — autorização por fábrica (ADR-009)", () => {
     const nota = await prisma.notaFiscal.create({
       data: {
         numero: "9201", chaveAcesso: "35260780000000002174550010000092011123456789",
-        emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj,
+        emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj!,
         dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 100, totalNota: 110,
         pedidos: { create: [{ pedidoId: pedido.id }] },
       },

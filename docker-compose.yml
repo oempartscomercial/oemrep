@@ -1,0 +1,18 @@
+# Banco local para desenvolvimento e testes (não é usado na Vercel/Supabase).
+# `oem_dev` recebe o seed com os dados da pasta rep; `oem_test` é só da suíte de testes.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: oem-representacoes-db
+    environment:
+      POSTGRES_USER: oem
+      POSTGRES_PASSWORD: oem
+      POSTGRES_DB: oem_dev
+    ports:
+      - "54329:5432"
+    volumes:
+      - oem-db:/var/lib/postgresql/data
+      - ./scripts/db-local-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+
+volumes:
+  oem-db:

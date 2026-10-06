@@ -44,6 +44,24 @@ senha. Pode seguir?"*
 Peça: **"roda o sistema para eu ver."** O agente sobe o site (geralmente em
 `http://localhost:3000`) e te diz o que abrir no navegador.
 
+## 💻 Rodar local com banco próprio
+
+Para desenvolver sem tocar no Supabase, há um Postgres local (Docker) com os dados reais
+da pasta do Rômulo (`~/Documents/Dev/Outros/rep/dados`, lidos na hora, nunca copiados
+para o repositório):
+
+```bash
+npm run db:local:recriar   # zera o banco local e importa empresas, contatos e pedidos da pasta rep
+npm run dev                # usa o .env.local: banco local e login pulado como o Rômulo (romulo@oem.local)
+npm run test:local         # roda a suíte num banco de teste local zerado
+```
+
+O `.env.local` (não versionado) aponta `DATABASE_URL`/`DIRECT_URL` para
+`postgresql://oem:oem@localhost:54329/oem_dev` e liga `SKIP_AUTH` com
+`SKIP_AUTH_EMAIL=romulo@oem.local`. Os CNPJs das fábricas no banco local são fictícios
+(a planilha não os traz). **Atenção:** `npm test` puro usa o `.env` e grava no banco
+configurado lá; prefira `npm run test:local`.
+
 ## 🆘 Como saber se algo deu errado
 
 - O agente **sempre roda os testes** e te avisa se algo quebrou (verde = ok,

@@ -94,6 +94,11 @@ plataforma, `Cliente` passa a guardar também a prospecção (CNPJ opcional + `s
 há dois funis com arraste (outbound e carteira) e as mudanças de banco entram antes do
 go-live dos pedidos; as telas vêm depois que o MVP estabilizar.
 
+**Desenvolvimento local:** banco Postgres em Docker com os dados reais da pasta rep
+(`npm run db:local:recriar`), app com `npm run dev` (lê `.env.local`) e testes com
+`npm run test:local`. Nunca rode `npm test` puro sem conferir o `.env`: a suíte grava
+no banco configurado ali. Detalhes no README, seção "Rodar local com banco próprio".
+
 ## 2. Como o agente deve trabalhar aqui (fases × skills do Superpowers)
 
 Use as skills do Superpowers em cada fase. **Sempre verifique se uma skill se aplica

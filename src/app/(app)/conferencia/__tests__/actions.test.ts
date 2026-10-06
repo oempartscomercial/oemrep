@@ -28,7 +28,7 @@ describe("confirmarBaixaNFe — autorização por fábrica (ADR-009)", () => {
           numero: "9401",
           chaveAcesso: "35260780000000002506550010000094011123456789",
           emitenteCnpj: fabrica.cnpj,
-          destinatarioCnpj: cliente.cnpj,
+          destinatarioCnpj: cliente.cnpj!,
           dataEmissao: "2026-07-01T10:00:00-03:00",
           totalProdutos: 250,
           totalNota: 260,
@@ -42,7 +42,7 @@ describe("confirmarBaixaNFe — autorização por fábrica (ADR-009)", () => {
             pendencia: {
               itemPedidoId: pedido.itens[0].id,
               pedidoId: pedido.id,
-              clienteCnpj: cliente.cnpj,
+              clienteCnpj: cliente.cnpj!,
               referencia: "REF-1",
               quantidadePendente: 10,
               valorUnitario: 25,
@@ -82,7 +82,7 @@ describe("confirmarBaixaNFe — falha de gravação", () => {
     // imediato, antes de qualquer baixa de item ser aplicada.
     const notaExistente = await prisma.notaFiscal.create({
       data: {
-        numero: "9500", chaveAcesso, emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj,
+        numero: "9500", chaveAcesso, emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj!,
         dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 1, totalNota: 1,
       },
     });
@@ -95,7 +95,7 @@ describe("confirmarBaixaNFe — falha de gravação", () => {
           numero: "9501",
           chaveAcesso,
           emitenteCnpj: fabrica.cnpj,
-          destinatarioCnpj: cliente.cnpj,
+          destinatarioCnpj: cliente.cnpj!,
           dataEmissao: "2026-07-01T10:00:00-03:00",
           totalProdutos: 250,
           totalNota: 260,
@@ -109,7 +109,7 @@ describe("confirmarBaixaNFe — falha de gravação", () => {
             pendencia: {
               itemPedidoId: pedido.itens[0].id,
               pedidoId: pedido.id,
-              clienteCnpj: cliente.cnpj,
+              clienteCnpj: cliente.cnpj!,
               referencia: "REF-1",
               quantidadePendente: 10,
               valorUnitario: 25,
@@ -159,7 +159,7 @@ describe("confirmarBaixaNFe — falha de gravação", () => {
           numero: "9502",
           chaveAcesso,
           emitenteCnpj: fabrica.cnpj,
-          destinatarioCnpj: cliente.cnpj,
+          destinatarioCnpj: cliente.cnpj!,
           dataEmissao: "2026-07-01T10:00:00-03:00",
           totalProdutos: 250,
           totalNota: 260,
@@ -173,7 +173,7 @@ describe("confirmarBaixaNFe — falha de gravação", () => {
             pendencia: {
               itemPedidoId: pedido.itens[0].id,
               pedidoId: pedido.id,
-              clienteCnpj: cliente.cnpj,
+              clienteCnpj: cliente.cnpj!,
               referencia: "REF-1",
               quantidadePendente: 10,
               valorUnitario: 25,

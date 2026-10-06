@@ -10,7 +10,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "db:local:recriar": "scripts/db-local.sh recriar",
+    "test:local": "scripts/db-local.sh testar"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

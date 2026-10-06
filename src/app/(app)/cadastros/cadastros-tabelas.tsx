@@ -11,7 +11,7 @@ export interface FabricaLinha {
 export interface ClienteLinha {
   id: string;
   nomeFantasia: string;
-  cnpj: string;
+  cnpj: string | null;
   fabricas: string[];
 }
 export interface UsuarioLinha {
@@ -57,7 +57,7 @@ export function ClientesTabela({ clientes }: { clientes: ClienteLinha[] }) {
       vazio="Nenhum cliente cadastrado."
       columns={[
         { id: "nome", header: "Nome fantasia", isRowHeader: true, render: (c) => <span className="font-medium text-primary">{c.nomeFantasia}</span> },
-        { id: "cnpj", header: "CNPJ", render: (c) => c.cnpj },
+        { id: "cnpj", header: "CNPJ", render: (c) => c.cnpj ?? <span className="text-tertiary">—</span> },
         { id: "fabricas", header: "Fábricas", render: (c) => <ListaFabricas fabricas={c.fabricas} /> },
       ]}
     />

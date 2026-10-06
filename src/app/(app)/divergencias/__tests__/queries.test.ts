@@ -13,7 +13,7 @@ describe("buscarChamadosPermitidos — sinalização de crítico (RF29)", () => 
     const nota = await prisma.notaFiscal.create({
       data: {
         numero: "9303", chaveAcesso: "35260790000000002177550010000093031123456789",
-        emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj,
+        emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj!,
         dataEmissao: new Date("2026-05-01T10:00:00-03:00"), totalProdutos: 50, totalNota: 55,
         pedidos: { create: [{ pedidoId: pedido.id }] },
       },

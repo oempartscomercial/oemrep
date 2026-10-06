@@ -8,7 +8,9 @@ export async function GET(request: NextRequest) {
   if (!fabricaId || !clienteId) return NextResponse.json([]);
 
   const cliente = await prisma.cliente.findUnique({ where: { id: clienteId } });
-  if (!cliente) return NextResponse.json([]);
+  // Pedido exige cliente com CNPJ (ADR-013); empresa sem CNPJ não tem pendências.
+  if (!cliente?.cnpj) return NextResponse.json([]);
+  const clienteCnpj = cliente.cnpj;
 
   const pedidos = await prisma.pedido.findMany({
     where: { fabricaId, clienteId, estado: { in: ["SEM_NFE", "PARCIAL"] } },
@@ -20,7 +22,7 @@ export async function GET(request: NextRequest) {
       itemPedidoId: item.id,
       pedidoId: pedido.id,
       pedidoNumero: pedido.semNumero ? "S/N" : (pedido.numero ?? "S/N"),
-      clienteCnpj: cliente.cnpj,
+      clienteCnpj,
       referencia: item.referencia,
       quantidadePendente: calcularQtdPendente({
         quantidadePedida: item.quantidadePedida,

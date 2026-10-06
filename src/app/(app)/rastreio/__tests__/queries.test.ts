@@ -18,7 +18,7 @@ describe("buscarNotasFiscaisPermitidas / buscarNotaFiscalComPermissao", () => {
     const notaA = await prisma.notaFiscal.create({
       data: {
         numero: "9101", chaveAcesso: "35260780000000001879550010000091011123456789",
-        emitenteCnpj: fabricaA.cnpj, destinatarioCnpj: cliente.cnpj,
+        emitenteCnpj: fabricaA.cnpj, destinatarioCnpj: cliente.cnpj!,
         dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 100, totalNota: 110,
         pedidos: { create: [{ pedidoId: pedidoA.id }] },
       },
@@ -26,7 +26,7 @@ describe("buscarNotasFiscaisPermitidas / buscarNotaFiscalComPermissao", () => {
     const notaB = await prisma.notaFiscal.create({
       data: {
         numero: "9102", chaveAcesso: "35260780000000001950550010000091021123456789",
-        emitenteCnpj: fabricaB.cnpj, destinatarioCnpj: cliente.cnpj,
+        emitenteCnpj: fabricaB.cnpj, destinatarioCnpj: cliente.cnpj!,
         dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 100, totalNota: 110,
         pedidos: { create: [{ pedidoId: pedidoB.id }] },
       },

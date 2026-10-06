@@ -30,7 +30,7 @@ describe("schema de NFe", () => {
         numero: "1234",
         chaveAcesso: "35260711444777000161550010000012341123456789",
         emitenteCnpj: fabrica.cnpj,
-        destinatarioCnpj: cliente.cnpj,
+        destinatarioCnpj: cliente.cnpj!,
         dataEmissao: new Date("2026-07-01T10:00:00-03:00"),
         totalProdutos: 255,
         totalNota: 260,

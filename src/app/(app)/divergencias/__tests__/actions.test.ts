@@ -30,7 +30,7 @@ describe("abrirChamado — autorização por fábrica (ADR-009) e regras (RF25/R
       nota = await prisma.notaFiscal.create({
         data: {
           numero: "9301", chaveAcesso: "35260790000000002175550010000093011123456789",
-          emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj,
+          emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj!,
           dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 50, totalNota: 55,
           pedidos: { create: [{ pedidoId: pedido.id }] },
           itensFaturados: { create: [{ itemPedidoId: pedido.itens[0].id, quantidadeFaturada: 5 }] },
@@ -87,7 +87,7 @@ describe("abrirChamado — autorização por fábrica (ADR-009) e regras (RF25/R
       nota = await prisma.notaFiscal.create({
         data: {
           numero: "9302", chaveAcesso: "35260790000000002331550010000093021123456789",
-          emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj,
+          emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj!,
           dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 50, totalNota: 55,
           pedidos: { create: [{ pedidoId: pedido.id }] },
           itensFaturados: { create: [{ itemPedidoId: pedido.itens[0].id, quantidadeFaturada: 5 }] },
@@ -167,7 +167,7 @@ describe("abrirChamado — autorização por fábrica (ADR-009) e regras (RF25/R
       nota = await prisma.notaFiscal.create({
         data: {
           numero: "9303", chaveAcesso: "35260790000000002587550010000093031123456789",
-          emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj,
+          emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj!,
           dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 50, totalNota: 55,
           pedidos: { create: [{ pedidoId: pedido.id }] },
           itensFaturados: { create: [{ itemPedidoId: pedido.itens[0].id, quantidadeFaturada: 5 }] },
@@ -235,7 +235,7 @@ describe("registrarEventoChamado — autorização por fábrica (ADR-009)", () =
       nota = await prisma.notaFiscal.create({
         data: {
           numero: "9302", chaveAcesso: "35260790000000002176550010000093021123456789",
-          emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj,
+          emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj!,
           dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 50, totalNota: 55,
           pedidos: { create: [{ pedidoId: pedido.id }] },
         },
@@ -292,7 +292,7 @@ describe("registrarEventoChamado — autorização por fábrica (ADR-009)", () =
       nota = await prisma.notaFiscal.create({
         data: {
           numero: "9304", chaveAcesso: "35260790000000002337550010000093041123456789",
-          emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj,
+          emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj!,
           dataEmissao: new Date("2026-07-01T10:00:00-03:00"), totalProdutos: 50, totalNota: 55,
           pedidos: { create: [{ pedidoId: pedido.id }] },
         },

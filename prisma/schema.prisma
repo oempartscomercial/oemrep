@@ -25,24 +25,50 @@ enum TipoConfirmacaoEstoque {
 }
 
 model Fabrica {
-  id              String            @id @default(cuid())
-  nome            String
-  cnpj            String            @unique
-  flagConciliacao Boolean           @default(false)
-  criadoEm        DateTime          @default(now())
-  clientes        ClienteFabrica[]
-  usuarios        UsuarioFabrica[]
-  pedidos         Pedido[]
-  historicoMensal HistoricoMensal[]
+  id               String            @id @default(cuid())
+  nome             String
+  cnpj             String            @unique
+  flagConciliacao  Boolean           @default(false)
+  criadoEm         DateTime          @default(now())
+  clientes         ClienteFabrica[]
+  usuarios         UsuarioFabrica[]
+  pedidos          Pedido[]
+  historicoMensal  HistoricoMensal[]
+  pedidosHistorico PedidoHistorico[]
+}
+
+// Cadastro único de empresa: clientes e prospecção (ADR-013). As telas dizem "Empresas".
+// CNPJ é opcional (prospecção chega sem ele), mas pedido e NFe exigem cliente com CNPJ.
+enum SituacaoEmpresa {
+  CANDIDATA
+  APROVADA
+  EM_CONTATO
+  CONVERSANDO
+  AVANCO
+  PAUSADA
+  DESCARTADA
+  CLIENTE
 }
 
 model Cliente {
-  id           String           @id @default(cuid())
-  cnpj         String           @unique
-  nomeFantasia String
-  criadoEm     DateTime         @default(now())
-  fabricas     ClienteFabrica[]
-  pedidos      Pedido[]
+  id               String            @id @default(cuid())
+  cnpj             String?           @unique
+  nomeFantasia     String
+  situacao         SituacaoEmpresa   @default(CLIENTE)
+  cidade           String?
+  uf               String?
+  site             String?
+  grupo            String?
+  origem           String?
+  observacoes      String?
+  naoContatar      Boolean           @default(false)
+  criadoEm         DateTime          @default(now())
+  fabricas         ClienteFabrica[]
+  pedidos          Pedido[]
+  contatos         Contato[]
+  interacoes       Interacao[]
+  proximosPassos   ProximoPasso[]
+  pedidosHistorico PedidoHistorico[]
 }
 
 model ClienteFabrica {
@@ -69,6 +95,8 @@ model Usuario {
   eventosRastreio EventoRastreio[]
   chamadosAbertos Chamado[]         @relation("ChamadoAbertoPor")
   eventosChamado  EventoChamado[]
+  interacoes      Interacao[]
+  proximosPassos  ProximoPasso[]
 }
 
 model UsuarioFabrica {
@@ -274,4 +302,112 @@ model HistoricoMensal {
   criadoEm  DateTime            @default(now())
 
   @@unique([ano, mes, fabricaId, tipo])
+}
+
+// ---------------------------------------------------------------------------
+// CRM (ADR-013)
+// ---------------------------------------------------------------------------
+
+enum CanalContato {
+  WHATSAPP
+  TELEFONE
+  EMAIL
+  LINKEDIN
+  OUTRO
+}
+
+// Pessoa ou canal de uma empresa. Todo contato tem fonte: de onde veio o dado.
+model Contato {
+  id           String       @id @default(cuid())
+  clienteId    String
+  cliente      Cliente      @relation(fields: [clienteId], references: [id])
+  nome         String?
+  funcao       String?
+  canal        CanalContato
+  valor        String
+  servePara    String?
+  status       String?
+  fonte        String
+  verificadoEm DateTime?
+  naoContatar  Boolean      @default(false)
+  observacoes  String?
+  criadoEm     DateTime     @default(now())
+
+  @@index([clienteId])
+}
+
+enum CanalInteracao {
+  WHATSAPP
+  TELEFONE
+  EMAIL
+  VISITA
+  REUNIAO
+  PESQUISA
+  OUTRO
+}
+
+enum OrigemInteracao {
+  USUARIO
+  AUTOMACAO
+  IMPORTACAO
+}
+
+// Linha do tempo da empresa: o que aconteceu, com quem e por qual canal.
+model Interacao {
+  id        String          @id @default(cuid())
+  clienteId String
+  cliente   Cliente         @relation(fields: [clienteId], references: [id])
+  data      DateTime
+  canal     CanalInteracao
+  comQuem   String?
+  resumo    String
+  resultado String?
+  origem    OrigemInteracao @default(USUARIO)
+  usuarioId String?
+  usuario   Usuario?        @relation(fields: [usuarioId], references: [id])
+  criadoEm  DateTime        @default(now())
+
+  @@index([clienteId, data])
+}
+
+// Empresa em situação ativa (APROVADA a AVANCO) tem sempre um próximo passo aberto.
+model ProximoPasso {
+  id            String    @id @default(cuid())
+  clienteId     String
+  cliente       Cliente   @relation(fields: [clienteId], references: [id])
+  acao          String
+  prazo         DateTime  @db.Date
+  responsavelId String
+  responsavel   Usuario   @relation(fields: [responsavelId], references: [id])
+  concluidoEm   DateTime?
+  criadoEm      DateTime  @default(now())
+
+  @@index([clienteId, concluidoEm])
+  @@index([responsavelId, prazo])
+}
+
+enum TipoPedidoHistorico {
+  PEDIDO
+  BONIFICACAO
+}
+
+// Pedidos anteriores ao sistema, por cliente (ADR-013, revê ADR-012 nesse ponto).
+// Sem item, quantidade ou NFe: só o que a planilha de pedidos recebidos tem.
+model PedidoHistorico {
+  id                  String              @id @default(cuid())
+  data                DateTime            @db.Date
+  dataSoMes           Boolean             @default(false)
+  clienteId           String
+  cliente             Cliente             @relation(fields: [clienteId], references: [id])
+  fabricaId           String
+  fabrica             Fabrica             @relation(fields: [fabricaId], references: [id])
+  valor               Decimal             @db.Decimal(14, 2)
+  tipo                TipoPedidoHistorico @default(PEDIDO)
+  rotuloPlanilha      String
+  linhaPlanilha       Int                 @unique
+  suspeitaDuplicidade Boolean             @default(false)
+  alerta              String?
+  criadoEm            DateTime            @default(now())
+
+  @@index([clienteId, data])
 }

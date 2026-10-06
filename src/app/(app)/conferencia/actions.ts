@@ -51,7 +51,7 @@ export async function analisarXmlNFe(formData: FormData): Promise<{ erro?: strin
     pedido.itens.map((item) => ({
       itemPedidoId: item.id,
       pedidoId: pedido.id,
-      clienteCnpj: cliente.cnpj,
+      clienteCnpj: nfe.destinatarioCnpj,
       referencia: item.referencia,
       quantidadePendente: calcularQtdPendente({
         quantidadePedida: item.quantidadePedida,
