@@ -45,6 +45,7 @@ export async function buscarChamadosPermitidos(usuario: UsuarioSessao) {
       const dataUltimoEvento = chamado.eventos[0]?.criadoEm ?? chamado.criadoEm;
       return {
         ...chamado,
+        ultimaAtualizacao: dataUltimoEvento,
         critico: chamado.estado !== "RESOLVIDO" && estaCritico(dataUltimoEvento, agora, prazoDias),
       };
     })
