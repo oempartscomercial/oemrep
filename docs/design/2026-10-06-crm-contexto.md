@@ -93,7 +93,7 @@ de tarefas (estão no Início) e relatórios.
 - **Celular:** arrastar funciona mal. Lá o card tem um botão "mover para…" com a mesma
   janelinha.
 
-## WhatsApp e automação (direção, ainda sem ADR)
+## WhatsApp e automação (direção; decisões no [ADR-015](../adr/ADR-015-whatsapp-e-assistente.md))
 
 - **Dois números separados.**
   - **Número de prospecção:** o Rômulo continua usando no app do celular. Evolution ou

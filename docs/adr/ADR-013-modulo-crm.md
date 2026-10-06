@@ -77,8 +77,8 @@ viram migração depois do go-live.
    - **Busca global.**
 
    Pedidos e o resto do MVP não mudam.
-8. **Fora deste ADR:** WhatsApp, automações e envio de mensagens. Cada um terá ADR
-   próprio. Nenhum envio automático sem aprovação humana.
+8. **Fora deste ADR:** WhatsApp, automações e envio de mensagens, tratados no
+   [ADR-015](ADR-015-whatsapp-e-assistente.md). Nenhum envio automático sem aprovação humana.
 9. **Ordem:** as mudanças de banco entram **antes do go-live** dos pedidos. As telas
    do CRM viram o Épico 8, **depois** que o MVP de pedidos estabilizar. O CRM não pode
    atrasar a entrada dos pedidos em produção.

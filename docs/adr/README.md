@@ -20,3 +20,4 @@ e por quê**.
 | [ADR-012](ADR-012-historico-mensal-agregado.md) | Histórico anterior ao sistema entra como totais mensais agregados |
 | [ADR-013](ADR-013-modulo-crm.md) | Módulo de CRM dentro da plataforma, com cadastro único de empresa |
 | [ADR-014](ADR-014-shadcn-ui-visual-attio.md) | shadcn/ui como base visual, direção tipo Attio |
+| [ADR-015](ADR-015-whatsapp-e-assistente.md) | WhatsApp e assistente do Rômulo: núcleo próprio, duas linhas, aprovação humana (proposto) |
