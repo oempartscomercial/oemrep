@@ -45,3 +45,13 @@ export function rascunhoDePrimeiroContato(peca?: string): string {
 export function rascunhoDeFollowUp(): string {
   return "Olá, tudo bem? Passando para saber se você chegou a ver minha mensagem sobre a linha Rudolph, de peças de transmissão para tratores. Quem cuida da compra dessa linha aí?";
 }
+
+const CONTA_COMO_CONVERSA = new Set(["RECEBIDA", "ENVIANDO", "ENVIADA", "ENTREGUE", "LIDA"]);
+
+/** O tipo se deduz da conversa: sem nada = primeiro contato; contato falou por último = resposta; senão follow-up. */
+export function tipoDeEnvioSugerido(historico: { direcao: "ENTRADA" | "SAIDA"; status: string; ocorridoEm: Date }[]): TipoEnvio {
+  const reais = historico.filter((m) => CONTA_COMO_CONVERSA.has(m.status)).sort((a, b) => a.ocorridoEm.getTime() - b.ocorridoEm.getTime());
+  const ultima = reais[reais.length - 1];
+  if (!ultima) return "PRIMEIRO_CONTATO";
+  return ultima.direcao === "ENTRADA" ? "RESPOSTA" : "FOLLOW_UP";
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { rascunhoDeFollowUp, rascunhoDePrimeiroContato, validarRascunho } from "../rascunho";
+import { rascunhoDeFollowUp, rascunhoDePrimeiroContato, tipoDeEnvioSugerido, validarRascunho } from "../rascunho";
 
 describe("validarRascunho", () => {
   const bom = "Olá, tudo bem? Sou o Rômulo, da OEM Rep. Representamos a Rudolph, fábrica de peças de transmissão para tratores. Vi que vocês trabalham com eixos cardan. Quem cuida da compra dessa linha aí? Gostaria de apresentar nosso catálogo.";
@@ -62,5 +62,16 @@ describe("modelos", () => {
     const t = rascunhoDeFollowUp();
     expect(t).toMatch(/Rudolph/);
     expect(validarRascunho(t, "FOLLOW_UP")).toEqual({ erros: [], avisos: [] });
+  });
+});
+
+describe("tipoDeEnvioSugerido", () => {
+  const h = (direcao: "ENTRADA" | "SAIDA", horas: number, status = direcao === "SAIDA" ? "ENVIADA" : "RECEBIDA") => ({ direcao, status, ocorridoEm: new Date(Date.UTC(2026, 9, 7, 0, 0) - horas * 3_600_000) });
+
+  it("conversa vazia: primeiro contato", () => expect(tipoDeEnvioSugerido([])).toBe("PRIMEIRO_CONTATO"));
+  it("a última mensagem é do contato: resposta", () => expect(tipoDeEnvioSugerido([h("SAIDA", 50), h("ENTRADA", 2)])).toBe("RESPOSTA"));
+  it("a última é nossa: follow-up", () => expect(tipoDeEnvioSugerido([h("ENTRADA", 50), h("SAIDA", 2)])).toBe("FOLLOW_UP"));
+  it("rascunho, falha e cancelada não contam como conversa", () => {
+    expect(tipoDeEnvioSugerido([h("SAIDA", 5, "RASCUNHO"), h("SAIDA", 4, "FALHOU"), h("SAIDA", 3, "CANCELADA")])).toBe("PRIMEIRO_CONTATO");
   });
 });

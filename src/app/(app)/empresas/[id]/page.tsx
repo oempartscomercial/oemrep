@@ -11,6 +11,8 @@ import { Timeline, type TimelineItem } from "@/components/patterns/timeline";
 import { SeloSituacao } from "@/components/crm/selo-situacao";
 import { ConversaWhatsapp } from "@/components/crm/conversa-whatsapp";
 import { formatarNumero } from "@/domain/mensagens/exibicao";
+import { normalizarTelefone } from "@/domain/mensagens/telefone";
+import { ContatoAcoes } from "@/components/crm/contato-acoes";
 import { descreverPrazo, formatarDia, hojeEmSaoPaulo, situacaoDoPrazo } from "@/domain/crm/prazo";
 import { cn } from "@/lib/utils";
 import { FichaAcoes } from "./ficha-acoes";
@@ -181,6 +183,15 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
                     </p>
                     <p>{c.valor} <span className="text-muted-foreground">({CANAL[c.canal] ?? c.canal})</span></p>
                     <p className="text-xs text-muted-foreground">Fonte: {c.fonte}</p>
+                    {(c.canal === "WHATSAPP" || c.canal === "TELEFONE" || c.naoContatar) && (
+                      <ContatoAcoes
+                        contatoId={c.id}
+                        nome={c.nome ?? empresa.nomeFantasia}
+                        origem={c.origemContato}
+                        naoContatar={c.naoContatar}
+                        podeEscrever={normalizarTelefone(c.valor) !== null && (c.canal === "WHATSAPP" || c.canal === "TELEFONE")}
+                      />
+                    )}
                   </li>
                 ))}
               </ul>

@@ -1,0 +1,118 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Botao } from "@/components/patterns/botao";
+import { CampoTextarea } from "@/components/patterns/campo";
+import { aprovarMensagem, consultarEnvio, prepararMensagem, type ConsultaDeEnvio } from "@/app/(app)/conversas/actions";
+
+const TITULO = { PRIMEIRO_CONTATO: "Primeira mensagem", FOLLOW_UP: "Follow-up", RESPOSTA: "Responder" } as const;
+
+/** Escreve (ou ajusta o modelo), salva como rascunho ou aprova e envia. A pessoa decide; nada sai sozinho. */
+export function ComporMensagem({ contatoId, nome, aoFechar }: { contatoId: string; nome: string; aoFechar: () => void }) {
+  const router = useRouter();
+  const [consulta, setConsulta] = useState<ConsultaDeEnvio | null>(null);
+  const [texto, setTexto] = useState("");
+  const [erros, setErros] = useState<string[]>([]);
+  const [avisos, setAvisos] = useState<string[]>([]);
+  const [resultado, setResultado] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    consultarEnvio({ contatoId }).then((c) => {
+      if (!vivo) return;
+      setConsulta(c);
+      setTexto(c.textoSugerido ?? "");
+      setErros(c.erros);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [contatoId]);
+
+  const definitivos = consulta?.bloqueios?.filter((b) => !b.espera) ?? [];
+  const esperas = consulta?.bloqueios?.filter((b) => b.espera) ?? [];
+
+  async function salvar(aprovar: boolean) {
+    setOcupado(true);
+    setErros([]);
+    const r = await prepararMensagem({ contatoId, texto });
+    setAvisos(r.avisos ?? []);
+    if (r.erros.length || !r.id) {
+      setOcupado(false);
+      return setErros(r.erros);
+    }
+    if (!aprovar) {
+      setOcupado(false);
+      router.refresh();
+      return aoFechar();
+    }
+    const a = await aprovarMensagem({ id: r.id });
+    setOcupado(false);
+    router.refresh();
+    if (a.erros.length) return setErros(a.erros);
+    if (a.status === "ENVIADA") return aoFechar();
+    setResultado(
+      a.status === "APROVADA"
+        ? `Aprovada, mas ainda não saiu. ${a.motivo ?? ""} Ela sai quando você tentar de novo.`
+        : a.status === "FALHOU"
+          ? `Não foi enviada. ${a.motivo ?? ""}`
+          : `Não saiu: ${a.motivo ?? "bloqueada pelas proteções."}`,
+    );
+  }
+
+  return (
+    <Dialog open onOpenChange={(aberto) => !aberto && aoFechar()}>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{consulta?.tipo ? TITULO[consulta.tipo] : "Mensagem"} · WhatsApp</DialogTitle>
+          <DialogDescription>Para {nome}. Você revisa e aprova: nada sai sem o seu OK.</DialogDescription>
+        </DialogHeader>
+
+        {!consulta ? (
+          <p className="text-sm text-muted-foreground">Carregando…</p>
+        ) : resultado ? (
+          <p className="text-sm">{resultado}</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {definitivos.length > 0 && (
+              <ul className="rounded-md border border-destructive/40 bg-danger-soft px-3 py-2 text-sm text-destructive">
+                {definitivos.map((b) => (
+                  <li key={b.codigo}>{b.texto}</li>
+                ))}
+              </ul>
+            )}
+            {esperas.length > 0 && (
+              <ul className="rounded-md border bg-warning-soft px-3 py-2 text-sm text-warning">
+                {esperas.map((b) => (
+                  <li key={b.codigo}>{b.texto} Dá para aprovar agora: ela fica esperando e sai quando liberar.</li>
+                ))}
+              </ul>
+            )}
+            <CampoTextarea rotulo="Mensagem" rows={7} value={texto} onChange={(e) => setTexto(e.target.value)} />
+            {avisos.map((a) => (
+              <p key={a} className="text-sm text-warning">{a}</p>
+            ))}
+            {erros.map((e) => (
+              <p key={e} className="text-sm text-destructive">{e}</p>
+            ))}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Botao variante="ghost" onClick={aoFechar}>{resultado ? "Fechar" : "Cancelar"}</Botao>
+          {consulta && !resultado && (
+            <>
+              <Botao carregando={ocupado} onClick={() => salvar(false)}>Salvar rascunho</Botao>
+              <Botao variante="primario" carregando={ocupado} disabled={definitivos.length > 0} onClick={() => salvar(true)}>
+                Aprovar e enviar
+              </Botao>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
