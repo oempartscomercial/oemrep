@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { ITENS_MENU } from "../nav-itens";
+import { menuDoPerfil } from "../nav-itens";
+
+const ITENS_MENU = menuDoPerfil("ADMIN");
 
 describe("menu lateral", () => {
   it("tem os módulos do MVP em ordem", () => {

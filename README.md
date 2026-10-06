@@ -59,8 +59,8 @@ npm run test:local         # roda a suíte num banco de teste local zerado
 O `.env.local` (não versionado) aponta `DATABASE_URL`/`DIRECT_URL` para
 `postgresql://oem:oem@localhost:54329/oem_dev` e liga `SKIP_AUTH` com
 `SKIP_AUTH_EMAIL=romulo@oem.local`. Os CNPJs das fábricas no banco local são fictícios
-(a planilha não os traz). **Atenção:** `npm test` puro usa o `.env` e grava no banco
-configurado lá; prefira `npm run test:local`.
+(a planilha não os traz). `npm test` puro recusa rodar se o `.env` apontar para banco
+remoto; para isso de propósito, use `TESTES_BANCO_REMOTO=1 npm test`.
 
 ## 🆘 Como saber se algo deu errado
 

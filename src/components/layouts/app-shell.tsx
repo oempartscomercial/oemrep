@@ -3,19 +3,26 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { SidebarNavigationSimple } from "@/components/application/app-navigation/sidebar-navigation/sidebar-simple";
-import { ITENS_MENU } from "@/components/nav-itens";
+import { menuDoPerfil } from "@/components/nav-itens";
+import { UsuarioRodape, type UsuarioRodapeProps } from "./usuario-rodape";
 
 /**
  * Casca do app: sidebar de navegação (Untitled UI) + área de conteúdo. Responsiva
- * (vira cabeçalho com menu no mobile).
+ * (vira cabeçalho com menu no mobile). Sem usuário, mostra só o menu de operador e
+ * as telas exibem o aviso de sessão expirada.
  */
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, usuario }: { children: ReactNode; usuario: UsuarioRodapeProps | null }) {
   const pathname = usePathname();
-  const activeUrl = pathname === "/" ? "/" : ITENS_MENU.find((i) => i.href !== "/" && pathname.startsWith(i.href!))?.href ?? pathname;
+  const itens = menuDoPerfil(usuario?.perfil ?? "OPERADOR");
+  const activeUrl = pathname === "/" ? "/" : itens.find((i) => i.href !== "/" && pathname.startsWith(i.href!))?.href ?? pathname;
 
   return (
     <div className="flex min-h-dvh flex-col bg-primary lg:flex-row">
-      <SidebarNavigationSimple activeUrl={activeUrl} items={ITENS_MENU} />
+      <SidebarNavigationSimple
+        activeUrl={activeUrl}
+        items={itens}
+        featureCard={usuario ? <UsuarioRodape nome={usuario.nome} perfil={usuario.perfil} /> : undefined}
+      />
       <main className="min-w-0 flex-1">{children}</main>
     </div>
   );

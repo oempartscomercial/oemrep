@@ -96,8 +96,8 @@ go-live dos pedidos; as telas vêm depois que o MVP estabilizar.
 
 **Desenvolvimento local:** banco Postgres em Docker com os dados reais da pasta rep
 (`npm run db:local:recriar`), app com `npm run dev` (lê `.env.local`) e testes com
-`npm run test:local`. Nunca rode `npm test` puro sem conferir o `.env`: a suíte grava
-no banco configurado ali. Detalhes no README, seção "Rodar local com banco próprio".
+`npm run test:local`. A suíte grava no banco: `npm test` puro recusa banco remoto
+(liberar só de propósito, com `TESTES_BANCO_REMOTO=1`). Detalhes no README, seção "Rodar local com banco próprio".
 
 ## 2. Como o agente deve trabalhar aqui (fases × skills do Superpowers)
 

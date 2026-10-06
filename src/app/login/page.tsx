@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase";
+import { traduzirErroAuth } from "@/domain/auth/mensagens";
 import { AuthLayout } from "@/components/layouts/auth-layout";
 import { Button } from "@/components/ui/buttons/button";
 import { Input } from "@/components/ui/input/input";
@@ -24,7 +26,7 @@ export default function LoginPage() {
       password: senha,
     });
     if (error) {
-      setErro(error.message);
+      setErro(traduzirErroAuth(error));
       setEnviando(false);
       return;
     }
@@ -58,6 +60,9 @@ export default function LoginPage() {
         <Button type="submit" color="primary" size="lg" isLoading={enviando} className="w-full">
           Entrar
         </Button>
+        <Link href="/login/recuperar" className="text-center text-sm font-semibold text-brand-secondary hover:text-brand-secondary_hover">
+          Esqueci minha senha
+        </Link>
       </form>
     </AuthLayout>
   );
