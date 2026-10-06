@@ -74,7 +74,69 @@ describe("criarPedidoManual — autorização por fábrica (ADR-009)", () => {
     await prisma.itemPedido.deleteMany({ where: { pedidoId: pedidosCriados[0].id } });
     await prisma.pedido.delete({ where: { id: pedidosCriados[0].id } });
     await prisma.usuario.delete({ where: { id: usuario.id } });
+    await prisma.clienteFabrica.deleteMany({ where: { clienteId: cliente.id } });
     await prisma.cliente.delete({ where: { id: cliente.id } });
     await prisma.fabrica.delete({ where: { id: fabrica.id } });
+  }, 15000);
+});
+
+describe("criarPedidoManual — gravação e efeitos no cadastro", () => {
+  it("não grava pedido quando a auditoria falha (transação)", async () => {
+    const fabrica = await prisma.fabrica.create({ data: { nome: "Fábrica Pedido Tx", cnpj: "84000000000101" } });
+    const cliente = await prisma.cliente.create({ data: { nomeFantasia: "Cliente Pedido Tx" } });
+    obterUsuarioLogadoMock.mockResolvedValue({ id: "usuario-que-nao-existe", nome: "Adm", perfil: "ADMIN", fabricasIds: [] });
+    try {
+      const resultado = await criarPedidoManual(montarFormData(fabrica.id, cliente.id));
+
+      expect(resultado.erros).toEqual(["Falha ao gravar o pedido. Nada foi salvo — tente novamente."]);
+      expect(await prisma.pedido.findMany({ where: { fabricaId: fabrica.id } })).toHaveLength(0);
+    } finally {
+      await prisma.cliente.delete({ where: { id: cliente.id } });
+      await prisma.fabrica.delete({ where: { id: fabrica.id } });
+    }
+  }, 15000);
+
+  it("recusa fábrica desativada", async () => {
+    const fabrica = await prisma.fabrica.create({ data: { nome: "Fábrica Pedido Inativa", cnpj: "84000000000202", ativo: false } });
+    const cliente = await prisma.cliente.create({ data: { nomeFantasia: "Cliente Pedido Inativa" } });
+    obterUsuarioLogadoMock.mockResolvedValue({ id: "u", nome: "Adm", perfil: "ADMIN", fabricasIds: [] });
+    try {
+      expect((await criarPedidoManual(montarFormData(fabrica.id, cliente.id))).erros).toEqual([
+        "Esta fábrica está desativada.",
+      ]);
+    } finally {
+      await prisma.cliente.delete({ where: { id: cliente.id } });
+      await prisma.fabrica.delete({ where: { id: fabrica.id } });
+    }
+  }, 15000);
+
+  it("o primeiro pedido torna a empresa em prospecção CLIENTE e vincula a fábrica (ADR-013)", async () => {
+    const fabrica = await prisma.fabrica.create({ data: { nome: "Fábrica Conversão", cnpj: "84000000000303" } });
+    const cliente = await prisma.cliente.create({ data: { nomeFantasia: "Prospect Conversão", situacao: "AVANCO" } });
+    const usuario = await prisma.usuario.create({ data: { nome: "Adm", email: "adm-conversao@teste.local", perfil: "ADMIN" } });
+    obterUsuarioLogadoMock.mockResolvedValue({ id: usuario.id, nome: "Adm", perfil: "ADMIN", fabricasIds: [] });
+    try {
+      expect((await criarPedidoManual(montarFormData(fabrica.id, cliente.id))).erros).toEqual([]);
+
+      const lido = await prisma.cliente.findUniqueOrThrow({
+        where: { id: cliente.id },
+        include: { fabricas: true, interacoes: true },
+      });
+      expect(lido.situacao).toBe("CLIENTE");
+      expect(lido.fabricas.map((f) => f.fabricaId)).toEqual([fabrica.id]);
+      expect(lido.interacoes.map((i) => [i.origem, i.resumo])).toEqual([
+        ["AUTOMACAO", "Primeiro pedido lançado (PED-AUTHZ-1, Fábrica Conversão): empresa passou a cliente."],
+      ]);
+    } finally {
+      const pedidos = await prisma.pedido.findMany({ where: { clienteId: cliente.id } });
+      await prisma.eventoAuditoria.deleteMany({ where: { usuarioId: usuario.id } });
+      await prisma.itemPedido.deleteMany({ where: { pedidoId: { in: pedidos.map((p) => p.id) } } });
+      await prisma.pedido.deleteMany({ where: { clienteId: cliente.id } });
+      await prisma.interacao.deleteMany({ where: { clienteId: cliente.id } });
+      await prisma.clienteFabrica.deleteMany({ where: { clienteId: cliente.id } });
+      await prisma.cliente.delete({ where: { id: cliente.id } });
+      await prisma.usuario.delete({ where: { id: usuario.id } });
+      await prisma.fabrica.delete({ where: { id: fabrica.id } });
+    }
   }, 15000);
 });

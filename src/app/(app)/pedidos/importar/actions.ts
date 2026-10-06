@@ -7,6 +7,7 @@ import { podeAcessarFabrica } from "@/lib/authz";
 import { extrairItensDaPlanilha, type ItemExtraido } from "@/domain/importacao/excel";
 import { validarDadosPedido } from "@/domain/pedido/pedido";
 import { compararCampos } from "@/domain/auditoria/evento";
+import { registrarEfeitosDoPedido } from "@/lib/pedido-lancado";
 
 export async function analisarPlanilha(
   formData: FormData,
@@ -53,6 +54,8 @@ export async function confirmarImportacao(dados: DadosConfirmacao): Promise<{ er
   if (!podeAcessarFabrica(usuario, dados.fabricaId)) {
     return { erros: ["Você não tem permissão para importar pedidos para esta fábrica."] };
   }
+  const fabrica = await prisma.fabrica.findUnique({ where: { id: dados.fabricaId } });
+  if (!fabrica?.ativo) return { erros: ["Esta fábrica está desativada."] };
 
   // Pedido e auditoria na mesma transação: ou os dois gravam, ou nada grava (regra 4).
   // O catch existe para a tela receber uma mensagem — sem ele a Server Action rejeita
@@ -87,6 +90,7 @@ export async function confirmarImportacao(dados: DadosConfirmacao): Promise<{ er
       if (eventos.length > 0) {
         await tx.eventoAuditoria.createMany({ data: eventos });
       }
+      await registrarEfeitosDoPedido(tx, pedido);
     });
   } catch {
     return { erros: ["Falha ao gravar o pedido. Nada foi salvo — tente novamente."] };
