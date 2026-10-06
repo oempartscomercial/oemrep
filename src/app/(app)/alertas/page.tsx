@@ -1,3 +1,4 @@
+import { Download01 } from "@untitledui/icons";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarPedidosParaAlerta } from "./queries";
 import { pedidosSemNfeVencidos } from "@/domain/alerta/semNfe";
@@ -5,6 +6,7 @@ import { obterParametroNumero } from "@/lib/parametros";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
+import { Button } from "@/components/ui/buttons/button";
 import { AlertasTabela, type AlertaLinha } from "./alertas-tabela";
 
 export default async function AlertasPage() {
@@ -31,7 +33,11 @@ export default async function AlertasPage() {
 
   return (
     <PageContainer>
-      <PageHeader titulo="Alertas" descricao={`Pedidos sem nota fiscal há mais de ${prazoDias} dias.`} />
+      <PageHeader
+        titulo="Alertas"
+        descricao={`Pedidos sem nota fiscal há mais de ${prazoDias} dias.`}
+        acoes={<Button color="secondary" href="/api/export/alertas" iconLeading={<Download01 />}>Exportar XLSX</Button>}
+      />
       <AlertasTabela alertas={linhas} />
     </PageContainer>
   );

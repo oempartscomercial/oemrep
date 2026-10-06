@@ -1,4 +1,4 @@
-import { Plus } from "@untitledui/icons";
+import { Download01, Plus } from "@untitledui/icons";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Button } from "@/components/ui/buttons/button";
@@ -25,7 +25,12 @@ export default async function ClientesPage() {
       <PageHeader
         titulo="Clientes"
         descricao="Clientes atendidos (podem pertencer a várias fábricas)."
-        acoes={<Button color="primary" href="/cadastros/clientes/novo" iconLeading={<Plus />}>Novo cliente</Button>}
+        acoes={
+          <div className="flex gap-3">
+            <Button color="secondary" href="/api/export/cadastros/clientes" iconLeading={<Download01 />}>Exportar XLSX</Button>
+            <Button color="primary" href="/cadastros/clientes/novo" iconLeading={<Plus />}>Novo cliente</Button>
+          </div>
+        }
       />
       <ClientesTabela clientes={linhas} />
     </div>

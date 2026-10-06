@@ -1,3 +1,4 @@
+import { Download01 } from "@untitledui/icons";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import {
   buscarEventosAuditoria,
@@ -10,6 +11,7 @@ import { descreverEvento, nomeEntidade } from "@/domain/auditoria/descricao";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
+import { Button } from "@/components/ui/buttons/button";
 import { AuditoriaFiltros } from "./auditoria-filtros";
 import { AuditoriaTabela, type EventoAuditoriaLinha } from "./auditoria-tabela";
 
@@ -36,6 +38,7 @@ export default async function AuditoriaPage({
   ]);
 
   const nomes = await carregarNomesAuditoria(eventos);
+  const qs = new URLSearchParams(Object.entries({ de, ate, usuarioId, entidade }).filter(([, v]) => v) as [string, string][]);
   const linhas: EventoAuditoriaLinha[] = eventos.map((e) => ({
     id: e.id,
     quando: new Date(e.criadoEm).toLocaleString("pt-BR"),
@@ -45,7 +48,11 @@ export default async function AuditoriaPage({
 
   return (
     <PageContainer>
-      <PageHeader titulo="Auditoria" descricao="Histórico de alterações em pedidos, notas fiscais e cadastros." />
+      <PageHeader
+        titulo="Auditoria"
+        descricao="Histórico de alterações em pedidos, notas fiscais e cadastros."
+        acoes={<Button color="secondary" href={`/api/export/auditoria?${qs.toString()}`} iconLeading={<Download01 />}>Exportar XLSX</Button>}
+      />
 
       <AuditoriaFiltros
         usuarios={usuarios.map((u) => ({ id: u.id, label: u.nome }))}

@@ -1,4 +1,4 @@
-import { Plus } from "@untitledui/icons";
+import { Download01, Plus } from "@untitledui/icons";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Button } from "@/components/ui/buttons/button";
@@ -27,7 +27,12 @@ export default async function UsuariosPage() {
       <PageHeader
         titulo="Usuários"
         descricao="Acesso e permissão por fábrica."
-        acoes={<Button color="primary" href="/cadastros/usuarios/novo" iconLeading={<Plus />}>Novo usuário</Button>}
+        acoes={
+          <div className="flex gap-3">
+            <Button color="secondary" href="/api/export/cadastros/usuarios" iconLeading={<Download01 />}>Exportar XLSX</Button>
+            <Button color="primary" href="/cadastros/usuarios/novo" iconLeading={<Plus />}>Novo usuário</Button>
+          </div>
+        }
       />
       <UsuariosTabela usuarios={linhas} />
     </div>

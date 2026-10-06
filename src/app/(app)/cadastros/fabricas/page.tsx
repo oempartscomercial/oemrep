@@ -1,4 +1,4 @@
-import { Plus } from "@untitledui/icons";
+import { Download01, Plus } from "@untitledui/icons";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Button } from "@/components/ui/buttons/button";
@@ -16,7 +16,12 @@ export default async function FabricasPage() {
       <PageHeader
         titulo="Fábricas"
         descricao="Fabricantes representados."
-        acoes={<Button color="primary" href="/cadastros/fabricas/novo" iconLeading={<Plus />}>Nova fábrica</Button>}
+        acoes={
+          <div className="flex gap-3">
+            <Button color="secondary" href="/api/export/cadastros/fabricas" iconLeading={<Download01 />}>Exportar XLSX</Button>
+            <Button color="primary" href="/cadastros/fabricas/novo" iconLeading={<Plus />}>Nova fábrica</Button>
+          </div>
+        }
       />
       <FabricasTabela fabricas={linhas} />
     </div>
