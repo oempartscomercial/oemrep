@@ -27,24 +27,59 @@ export function conferirItens(
 
   return itensNFe.map((itemNFe) => {
     const pendencia = pendenciasDoCliente.find((p) => p.referencia === itemNFe.referencia) ?? null;
-    const divergencias: string[] = [];
-
     if (!pendencia) {
-      divergencias.push("Item não encontrado em nenhum pedido pendente deste cliente.");
-      return { itemNFe, pendencia, divergencias };
+      return { itemNFe, pendencia, divergencias: ["Item não encontrado em nenhum pedido pendente deste cliente."] };
     }
 
-    if (itemNFe.valorUnitario !== pendencia.valorUnitario) {
-      divergencias.push(
-        `Valor unitário diverge: NFe R$ ${itemNFe.valorUnitario.toFixed(2)} × pedido R$ ${pendencia.valorUnitario.toFixed(2)}.`,
-      );
-    }
-    if (itemNFe.quantidade > pendencia.quantidadePendente) {
-      divergencias.push(
-        `Quantidade faturada (${itemNFe.quantidade}) maior que a pendente (${pendencia.quantidadePendente}).`,
-      );
-    }
-
-    return { itemNFe, pendencia, divergencias };
+    return { itemNFe, pendencia, divergencias: divergenciasDoVinculo(itemNFe, pendencia) };
   });
+}
+
+function divergenciasDoVinculo(itemNFe: ItemNFe, pendencia: PendenciaItem): string[] {
+  const divergencias: string[] = [];
+  if (itemNFe.valorUnitario !== pendencia.valorUnitario) {
+    divergencias.push(
+      `Valor unitário diverge: NFe R$ ${itemNFe.valorUnitario.toFixed(2)} × pedido R$ ${pendencia.valorUnitario.toFixed(2)}.`,
+    );
+  }
+  if (itemNFe.quantidade > pendencia.quantidadePendente) {
+    divergencias.push(`Quantidade faturada (${itemNFe.quantidade}) maior que a pendente (${pendencia.quantidadePendente}).`);
+  }
+  return divergencias;
+}
+
+// RF16: antes da baixa, o operador pode trocar o vínculo de cada item da NFe (índice
+// do item → id do item de pedido) ou desfazê-lo (null). Só vale escolher entre as
+// pendências do próprio cliente nesta fábrica, calculadas no servidor.
+export function aplicarVinculosManuais(
+  destinatarioCnpj: string,
+  itensNFe: ItemNFe[],
+  pendencias: PendenciaItem[],
+  escolhas: Record<number, string | null>,
+): { conferencia?: ResultadoConferenciaItem[]; erro?: string } {
+  const automatica = conferirItens(destinatarioCnpj, itensNFe, pendencias);
+  const porId = new Map(pendencias.filter((p) => p.clienteCnpj === destinatarioCnpj).map((p) => [p.itemPedidoId, p]));
+
+  const conferencia: ResultadoConferenciaItem[] = [];
+  for (const [indice, resultado] of automatica.entries()) {
+    if (!(indice in escolhas)) {
+      conferencia.push(resultado);
+      continue;
+    }
+    const escolhido = escolhas[indice];
+    if (escolhido === null) {
+      conferencia.push({ itemNFe: resultado.itemNFe, pendencia: null, divergencias: ["Item não será baixado (vínculo removido)."] });
+      continue;
+    }
+    const pendencia = porId.get(escolhido);
+    if (!pendencia) return { erro: "Um dos vínculos escolhidos não é um item pendente deste cliente nesta fábrica." };
+    const divergencias = divergenciasDoVinculo(resultado.itemNFe, pendencia);
+    if (pendencia.referencia !== resultado.itemNFe.referencia) {
+      divergencias.unshift(
+        `Referência diferente: NFe ${resultado.itemNFe.referencia} × pedido ${pendencia.referencia} (vínculo manual).`,
+      );
+    }
+    conferencia.push({ itemNFe: resultado.itemNFe, pendencia, divergencias });
+  }
+  return { conferencia };
 }

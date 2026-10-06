@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado, type UsuarioSessao } from "@/lib/sessao";
 import { podeAcessarFabrica } from "@/lib/authz";
 import { extrairNFeDoXml, type NFeExtraida } from "@/domain/nfe/parser";
-import { conferirItens, type PendenciaItem, type ResultadoConferenciaItem } from "@/domain/nfe/conferencia";
+import { aplicarVinculosManuais, type PendenciaItem, type ResultadoConferenciaItem } from "@/domain/nfe/conferencia";
 import { resolverClienteDaNFe } from "@/domain/nfe/cliente";
 import { validarVinculoPedidos } from "@/domain/nfe/vinculo";
 import { aplicarBaixaItem } from "@/domain/nfe/baixa";
@@ -14,6 +14,9 @@ import { recalcularEstado } from "@/domain/pedido/estado";
 import { compararCampos } from "@/domain/auditoria/evento";
 
 export type EmpresaCandidata = { id: string; nome: string; cidade: string | null; uf: string | null };
+export type OpcaoVinculo = { itemPedidoId: string; rotulo: string };
+// Vínculos escolhidos na tela (RF16): índice do item da NFe → item de pedido (ou null = não baixar).
+export type VinculosManuais = Record<number, string | null>;
 
 export type AnaliseNFe = {
   // O XML volta para o servidor na confirmação: tudo é recalculado a partir dele,
@@ -26,6 +29,8 @@ export type AnaliseNFe = {
   gravarCnpj: boolean;
   // Sem empresa com o CNPJ da nota: empresas sem CNPJ com pedido aberto nesta fábrica.
   candidatos: EmpresaCandidata[];
+  // Itens pendentes do cliente nesta fábrica: as opções para trocar um vínculo.
+  opcoes: OpcaoVinculo[];
   conferencia: ResultadoConferenciaItem[];
 };
 
@@ -36,6 +41,7 @@ async function montarAnalise(
   usuario: UsuarioSessao,
   xml: string,
   clienteIdEscolhido: string | null,
+  vinculos: VinculosManuais = {},
 ): Promise<{ erro: string } | { analise: AnaliseNFe }> {
   let nfe: NFeExtraida;
   try {
@@ -59,7 +65,7 @@ async function montarAnalise(
   if ("erro" in resolucao) return { erro: resolucao.erro };
   const { clienteId, gravarCnpj } = resolucao;
 
-  const base = { xml, nfe, clienteId, fabricaId: fabrica?.id ?? null, gravarCnpj, candidatos: [], conferencia: [] };
+  const base = { xml, nfe, clienteId, fabricaId: fabrica?.id ?? null, gravarCnpj, candidatos: [], opcoes: [], conferencia: [] };
   if (!fabrica) return { analise: base };
 
   if (!clienteId) {
@@ -92,7 +98,15 @@ async function montarAnalise(
     })),
   );
 
-  return { analise: { ...base, conferencia: conferirItens(nfe.destinatarioCnpj, nfe.itens, pendencias) } };
+  const resultado = aplicarVinculosManuais(nfe.destinatarioCnpj, nfe.itens, pendencias, vinculos);
+  if (resultado.erro) return { erro: resultado.erro };
+
+  const numeroDoPedido = new Map(pedidos.map((p) => [p.id, p.semNumero ? "S/N" : (p.numero ?? "S/N")]));
+  const opcoes = pendencias.map((p) => ({
+    itemPedidoId: p.itemPedidoId,
+    rotulo: `${p.referencia} · pedido ${numeroDoPedido.get(p.pedidoId)} · pendente ${p.quantidadePendente}`,
+  }));
+  return { analise: { ...base, opcoes, conferencia: resultado.conferencia! } };
 }
 
 export async function analisarXmlNFe(formData: FormData): Promise<{ erro?: string; analise?: AnaliseNFe }> {
@@ -102,15 +116,25 @@ export async function analisarXmlNFe(formData: FormData): Promise<{ erro?: strin
   const arquivo = formData.get("arquivo") as File | null;
   if (!arquivo || arquivo.size === 0) return { erro: "Selecione um arquivo XML." };
   const clienteId = (formData.get("clienteId") as string | null) || null;
+  let vinculos: VinculosManuais = {};
+  try {
+    vinculos = JSON.parse((formData.get("vinculos") as string | null) || "{}");
+  } catch {
+    return { erro: "Vínculos inválidos." };
+  }
 
-  return montarAnalise(usuario, await arquivo.text(), clienteId);
+  return montarAnalise(usuario, await arquivo.text(), clienteId, vinculos);
 }
 
-export async function confirmarBaixaNFe(entrada: { xml: string; clienteId: string | null }): Promise<{ erros: string[] }> {
+export async function confirmarBaixaNFe(entrada: {
+  xml: string;
+  clienteId: string | null;
+  vinculos?: VinculosManuais;
+}): Promise<{ erros: string[] }> {
   const usuario = await obterUsuarioLogado();
   if (!usuario) return { erros: [SEM_SESSAO] };
 
-  const resultado = await montarAnalise(usuario, entrada.xml, entrada.clienteId);
+  const resultado = await montarAnalise(usuario, entrada.xml, entrada.clienteId, entrada.vinculos);
   if ("erro" in resultado) return { erros: [resultado.erro] };
   const { analise } = resultado;
   if (!analise.clienteId || !analise.fabricaId) {

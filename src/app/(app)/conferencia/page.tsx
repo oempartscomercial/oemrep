@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle } from "@untitledui/icons";
-import { analisarXmlNFe, confirmarBaixaNFe, type AnaliseNFe } from "./actions";
+import { analisarXmlNFe, confirmarBaixaNFe, type AnaliseNFe, type VinculosManuais } from "./actions";
 import { executarConfirmacaoBaixa } from "./confirmar";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
@@ -13,7 +13,9 @@ import { Select } from "@/components/ui/select/select";
 import { FileUploadDropZone } from "@/components/application/file-upload/file-upload-base";
 import { DataTable } from "@/components/patterns/data-table";
 
-type ConferenciaLinha = AnaliseNFe["conferencia"][number] & { _id: string };
+type ConferenciaLinha = AnaliseNFe["conferencia"][number] & { _id: string; indice: number };
+
+const NAO_BAIXAR = "__nao-baixar";
 
 export default function ConferenciaNFePage() {
   const router = useRouter();
@@ -22,8 +24,10 @@ export default function ConferenciaNFePage() {
   const [analisando, setAnalisando] = useState(false);
   const [analise, setAnalise] = useState<AnaliseNFe | null>(null);
   const [enviando, setEnviando] = useState(false);
+  // Vínculos trocados à mão (RF16). O servidor recalcula as divergências a cada troca.
+  const [vinculos, setVinculos] = useState<VinculosManuais>({});
 
-  async function handleAnalisar(clienteId?: string) {
+  async function handleAnalisar(clienteId?: string, novosVinculos: VinculosManuais = {}) {
     if (!arquivo) return;
     setErro(null);
     if (!clienteId) setAnalise(null);
@@ -31,19 +35,27 @@ export default function ConferenciaNFePage() {
     const formData = new FormData();
     formData.append("arquivo", arquivo);
     if (clienteId) formData.append("clienteId", clienteId);
+    formData.append("vinculos", JSON.stringify(novosVinculos));
     const resultado = await analisarXmlNFe(formData);
     setAnalisando(false);
     if (resultado.erro) {
       setErro(resultado.erro);
       return;
     }
+    setVinculos(novosVinculos);
     setAnalise(resultado.analise ?? null);
+  }
+
+  function trocarVinculo(indice: number, chave: string) {
+    if (!analise) return;
+    const novos = { ...vinculos, [indice]: chave === NAO_BAIXAR ? null : chave };
+    handleAnalisar(analise.clienteId ?? undefined, novos);
   }
 
   async function handleConfirmar() {
     if (!analise) return;
     setEnviando(true);
-    const mensagem = await executarConfirmacaoBaixa(() => confirmarBaixaNFe({ xml: analise.xml, clienteId: analise.clienteId }));
+    const mensagem = await executarConfirmacaoBaixa(() => confirmarBaixaNFe({ xml: analise.xml, clienteId: analise.clienteId, vinculos }));
     setEnviando(false);
     if (mensagem) {
       setErro(mensagem);
@@ -53,11 +65,18 @@ export default function ConferenciaNFePage() {
   }
 
   const cadastroIncompleto = analise ? !analise.clienteId || !analise.fabricaId : false;
-  const linhas: ConferenciaLinha[] = (analise?.conferencia ?? []).map((r, i) => ({ ...r, _id: `${r.itemNFe.referencia}-${i}` }));
+  const linhas: ConferenciaLinha[] = (analise?.conferencia ?? []).map((r, i) => ({ ...r, _id: `${r.itemNFe.referencia}-${i}`, indice: i }));
+  const opcoesVinculo = [
+    ...(analise?.opcoes ?? []).map((o) => ({ id: o.itemPedidoId, label: o.rotulo })),
+    { id: NAO_BAIXAR, label: "Não baixar este item" },
+  ];
 
   return (
     <PageContainer>
-      <PageHeader titulo="Conferência de NFe" descricao="Envie o XML da nota, revise as divergências e confirme a baixa." />
+      <PageHeader
+        titulo="Conferência de NFe"
+        descricao="Envie o XML da nota, revise os vínculos com os pedidos e as divergências, e confirme a baixa."
+      />
 
       <div className="flex max-w-2xl flex-col gap-4 rounded-xl bg-primary p-6 ring-1 ring-secondary">
         <FileUploadDropZone
@@ -122,6 +141,28 @@ export default function ConferenciaNFePage() {
               { id: "descricao", header: "Descrição", render: (r) => r.itemNFe.descricao },
               { id: "qtd", header: "Qtd. NFe", render: (r) => r.itemNFe.quantidade },
               { id: "valor", header: "Valor unit.", render: (r) => `R$ ${r.itemNFe.valorUnitario.toFixed(2)}` },
+              {
+                id: "vinculo",
+                header: "Baixa no pedido",
+                render: (r) =>
+                  analise?.clienteId ? (
+                    <div className="min-w-64">
+                      <Select
+                        aria-label={`Item de pedido para ${r.itemNFe.referencia}`}
+                        size="sm"
+                        placeholder="Sem item pendente"
+                        isDisabled={analisando || enviando}
+                        selectedKey={r.pendencia?.itemPedidoId ?? NAO_BAIXAR}
+                        onSelectionChange={(key) => key && trocarVinculo(r.indice, String(key))}
+                        items={opcoesVinculo}
+                      >
+                        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+                      </Select>
+                    </div>
+                  ) : (
+                    "—"
+                  ),
+              },
               {
                 id: "diverg",
                 header: "Divergências",

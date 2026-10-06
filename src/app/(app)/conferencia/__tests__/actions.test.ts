@@ -158,3 +158,30 @@ describe("conferência de cliente sem CNPJ (ADR-013)", () => {
     }
   }, 15000);
 });
+
+describe("conferência editável (RF16)", () => {
+  it("baixa no item escolhido manualmente e recusa item fora das pendências", async () => {
+    const c = await cenario("16");
+    const outroItem = await prisma.itemPedido.create({
+      data: { pedidoId: c.pedido.id, referencia: "REF-ANTIGA", descricao: "Peça", quantidadePedida: 3, valorUnitario: 25 },
+    });
+    try {
+      obterUsuarioLogadoMock.mockResolvedValue({ ...ADMIN, id: c.usuario.id });
+
+      const analise = await analisarXmlNFe(arquivo(c.xml(2)));
+      expect(analise.analise?.opcoes.map((o) => o.itemPedidoId).sort()).toEqual([c.pedido.itens[0].id, outroItem.id].sort());
+
+      expect((await confirmarBaixaNFe({ xml: c.xml(2), clienteId: null, vinculos: { 0: "id-inventado" } })).erros).toEqual([
+        "Um dos vínculos escolhidos não é um item pendente deste cliente nesta fábrica.",
+      ]);
+
+      expect((await confirmarBaixaNFe({ xml: c.xml(2), clienteId: null, vinculos: { 0: outroItem.id } })).erros).toEqual([]);
+      expect((await prisma.itemPedido.findUniqueOrThrow({ where: { id: outroItem.id } })).quantidadeFaturada).toBe(2);
+      expect((await prisma.itemPedido.findUniqueOrThrow({ where: { id: c.pedido.itens[0].id } })).quantidadeFaturada).toBe(0);
+    } finally {
+      await prisma.itemFaturado.deleteMany({ where: { itemPedidoId: outroItem.id } });
+      await prisma.itemPedido.delete({ where: { id: outroItem.id } }).catch(() => {});
+      await c.limpar();
+    }
+  }, 15000);
+});
