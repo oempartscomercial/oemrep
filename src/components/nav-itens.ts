@@ -2,9 +2,7 @@ import { AlertTriangle, BarChartSquare02, Bell01, FileCheck02, FileSearch02, Hom
 import type { NavItemType } from "@/components/application/app-navigation/config";
 import type { PerfilUsuario } from "@/lib/authz";
 
-type ItemMenu = NavItemType & { perfis?: PerfilUsuario[] };
-
-const ITENS: ItemMenu[] = [
+const ITENS: NavItemType[] = [
   { href: "/", label: "Dashboard", icon: Home01 },
   { href: "/pedidos", label: "Pedidos", icon: Package },
   { href: "/conferencia", label: "Conferência NFe", icon: FileCheck02 },
@@ -12,11 +10,17 @@ const ITENS: ItemMenu[] = [
   { href: "/divergencias", label: "Divergências", icon: AlertTriangle },
   { href: "/pedidos-x-nfe", label: "Pedidos × NFe", icon: BarChartSquare02 },
   { href: "/alertas", label: "Alertas", icon: Bell01 },
-  { href: "/auditoria", label: "Auditoria", icon: FileSearch02, perfis: ["ADMIN", "ANALISTA"] },
-  { href: "/cadastros", label: "Cadastros", icon: Settings01, perfis: ["ADMIN"] },
+  { href: "/auditoria", label: "Auditoria", icon: FileSearch02 },
+  { href: "/cadastros", label: "Cadastros", icon: Settings01 },
 ];
+
+// Rotas restritas; as demais são de todos os perfis.
+const PERFIS_DA_ROTA: Record<string, PerfilUsuario[]> = {
+  "/auditoria": ["ADMIN", "ANALISTA"],
+  "/cadastros": ["ADMIN"],
+};
 
 // Cada perfil vê só o que usa (PRD §4): Cadastros é do ADMIN; Auditoria, de quem monitora.
 export function menuDoPerfil(perfil: PerfilUsuario): NavItemType[] {
-  return ITENS.filter((item) => !item.perfis || item.perfis.includes(perfil)).map(({ perfis: _perfis, ...item }) => item);
+  return ITENS.filter((item) => PERFIS_DA_ROTA[item.href ?? ""]?.includes(perfil) ?? true);
 }

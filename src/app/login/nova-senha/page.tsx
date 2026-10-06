@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase";
 import { traduzirErroAuth } from "@/domain/auth/mensagens";
@@ -12,24 +12,30 @@ import { Input } from "@/components/ui/input/input";
 // Destino do link de recuperação. O Supabase devolve um `code` na URL, trocado aqui
 // por uma sessão; com ela a pessoa grava a senha nova e segue logada.
 export default function NovaSenhaPage() {
+  return (
+    <Suspense>
+      <NovaSenha />
+    </Suspense>
+  );
+}
+
+function NovaSenha() {
   const router = useRouter();
+  const code = useSearchParams().get("code");
   const [pronto, setPronto] = useState(false);
-  const [erroLink, setErroLink] = useState<string | null>(null);
+  const [erroTroca, setErroTroca] = useState<string | null>(null);
+  const erroLink = code ? erroTroca : "Link inválido. Peça um novo link de recuperação.";
   const [senha, setSenha] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get("code");
-    if (!code) {
-      setErroLink("Link inválido. Peça um novo link de recuperação.");
-      return;
-    }
+    if (!code) return;
     criarClienteNavegador()
       .auth.exchangeCodeForSession(code)
-      .then(({ error }) => (error ? setErroLink(traduzirErroAuth(error)) : setPronto(true)));
-  }, []);
+      .then(({ error }) => (error ? setErroTroca(traduzirErroAuth(error)) : setPronto(true)));
+  }, [code]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
