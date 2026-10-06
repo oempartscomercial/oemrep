@@ -39,6 +39,20 @@ function dataValida(valor: string | null | undefined, hoje: string): string | nu
   return null;
 }
 
+/** Próximo passo exigido nas etapas em andamento: ação, data (não passada) e responsável. */
+export function errosDoProximoPasso(passo: { acao: string; prazo: string; responsavelId: string } | null | undefined, hoje: string): string[] {
+  const erros: string[] = [];
+  if (!passo || !passo.acao.trim()) erros.push("Diga qual é o próximo passo.");
+  const erroData = dataValida(passo?.prazo, hoje);
+  if (erroData) erros.push(`Próximo passo: ${erroData.toLowerCase()}`);
+  if (!passo?.responsavelId) erros.push("Escolha quem fica responsável.");
+  return erros;
+}
+
+export function erroDeData(valor: string | null | undefined, hoje: string): string | null {
+  return dataValida(valor, hoje);
+}
+
 /** Devolve a lista de erros em português; vazia quando o movimento é permitido. */
 export function validarMovimento(mov: Movimento, dados: DadosMovimento, hoje: string): string[] {
   const erros: string[] = [];
@@ -53,13 +67,7 @@ export function validarMovimento(mov: Movimento, dados: DadosMovimento, hoje: st
     return ["Esta empresa está marcada como \"não contatar\"."];
   }
 
-  if (etapaAtiva(mov.para)) {
-    const passo = dados.proximoPasso;
-    if (!passo || !passo.acao.trim()) erros.push("Diga qual é o próximo passo.");
-    const erroData = dataValida(passo?.prazo, hoje);
-    if (erroData) erros.push(`Próximo passo: ${erroData.toLowerCase()}`);
-    if (!passo?.responsavelId) erros.push("Escolha quem fica responsável.");
-  }
+  if (etapaAtiva(mov.para)) erros.push(...errosDoProximoPasso(dados.proximoPasso, hoje));
   if (mov.para === "PAUSADA") {
     const erroData = dataValida(dados.retomadaEm, hoje);
     if (erroData) erros.push(`Retomada: ${erroData.toLowerCase()}`);

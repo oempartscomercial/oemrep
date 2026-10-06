@@ -16,7 +16,7 @@ export async function carregarNomesAuditoria(eventos: EventoComIds[]): Promise<N
     for (const v of [e.valorAnterior, e.valorNovo]) v?.split(",").forEach((id) => id && idsDeValor.add(id));
   }
 
-  const [pedidos, itens, notas, clientes, fabricas, usuarios, fabricasValor, clientesValor] = await Promise.all([
+  const [pedidos, itens, notas, clientes, fabricas, usuarios, fabricasValor, clientesValor, oportunidades] = await Promise.all([
     prisma.pedido.findMany({ where: { id: { in: ids("Pedido") } }, include: { fabrica: true, cliente: true } }),
     prisma.itemPedido.findMany({ where: { id: { in: ids("ItemPedido") } }, include: { pedido: true } }),
     prisma.notaFiscal.findMany({ where: { id: { in: ids("NotaFiscal") } } }),
@@ -25,6 +25,7 @@ export async function carregarNomesAuditoria(eventos: EventoComIds[]): Promise<N
     prisma.usuario.findMany({ where: { id: { in: ids("Usuario") } } }),
     prisma.fabrica.findMany({ where: { id: { in: [...idsDeValor] } }, select: { id: true, nome: true } }),
     prisma.cliente.findMany({ where: { id: { in: [...idsDeValor] } }, select: { id: true, nomeFantasia: true } }),
+    prisma.oportunidade.findMany({ where: { id: { in: ids("Oportunidade") } }, include: { cliente: true, fabrica: true } }),
   ]);
 
   const registros: Record<string, string> = {};
@@ -34,6 +35,7 @@ export async function carregarNomesAuditoria(eventos: EventoComIds[]): Promise<N
   for (const c of clientes) registros[c.id] = c.nomeFantasia;
   for (const f of fabricas) registros[f.id] = f.nome;
   for (const u of usuarios) registros[u.id] = u.nome;
+  for (const o of oportunidades) registros[o.id] = `${o.cliente.nomeFantasia} · ${o.fabrica.nome}`;
 
   const valores: Record<string, string> = {};
   for (const f of fabricasValor) valores[f.id] = f.nome;

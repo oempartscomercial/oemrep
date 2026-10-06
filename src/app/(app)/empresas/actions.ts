@@ -6,6 +6,7 @@ import { obterUsuarioLogado, type UsuarioSessao } from "@/lib/sessao";
 import { podeVerCrm } from "@/lib/authz";
 import { compararCampos } from "@/domain/auditoria/evento";
 import { hojeEmSaoPaulo } from "@/domain/crm/prazo";
+import { etapaAtivaOp, oportunidadeAberta } from "@/domain/crm/oportunidade";
 import { etapaAtiva, resumoDoMovimento, validarMovimento, type DadosMovimento } from "@/domain/crm/funil";
 
 const SEM_SESSAO = "Sessão expirada. Faça login novamente.";
@@ -73,7 +74,7 @@ export async function moverEmpresa(entrada: {
         data: { situacao: para, ...(marcarNaoContatar ? { naoContatar: true } : {}) },
       });
       // O passo antigo deixa de valer: o novo (ou nenhum) assume.
-      await tx.proximoPasso.updateMany({ where: { clienteId: empresa.id, concluidoEm: null }, data: { concluidoEm: new Date() } });
+      await tx.proximoPasso.updateMany({ where: { clienteId: empresa.id, oportunidadeId: null, concluidoEm: null }, data: { concluidoEm: new Date() } });
       if (etapaAtiva(entrada.para) && entrada.proximoPasso) {
         await tx.proximoPasso.create({
           data: {
@@ -122,6 +123,8 @@ export async function registrarInteracao(entrada: {
   comQuem?: string | null;
   resultado?: string | null;
   proximoPasso?: PassoEntrada | null;
+  /** Contato sobre uma oportunidade da carteira: o passo exigido e substituído é o dela. */
+  oportunidadeId?: string | null;
 }): Promise<Resultado> {
   const sessao = await sessaoCrm();
   if ("erro" in sessao) return { erros: [sessao.erro] };
@@ -136,8 +139,17 @@ export async function registrarInteracao(entrada: {
   });
   if (!empresa) return { erros: ["Empresa não encontrada."] };
 
-  // Toda empresa em andamento precisa de próximo passo (regra 4 do CLAUDE.md da pasta rep).
-  if (etapaAtiva(empresa.situacao) && !entrada.proximoPasso && empresa.proximosPassos.length === 0) {
+  const oportunidadeId = entrada.oportunidadeId ?? null;
+  const oportunidade = oportunidadeId ? await prisma.oportunidade.findUnique({ where: { id: oportunidadeId } }) : null;
+  if (oportunidadeId && (!oportunidade || oportunidade.clienteId !== empresa.id || !oportunidadeAberta(oportunidade.etapa))) {
+    return { erros: ["Esta oportunidade não está mais aberta."] };
+  }
+  // Os passos da empresa e os de cada oportunidade são independentes.
+  const passosDoEscopo = empresa.proximosPassos.filter((p) => p.oportunidadeId === oportunidadeId);
+
+  // Toda empresa em andamento (e toda oportunidade em andamento) precisa de próximo passo.
+  const exigePasso = oportunidade ? etapaAtivaOp(oportunidade.etapa) : etapaAtiva(empresa.situacao);
+  if (exigePasso && !entrada.proximoPasso && passosDoEscopo.length === 0) {
     return { erros: ["Diga qual é o próximo passo."] };
   }
   if (entrada.proximoPasso) {
@@ -158,13 +170,15 @@ export async function registrarInteracao(entrada: {
           resultado: entrada.resultado?.trim() || null,
           origem: "USUARIO",
           usuarioId: usuario.id,
+          oportunidadeId,
         },
       });
       if (entrada.proximoPasso) {
-        await tx.proximoPasso.updateMany({ where: { clienteId: empresa.id, concluidoEm: null }, data: { concluidoEm: new Date() } });
+        await tx.proximoPasso.updateMany({ where: { clienteId: empresa.id, oportunidadeId, concluidoEm: null }, data: { concluidoEm: new Date() } });
         await tx.proximoPasso.create({
           data: {
             clienteId: empresa.id,
+            oportunidadeId,
             acao: entrada.proximoPasso.acao.trim(),
             prazo: comoData(entrada.proximoPasso.prazo),
             responsavelId: entrada.proximoPasso.responsavelId,
@@ -185,10 +199,11 @@ export async function concluirProximoPasso(entrada: { id: string; proximo?: Pass
   const sessao = await sessaoCrm();
   if ("erro" in sessao) return { erros: [sessao.erro] };
 
-  const passo = await prisma.proximoPasso.findUnique({ where: { id: entrada.id }, include: { cliente: true } });
+  const passo = await prisma.proximoPasso.findUnique({ where: { id: entrada.id }, include: { cliente: true, oportunidade: true } });
   if (!passo || passo.concluidoEm) return { erros: ["Este próximo passo não está mais aberto."] };
 
-  if (etapaAtiva(passo.cliente.situacao) && !entrada.proximo) return { erros: ["Diga qual é o próximo passo."] };
+  const exigeProximo = passo.oportunidade ? etapaAtivaOp(passo.oportunidade.etapa) : etapaAtiva(passo.cliente.situacao);
+  if (exigeProximo && !entrada.proximo) return { erros: ["Diga qual é o próximo passo."] };
   if (entrada.proximo) {
     const erros = validarPasso(entrada.proximo, hojeEmSaoPaulo());
     if (erros.length > 0) return { erros };
@@ -202,6 +217,7 @@ export async function concluirProximoPasso(entrada: { id: string; proximo?: Pass
         await tx.proximoPasso.create({
           data: {
             clienteId: passo.clienteId,
+            oportunidadeId: passo.oportunidadeId,
             acao: entrada.proximo.acao.trim(),
             prazo: comoData(entrada.proximo.prazo),
             responsavelId: entrada.proximo.responsavelId,

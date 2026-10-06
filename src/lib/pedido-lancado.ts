@@ -20,6 +20,26 @@ export async function registrarEfeitosDoPedido(
     create: { clienteId: cliente.id, fabricaId: fabrica.id },
   });
 
+  // Carteira: chegou pedido desse cliente nessa fábrica, então a oportunidade aberta está ganha
+  // (ADR-013). Os próximos passos dela deixam de valer.
+  const abertas = await tx.oportunidade.findMany({
+    where: { clienteId: cliente.id, fabricaId: fabrica.id, etapa: { notIn: ["GANHA", "PERDIDA"] } },
+  });
+  for (const o of abertas) {
+    await tx.oportunidade.update({ where: { id: o.id }, data: { etapa: "GANHA", encerradaEm: new Date() } });
+    await tx.proximoPasso.updateMany({ where: { oportunidadeId: o.id, concluidoEm: null }, data: { concluidoEm: new Date() } });
+    await tx.interacao.create({
+      data: {
+        clienteId: cliente.id,
+        oportunidadeId: o.id,
+        data: new Date(),
+        canal: "OUTRO",
+        origem: "AUTOMACAO",
+        resumo: `${fabrica.nome}: oportunidade ganha (movido automaticamente) — pedido ${pedido.numero ?? "S/N"} lançado.`,
+      },
+    });
+  }
+
   if (cliente.situacao === "CLIENTE") return;
   await tx.cliente.update({ where: { id: cliente.id }, data: { situacao: "CLIENTE" } });
   await tx.interacao.create({

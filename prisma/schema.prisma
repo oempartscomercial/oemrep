@@ -37,6 +37,7 @@ model Fabrica {
   pedidos          Pedido[]
   historicoMensal  HistoricoMensal[]
   pedidosHistorico PedidoHistorico[]
+  oportunidades    Oportunidade[]
 }
 
 // Cadastro único de empresa: clientes e prospecção (ADR-013). As telas dizem "Empresas".
@@ -71,6 +72,7 @@ model Cliente {
   interacoes       Interacao[]
   proximosPassos   ProximoPasso[]
   pedidosHistorico PedidoHistorico[]
+  oportunidades    Oportunidade[]
 }
 
 model ClienteFabrica {
@@ -86,21 +88,22 @@ model ClienteFabrica {
 }
 
 model Usuario {
-  id              String            @id @default(cuid())
-  supabaseUserId  String?           @unique // vínculo ao login Supabase no 1º acesso (ADR-010)
-  nome            String
-  email           String            @unique
-  perfil          PerfilUsuario     @default(OPERADOR)
+  id                   String            @id @default(cuid())
+  supabaseUserId       String?           @unique // vínculo ao login Supabase no 1º acesso (ADR-010)
+  nome                 String
+  email                String            @unique
+  perfil               PerfilUsuario     @default(OPERADOR)
   // Usuário desativado não entra mais (obterUsuarioLogado devolve null).
-  ativo           Boolean           @default(true)
-  criadoEm        DateTime          @default(now())
-  fabricas        UsuarioFabrica[]
-  eventos         EventoAuditoria[]
-  eventosRastreio EventoRastreio[]
-  chamadosAbertos Chamado[]         @relation("ChamadoAbertoPor")
-  eventosChamado  EventoChamado[]
-  interacoes      Interacao[]
-  proximosPassos  ProximoPasso[]
+  ativo                Boolean           @default(true)
+  criadoEm             DateTime          @default(now())
+  fabricas             UsuarioFabrica[]
+  eventos              EventoAuditoria[]
+  eventosRastreio      EventoRastreio[]
+  chamadosAbertos      Chamado[]         @relation("ChamadoAbertoPor")
+  eventosChamado       EventoChamado[]
+  interacoes           Interacao[]
+  proximosPassos       ProximoPasso[]
+  oportunidadesCriadas Oportunidade[]
 }
 
 model UsuarioFabrica {
@@ -358,33 +361,38 @@ enum OrigemInteracao {
 
 // Linha do tempo da empresa: o que aconteceu, com quem e por qual canal.
 model Interacao {
-  id        String          @id @default(cuid())
-  clienteId String
-  cliente   Cliente         @relation(fields: [clienteId], references: [id])
-  data      DateTime
-  canal     CanalInteracao
-  comQuem   String?
-  resumo    String
-  resultado String?
-  origem    OrigemInteracao @default(USUARIO)
-  usuarioId String?
-  usuario   Usuario?        @relation(fields: [usuarioId], references: [id])
-  criadoEm  DateTime        @default(now())
+  id             String          @id @default(cuid())
+  clienteId      String
+  cliente        Cliente         @relation(fields: [clienteId], references: [id])
+  data           DateTime
+  canal          CanalInteracao
+  comQuem        String?
+  resumo         String
+  resultado      String?
+  origem         OrigemInteracao @default(USUARIO)
+  usuarioId      String?
+  usuario        Usuario?        @relation(fields: [usuarioId], references: [id])
+  oportunidadeId String?
+  oportunidade   Oportunidade?   @relation(fields: [oportunidadeId], references: [id])
+  criadoEm       DateTime        @default(now())
 
   @@index([clienteId, data])
 }
 
 // Empresa em situação ativa (APROVADA a AVANCO) tem sempre um próximo passo aberto.
 model ProximoPasso {
-  id            String    @id @default(cuid())
-  clienteId     String
-  cliente       Cliente   @relation(fields: [clienteId], references: [id])
-  acao          String
-  prazo         DateTime  @db.Date
-  responsavelId String
-  responsavel   Usuario   @relation(fields: [responsavelId], references: [id])
-  concluidoEm   DateTime?
-  criadoEm      DateTime  @default(now())
+  id             String        @id @default(cuid())
+  clienteId      String
+  cliente        Cliente       @relation(fields: [clienteId], references: [id])
+  acao           String
+  prazo          DateTime      @db.Date
+  responsavelId  String
+  responsavel    Usuario       @relation(fields: [responsavelId], references: [id])
+  // Preenchido quando o passo é de uma oportunidade da carteira; vazio = passo da empresa (prospecção).
+  oportunidadeId String?
+  oportunidade   Oportunidade? @relation(fields: [oportunidadeId], references: [id])
+  concluidoEm    DateTime?
+  criadoEm       DateTime      @default(now())
 
   @@index([clienteId, concluidoEm])
   @@index([responsavelId, prazo])
@@ -414,4 +422,42 @@ model PedidoHistorico {
   criadoEm            DateTime            @default(now())
 
   @@index([clienteId, data])
+}
+
+enum EtapaOportunidade {
+  A_ABORDAR
+  ABORDADO
+  INTERESSE
+  COTACAO
+  GANHA
+  ADIADA
+  PERDIDA
+}
+
+enum TipoOportunidade {
+  VENDER_FABRICA_NOVA
+  REATIVAR
+}
+
+// Funil da carteira (ADR-013): um cliente + uma fábrica. Fica GANHA sozinha quando chega
+// pedido desse cliente nessa fábrica. Só existe para empresas já clientes.
+model Oportunidade {
+  id             String            @id @default(cuid())
+  clienteId      String
+  cliente        Cliente           @relation(fields: [clienteId], references: [id])
+  fabricaId      String
+  fabrica        Fabrica           @relation(fields: [fabricaId], references: [id])
+  tipo           TipoOportunidade
+  etapa          EtapaOportunidade @default(A_ABORDAR)
+  motivoPerda    String?
+  observacoes    String?
+  criadoPorId    String?
+  criadoPor      Usuario?          @relation(fields: [criadoPorId], references: [id])
+  criadoEm       DateTime          @default(now())
+  encerradaEm    DateTime?
+  proximosPassos ProximoPasso[]
+  interacoes     Interacao[]
+
+  @@index([clienteId, fabricaId])
+  @@index([etapa])
 }
