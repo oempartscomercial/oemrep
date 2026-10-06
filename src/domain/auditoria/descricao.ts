@@ -44,6 +44,8 @@ const CAMPOS: Record<string, string> = {
   perfil: "Perfil",
   ativo: "Ativo",
   valor: "Valor",
+  situacao: "Etapa",
+  naoContatar: "Não contatar",
 };
 
 const VALORES: Record<string, string> = {
@@ -57,6 +59,14 @@ const VALORES: Record<string, string> = {
   DESISTENCIA: "Desistência",
   MANUAL: "Manual",
   EXCEL: "Planilha",
+  CANDIDATA: "A avaliar",
+  APROVADA: "Aprovada",
+  EM_CONTATO: "Em contato",
+  CONVERSANDO: "Conversando",
+  AVANCO: "Avanço",
+  PAUSADA: "Pausada",
+  DESCARTADA: "Descartada",
+  CLIENTE: "Cliente",
   ADMIN: "Administrador",
   ANALISTA: "Analista",
   OPERADOR: "Operador",

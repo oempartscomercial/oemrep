@@ -14,3 +14,8 @@ export function filtroFabricasPermitidas(usuario: UsuarioAcesso): string[] | nul
   if (usuario.perfil === "ADMIN") return null;
   return usuario.fabricasIds;
 }
+
+// CRM (ADR-013 §6): ADMIN e ANALISTA veem todas as empresas e os funis; OPERADOR não vê o CRM.
+export function podeVerCrm(usuario: Pick<UsuarioAcesso, "perfil">): boolean {
+  return usuario.perfil !== "OPERADOR";
+}
