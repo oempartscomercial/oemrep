@@ -64,7 +64,7 @@ Menu: **Início · Funis · Empresas · Pedidos**, com **busca global** sempre v
      conversando → avanço. Pausada e descartada ficam fora do quadro, num filtro.
    - **Carteira:** o card é a oportunidade (**cliente + fábrica**, ex.: "Cyro: oferecer
      Bowden"). Reativar cliente parado é um tipo de card, não um terceiro funil. As
-     etapas ainda precisam ser validadas com o Rômulo.
+     etapas estão no ADR-013 e ainda precisam ser validadas com o Rômulo.
 3. **Empresas.** Lista única com filtros rápidos (Clientes · Prospecção · Todas), no
    lugar de submenu. Substitui Cadastros > Clientes. Os contatos ficam dentro da ficha,
    sem tela própria; a busca acha uma pessoa e abre a empresa dela.
@@ -128,7 +128,10 @@ de tarefas (estão no Início) e relatórios.
 
 ## Em aberto
 
-- Etapas do funil da carteira.
+- Validar com o Rômulo as etapas do funil da carteira (propostas e implementadas em
+  06/10/2026, ver ADR-013): A abordar → Abordado → Com interesse → Cotação, mais Ganha
+  (automática), Adiada e Perdida. O "Reativar" (cliente que parou de comprar) só entra como
+  criação manual até a planilha ser conciliada.
 - Provedor de WhatsApp (Z-API ou Evolution) e qual número usar para prospectar.
 - Se o Rômulo passa o dia no computador ou no celular. Isso define o peso do layout
   mobile.

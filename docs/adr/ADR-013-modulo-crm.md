@@ -39,9 +39,21 @@ viram migração depois do go-live.
    - `ProximoPasso`: ação, prazo e responsável (`Usuario`). **Empresa em situação ativa
      (de `APROVADA` a `AVANCO`) tem sempre um próximo passo aberto.**
    - `Oportunidade`: card do funil da carteira, um **cliente + uma fábrica**, com tipo
-     `VENDER_FABRICA_NOVA` ou `REATIVAR`. Fica ganha sozinha quando chega pedido daquele
-     cliente naquela fábrica. As fábricas que o cliente ainda não compra saem de
-     `ClienteFabrica`.
+     `VENDER_FABRICA_NOVA` (cliente ainda não compra a fábrica) ou `REATIVAR` (já comprou).
+     Só existe para quem já é `CLIENTE`, e só uma aberta por cliente × fábrica. Fica ganha
+     sozinha quando chega pedido daquele cliente naquela fábrica. As fábricas que o cliente
+     ainda não compra saem de `ClienteFabrica`.
+   - **Etapas da carteira** (propostas em 06/10/2026, a validar com o Rômulo): `A_ABORDAR`
+     (ideia, ninguém falou) → `ABORDADO` (falou, espera resposta) → `INTERESSE` (pediu
+     catálogo, tabela ou conversa) → `COTACAO` (cotação enviada, espera decisão). Fora do
+     quadro: `GANHA` (só automática), `ADIADA` (pede data de retomada) e `PERDIDA` (pede
+     motivo; pode reabrir). Etapa em andamento (`ABORDADO` a `COTACAO`) exige próximo passo
+     com data e responsável, como no funil de prospecção. O passo e a linha do tempo da
+     oportunidade são dela (`oportunidadeId`) e não se misturam com os da empresa.
+   - **Sugestão, não previsão.** A tela lista "fábricas que o cliente ainda não compra",
+     que é fato do cadastro. Nada de inferir recompra, churn ou venda perdida só da
+     planilha de 2026 (pasta `rep/carteira`). A rede `FILIAL-xx` fica fora das sugestões
+     até o Rômulo dizer quem são.
 4. **Dois funis com arraste.** O outbound usa a empresa como card; a carteira usa a
    oportunidade.
    - Soltar o card numa etapa ativa exige próximo passo com data, e cancelar devolve o

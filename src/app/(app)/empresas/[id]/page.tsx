@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Globe, MapPin, Pencil } from "lucide-react";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarFicha, listarResponsaveis } from "../queries";
+import { prisma } from "@/lib/prisma";
 import { PageContainer } from "@/components/layouts/page-container";
 import { Botao } from "@/components/patterns/botao";
 import { Selo, StatusBadge } from "@/components/patterns/status-badge";
@@ -11,6 +12,7 @@ import { SeloSituacao } from "@/components/crm/selo-situacao";
 import { descreverPrazo, formatarDia, hojeEmSaoPaulo, situacaoDoPrazo } from "@/domain/crm/prazo";
 import { cn } from "@/lib/utils";
 import { FichaAcoes } from "./ficha-acoes";
+import { OportunidadesFicha } from "./oportunidades-ficha";
 
 const CANAL: Record<string, string> = { WHATSAPP: "WhatsApp", TELEFONE: "Ligação", EMAIL: "E-mail", VISITA: "Visita", REUNIAO: "Reunião", PESQUISA: "Pesquisa", OUTRO: "Anotação", LINKEDIN: "LinkedIn" };
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -28,11 +30,15 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   const usuario = await obterUsuarioLogado();
   if (!usuario) return null; // o layout do CRM já mostra a sessão expirada
-  const [ficha, responsaveis] = await Promise.all([buscarFicha(id, usuario), listarResponsaveis()]);
+  const [ficha, responsaveis, fabricasAtivas] = await Promise.all([
+    buscarFicha(id, usuario),
+    listarResponsaveis(),
+    prisma.fabrica.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
+  ]);
   if (!ficha) notFound();
   const { empresa, historico } = ficha;
   const hoje = hojeEmSaoPaulo();
-  const passo = empresa.proximosPassos[0] ?? null;
+  const passo = empresa.proximosPassos.find((p) => !p.oportunidadeId) ?? null;
   const prazo = passo?.prazo.toISOString().slice(0, 10);
   const atrasado = prazo ? situacaoDoPrazo(prazo, hoje) === "atrasado" : false;
 
@@ -40,7 +46,7 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
     ...empresa.interacoes.map((i) => ({
       id: `i-${i.id}`,
       quando: i.data.getTime(),
-      titulo: `${CANAL[i.canal] ?? i.canal}${i.comQuem ? ` · ${i.comQuem}` : ""}`,
+      titulo: `${CANAL[i.canal] ?? i.canal}${i.comQuem ? ` · ${i.comQuem}` : ""}${i.oportunidade ? ` · ${i.oportunidade.fabrica.nome}` : ""}`,
       descricao: [i.resumo, i.resultado && `Resultado: ${i.resultado}`].filter(Boolean).join(" — "),
       data: i.data.toLocaleDateString("pt-BR"),
       autor: i.origem === "USUARIO" ? i.usuario?.nome : i.origem === "AUTOMACAO" ? "automação" : "importação",
@@ -105,6 +111,30 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
               </p>
             )}
           </section>
+
+          {empresa.situacao === "CLIENTE" && (
+            <OportunidadesFicha
+              clienteId={empresa.id}
+              nome={empresa.nomeFantasia}
+              fabricaIdsQueCompra={empresa.fabricas.map((cf) => cf.fabricaId)}
+              fabricas={fabricasAtivas}
+              responsaveis={responsaveis}
+              usuarioId={usuario.id}
+              oportunidades={empresa.oportunidades.map((o) => {
+                const p = empresa.proximosPassos.find((x) => x.oportunidadeId === o.id);
+                const prazoOp = p?.prazo.toISOString().slice(0, 10);
+                return {
+                  id: o.id,
+                  fabrica: o.fabrica.nome,
+                  tipo: o.tipo,
+                  etapa: o.etapa,
+                  motivoPerda: o.motivoPerda,
+                  passoId: p?.id ?? null,
+                  passo: p && prazoOp ? { acao: p.acao, quando: `${descreverPrazo(prazoOp, hoje)} · ${formatarDia(prazoOp)}`, atrasado: situacaoDoPrazo(prazoOp, hoje) === "atrasado", responsavel: p.responsavel.nome } : null,
+                };
+              })}
+            />
+          )}
 
           <Bloco titulo="Linha do tempo">
             {eventos.length > 0 ? <Timeline eventos={eventos} /> : <p className="text-sm text-muted-foreground">Ainda não há nada registrado.</p>}

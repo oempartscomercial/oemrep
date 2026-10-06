@@ -67,7 +67,7 @@ export function FichaAcoes({ clienteId, nome, situacao, passoAbertoId, responsav
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {DESTINOS.filter((d) => d !== situacao).map((d) => (
-              <DropdownMenuItem key={d} onSelect={() => setMovimento({ clienteId, nome, de: situacao, para: d })}>
+              <DropdownMenuItem key={d} onSelect={() => setMovimento({ id: clienteId, nome, de: situacao, para: d })}>
                 {ROTULO_SITUACAO[d]}
               </DropdownMenuItem>
             ))}
@@ -92,9 +92,10 @@ export function FichaAcoes({ clienteId, nome, situacao, passoAbertoId, responsav
   );
 }
 
-function DialogoContato({
+export function DialogoContato({
   clienteId,
   nome,
+  oportunidadeId = null,
   exigePasso,
   responsaveis,
   usuarioId,
@@ -102,6 +103,7 @@ function DialogoContato({
 }: {
   clienteId: string;
   nome: string;
+  oportunidadeId?: string | null;
   exigePasso: boolean;
   responsaveis: Responsavel[];
   usuarioId: string;
@@ -118,7 +120,7 @@ function DialogoContato({
 
   async function salvar() {
     setSalvando(true);
-    const r = await registrarInteracao({ clienteId, canal, resumo, comQuem, resultado, proximoPasso: exigePasso || comPasso ? passo : null });
+    const r = await registrarInteracao({ clienteId, canal, resumo, comQuem, resultado, oportunidadeId, proximoPasso: exigePasso || comPasso ? passo : null });
     setSalvando(false);
     if (r.erros.length) return setErros(r.erros);
     aoFechar();

@@ -70,8 +70,9 @@ export async function buscarFicha(id: string, usuario: UsuarioSessao) {
     include: {
       fabricas: { include: { fabrica: true } },
       contatos: { orderBy: { criadoEm: "asc" } },
-      interacoes: { orderBy: { data: "desc" }, take: 100, include: { usuario: true } },
+      interacoes: { orderBy: { data: "desc" }, take: 100, include: { usuario: true, oportunidade: { include: { fabrica: true } } } },
       proximosPassos: { where: { concluidoEm: null }, orderBy: { prazo: "asc" }, include: { responsavel: true } },
+      oportunidades: { orderBy: { criadoEm: "desc" }, include: { fabrica: true } },
       pedidos: {
         where: filtroFabrica,
         orderBy: { criadoEm: "desc" },

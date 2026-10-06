@@ -122,7 +122,7 @@ export async function buscarTarefasCrm(usuario: UsuarioSessao): Promise<TarefasC
       where: { responsavelId: usuario.id, concluidoEm: null, prazo: { lte: new Date(`${hoje}T00:00:00Z`) } },
       orderBy: { prazo: "asc" },
       take: 10,
-      include: { cliente: true },
+      include: { cliente: true, oportunidade: { include: { fabrica: true } } },
     }),
     prisma.cliente.count({ where: { situacao: "CANDIDATA" } }),
   ]);
@@ -131,7 +131,7 @@ export async function buscarTarefasCrm(usuario: UsuarioSessao): Promise<TarefasC
     passos: passos.map((p) => ({
       id: p.id,
       empresaId: p.clienteId,
-      empresa: p.cliente.nomeFantasia,
+      empresa: p.oportunidade ? `${p.cliente.nomeFantasia} · ${p.oportunidade.fabrica.nome}` : p.cliente.nomeFantasia,
       acao: p.acao,
       prazo: p.prazo.toISOString().slice(0, 10),
     })),
