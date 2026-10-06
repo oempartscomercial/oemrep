@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import type { PerfilUsuario } from "./authz";
+import { loginDispensado } from "./auth-guard";
 
 export type UsuarioSessao = {
   id: string;
@@ -32,7 +33,7 @@ export async function obterUsuarioLogado(): Promise<UsuarioSessao | null> {
   // Usar uma linha real (e não uma sessão fictícia) mantém válidos o escopo por
   // fábrica (ADR-009) e as FKs de auditoria. Em build de produção o Next substitui
   // NODE_ENV por "production" e este bloco vira código morto.
-  if (process.env.SKIP_AUTH === "true" && process.env.NODE_ENV !== "production") {
+  if (loginDispensado(process.env)) {
     const email = process.env.SKIP_AUTH_EMAIL;
     if (!email) return null;
 

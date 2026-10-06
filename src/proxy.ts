@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { rotaProtegida } from "@/lib/auth-guard";
+import { rotaProtegida, loginDispensado } from "@/lib/auth-guard";
 
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next();
@@ -11,7 +11,7 @@ export async function proxy(request: NextRequest) {
   // Pular o redirect aqui não basta: as telas resolvem a sessão por conta própria.
   // Quem monta a sessão de dev é obterUsuarioLogado (src/lib/sessao.ts), a partir
   // de SKIP_AUTH_EMAIL — sem essa variável as telas ficam sem usuário.
-  if (process.env.SKIP_AUTH === "true") {
+  if (loginDispensado(process.env)) {
     return response;
   }
 
