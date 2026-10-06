@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { abrirChamado } from "../actions";
-import { Button } from "@/components/ui/buttons/button";
-import { Select } from "@/components/ui/select/select";
-import { Checkbox } from "@/components/ui/checkbox/checkbox";
-import { TextArea } from "@/components/ui/textarea/textarea";
+import { Botao } from "@/components/patterns/botao";
+import { CampoSelect, CampoTextarea } from "@/components/patterns/campo";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Motivo = { id: string; nome: string };
 type ItemDisponivel = {
@@ -38,33 +37,35 @@ export function ChamadoForm({
   }
 
   return (
-    <form action={handleSubmit} className="flex max-w-2xl flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
+    <form action={handleSubmit} className="flex max-w-xl flex-col gap-4">
       <input type="hidden" name="notaFiscalId" value={notaFiscalId} />
 
-      <Select name="motivoId" label="Motivo" placeholder="Selecione…" isRequired items={motivos.map((m) => ({ id: m.id, label: m.nome }))}>
-        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-      </Select>
+      <CampoSelect
+        name="motivoId"
+        rotulo="Motivo"
+        placeholder="Selecione…"
+        obrigatorio
+        opcoes={motivos.map((m) => ({ id: m.id, label: m.nome }))}
+      />
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium text-secondary">Itens afetados</legend>
+        <legend className="mb-1 text-sm font-medium">Itens afetados</legend>
         {itensDisponiveis.map((item) => (
-          <Checkbox
-            key={item.itemPedidoId}
-            name="itemPedidoId"
-            value={item.itemPedidoId}
-            label={`Pedido ${item.pedidoNumero} · ${item.referencia} — ${item.descricao}`}
-          />
+          <label key={item.itemPedidoId} className="flex items-start gap-2 text-sm">
+            <Checkbox name="itemPedidoId" value={item.itemPedidoId} className="mt-0.5" />
+            <span>{`Pedido ${item.pedidoNumero} · ${item.referencia} — ${item.descricao}`}</span>
+          </label>
         ))}
       </fieldset>
 
-      <TextArea name="observacao" label="Descrição da divergência" placeholder="Descreva o problema…" isRequired rows={4} />
+      <CampoTextarea name="observacao" rotulo="Descrição da divergência" placeholder="Descreva o problema…" obrigatorio rows={4} />
 
       {erros.length > 0 && (
-        <ul className="flex flex-col gap-1">{erros.map((e) => <li key={e} className="text-sm text-error-primary">{e}</li>)}</ul>
+        <ul className="flex flex-col gap-1">{erros.map((e) => <li key={e} className="text-sm text-destructive">{e}</li>)}</ul>
       )}
-      <div className="flex justify-end gap-3 border-t border-secondary pt-5">
-        <Button type="button" color="secondary" href="/divergencias">Cancelar</Button>
-        <Button type="submit" color="primary">Abrir chamado</Button>
+      <div className="flex gap-2">
+        <Botao type="submit" variante="primario">Abrir chamado</Botao>
+        <Botao type="button" variante="secundario" href="/divergencias">Cancelar</Botao>
       </div>
     </form>
   );

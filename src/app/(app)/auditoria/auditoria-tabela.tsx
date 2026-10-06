@@ -20,12 +20,12 @@ export function AuditoriaTabela({ eventos }: { eventos: EventoAuditoriaLinha[] }
       getRowId={(e) => e.id}
       vazio="Nenhum evento de auditoria no filtro selecionado."
       columns={[
-        { id: "quando", header: "Quando", isRowHeader: true, render: (e) => <span className="text-xs text-tertiary">{e.quando}</span> },
+        { id: "quando", header: "Quando", isRowHeader: true, render: (e) => <span className="text-xs text-muted-foreground">{e.quando}</span> },
         { id: "usuario", header: "Usuário", render: (e) => e.usuario },
         { id: "registro", header: "Registro", render: (e) => e.registro },
         { id: "campo", header: "Campo", render: (e) => e.campo },
-        { id: "de", header: "De", render: (e) => <span className="text-tertiary">{e.de}</span> },
-        { id: "para", header: "Para", render: (e) => <span className="font-medium text-primary">{e.para}</span> },
+        { id: "de", header: "De", render: (e) => <span className="text-muted-foreground">{e.de}</span> },
+        { id: "para", header: "Para", render: (e) => <span className="font-medium">{e.para}</span> },
       ]}
     />
   );

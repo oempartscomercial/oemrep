@@ -5,8 +5,8 @@ import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase";
 import { traduzirErroAuth } from "@/domain/auth/mensagens";
 import { AuthLayout } from "@/components/layouts/auth-layout";
-import { Button } from "@/components/ui/buttons/button";
-import { Input } from "@/components/ui/input/input";
+import { Botao } from "@/components/patterns/botao";
+import { CampoTexto } from "@/components/patterns/campo";
 
 export default function RecuperarSenhaPage() {
   const [email, setEmail] = useState("");
@@ -32,32 +32,32 @@ export default function RecuperarSenhaPage() {
   return (
     <AuthLayout titulo="Recuperar senha" subtitulo="Enviamos um link para você criar uma senha nova">
       {enviado ? (
-        <div className="flex flex-col gap-5">
-          <p className="text-sm text-secondary">
-            Se <span className="font-medium text-primary">{email}</span> estiver cadastrado, o link chega em alguns minutos.
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-foreground/80">
+            Se <span className="font-medium text-foreground">{email}</span> estiver cadastrado, o link chega em alguns minutos.
             Confira também a caixa de spam.
           </p>
-          <Link href="/login" className="text-center text-sm font-semibold text-brand-secondary hover:text-brand-secondary_hover">
+          <Link href="/login" className="text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
             Voltar para o login
           </Link>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <Input
-            isRequired
-            label="E-mail"
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <CampoTexto
+            obrigatorio
+            rotulo="E-mail"
             type="email"
             name="email"
             autoComplete="email"
             placeholder="voce@empresa.com.br"
             value={email}
-            onChange={setEmail}
+            onChange={(e) => setEmail(e.target.value)}
           />
-          {erro && <p className="text-sm text-error-primary">{erro}</p>}
-          <Button type="submit" color="primary" size="lg" isLoading={enviando} className="w-full">
+          {erro && <p className="text-sm text-destructive">{erro}</p>}
+          <Botao type="submit" variante="primario" carregando={enviando} className="w-full">
             Enviar link
-          </Button>
-          <Link href="/login" className="text-center text-sm font-semibold text-brand-secondary hover:text-brand-secondary_hover">
+          </Botao>
+          <Link href="/login" className="text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
             Voltar para o login
           </Link>
         </form>

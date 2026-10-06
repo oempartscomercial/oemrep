@@ -1,11 +1,15 @@
 "use client";
 
-import { Input } from "@/components/ui/input/input";
-import { Select } from "@/components/ui/select/select";
-import { Checkbox } from "@/components/ui/checkbox/checkbox";
+import { Campo, CampoSelect, CampoTexto } from "@/components/patterns/campo";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FormularioCadastro, type AcaoCadastro } from "../formulario";
 
 type Fabrica = { id: string; nome: string };
+
+const CONFIRMACOES = [
+  { id: "PRESUMIDA", label: "Confirmação presumida" },
+  { id: "AUTOMATICA", label: "Confirmação automática" },
+];
 
 export function FormularioCliente({
   titulo,
@@ -20,35 +24,33 @@ export function FormularioCliente({
 }) {
   return (
     <FormularioCadastro titulo={titulo} acao={acao} voltarPara="/cadastros/clientes">
-      <Input name="nomeFantasia" label="Nome fantasia" placeholder="Nome do cliente" isRequired defaultValue={inicial?.nomeFantasia} />
-      <Input
+      <CampoTexto name="nomeFantasia" rotulo="Nome fantasia" placeholder="Nome do cliente" obrigatorio defaultValue={inicial?.nomeFantasia} />
+      <CampoTexto
         name="cnpj"
-        label="CNPJ"
+        rotulo="CNPJ"
         placeholder="00.000.000/0000-00"
-        hint="Opcional. Se ficar em branco, é pedido na conferência da primeira nota fiscal."
+        dica="Opcional. Se ficar em branco, é pedido na conferência da primeira nota fiscal."
         defaultValue={inicial?.cnpj ?? undefined}
       />
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium text-secondary">Fábricas atendidas</legend>
-        {fabricas.map((f) => (
-          <Checkbox
-            key={f.id}
-            name="fabricasIds"
-            value={f.id}
-            label={f.nome}
-            defaultSelected={inicial?.fabricasIds.includes(f.id)}
-          />
-        ))}
-      </fieldset>
+      <Campo rotulo="Fábricas atendidas">
+        <div role="group" aria-label="Fábricas atendidas" className="flex flex-col gap-2">
+          {fabricas.map((f) => (
+            <label key={f.id} className="flex items-center gap-2 text-sm">
+              <Checkbox name="fabricasIds" value={f.id} defaultChecked={inicial?.fabricasIds.includes(f.id)} />
+              {f.nome}
+            </label>
+          ))}
+        </div>
+      </Campo>
 
       {!inicial && (
         <>
-          <Select name="tipoConfirmacaoEstoque" label="Confirmação de estoque" defaultSelectedKey="PRESUMIDA">
-            <Select.Item id="PRESUMIDA">Confirmação presumida</Select.Item>
-            <Select.Item id="AUTOMATICA">Confirmação automática</Select.Item>
-          </Select>
-          <Checkbox name="flagAcessoSistema" value="on" label="Tem acesso ao sistema interno da fábrica" />
+          <CampoSelect name="tipoConfirmacaoEstoque" rotulo="Confirmação de estoque" opcoes={CONFIRMACOES} valorPadrao="PRESUMIDA" />
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox name="flagAcessoSistema" value="on" />
+            Tem acesso ao sistema interno da fábrica
+          </label>
         </>
       )}
     </FormularioCadastro>

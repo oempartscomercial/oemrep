@@ -2,7 +2,8 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/buttons/button";
+import { Botao } from "@/components/patterns/botao";
+import { PageHeader } from "@/components/patterns/page-header";
 
 export type AcaoCadastro = (formData: FormData) => Promise<{ erros: string[] }>;
 
@@ -32,17 +33,19 @@ export function FormularioCadastro({
   }
 
   return (
-    <form action={handleSubmit} className="flex max-w-lg flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
-      <h1 className="text-lg font-semibold text-primary">{titulo}</h1>
-      {children}
-      {erros.length > 0 && (
-        <ul className="flex flex-col gap-1">{erros.map((e) => <li key={e} className="text-sm text-error-primary">{e}</li>)}</ul>
-      )}
-      <div className="flex justify-end gap-3 border-t border-secondary pt-5">
-        <Button type="button" color="secondary" href={voltarPara}>Cancelar</Button>
-        <Button type="submit" color="primary">Salvar</Button>
-      </div>
-    </form>
+    <>
+      <PageHeader titulo={titulo} />
+      <form action={handleSubmit} className="flex max-w-xl flex-col gap-4">
+        {children}
+        {erros.length > 0 && (
+          <ul className="flex flex-col gap-1">{erros.map((e) => <li key={e} className="text-sm text-destructive">{e}</li>)}</ul>
+        )}
+        <div className="flex gap-2">
+          <Botao type="submit" variante="primario">Salvar</Botao>
+          <Botao type="button" variante="secundario" href={voltarPara}>Cancelar</Botao>
+        </div>
+      </form>
+    </>
   );
 }
 
@@ -73,14 +76,14 @@ export function AlternarAtivo({
   }
 
   return (
-    <div className="flex max-w-lg flex-col gap-3 rounded-xl bg-primary p-6 ring-1 ring-secondary">
-      <h2 className="text-md font-semibold text-primary">{ativo ? "Desativar" : "Inativo"}</h2>
-      <p className="text-sm text-tertiary">{ativo ? efeitoAoDesativar : "Este cadastro está desativado."}</p>
-      {erro && <p className="text-sm text-error-primary">{erro}</p>}
+    <div className="flex max-w-xl flex-col gap-3 rounded-lg border bg-card p-4">
+      <h2 className="text-sm font-semibold">{ativo ? "Desativar" : "Inativo"}</h2>
+      <p className="text-sm text-muted-foreground">{ativo ? efeitoAoDesativar : "Este cadastro está desativado."}</p>
+      {erro && <p className="text-sm text-destructive">{erro}</p>}
       <div>
-        <Button color={ativo ? "secondary-destructive" : "secondary"} isLoading={enviando} onClick={alternar}>
+        <Botao type="button" variante={ativo ? "destrutivo" : "secundario"} carregando={enviando} onClick={alternar}>
           {ativo ? "Desativar" : "Reativar"}
-        </Button>
+        </Botao>
       </div>
     </div>
   );

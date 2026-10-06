@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { analisarHistorico, confirmarImportacaoHistorico } from "./actions";
 import type { LinhaHistorico } from "@/domain/historico/resolucao";
-import { Button } from "@/components/ui/buttons/button";
-import { FileUploadDropZone } from "@/components/application/file-upload/file-upload-base";
+import { Botao } from "@/components/patterns/botao";
+import { Campo } from "@/components/patterns/campo";
+import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/patterns/data-table";
 
 const MESES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -59,58 +60,60 @@ export function ImportarHistoricoForm() {
   return (
     <>
       {!linhas && (
-        <div className="flex max-w-2xl flex-col gap-5 rounded-xl bg-primary p-6 ring-1 ring-secondary">
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium text-primary">Planilha de pedidos recebidos</p>
-            <FileUploadDropZone accept=".xlsx" allowsMultiple={false} hint="Apenas .xlsx" onDropFiles={(f) => setPedidosFile(f[0] ?? null)} />
-            {pedidosFile && <p className="text-sm text-secondary">Selecionado: <span className="font-medium text-primary">{pedidosFile.name}</span></p>}
-          </div>
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium text-primary">Planilha de NFes emitidas</p>
-            <FileUploadDropZone accept=".xlsx" allowsMultiple={false} hint="Apenas .xlsx" onDropFiles={(f) => setNfeFile(f[0] ?? null)} />
-            {nfeFile && <p className="text-sm text-secondary">Selecionado: <span className="font-medium text-primary">{nfeFile.name}</span></p>}
-          </div>
-          {erro && <p className="text-sm text-error-primary">{erro}</p>}
+        <div className="flex max-w-xl flex-col gap-4">
+          <Campo rotulo="Planilha de pedidos recebidos" htmlFor="planilha-pedidos" dica="Apenas .xlsx">
+            <div className="rounded-lg border border-dashed p-6">
+              <Input id="planilha-pedidos" type="file" accept=".xlsx" onChange={(e) => setPedidosFile(e.target.files?.[0] ?? null)} />
+            </div>
+            {pedidosFile && <p className="text-sm text-foreground/80">Selecionado: <span className="font-medium text-foreground">{pedidosFile.name}</span></p>}
+          </Campo>
+          <Campo rotulo="Planilha de NFes emitidas" htmlFor="planilha-nfe" dica="Apenas .xlsx">
+            <div className="rounded-lg border border-dashed p-6">
+              <Input id="planilha-nfe" type="file" accept=".xlsx" onChange={(e) => setNfeFile(e.target.files?.[0] ?? null)} />
+            </div>
+            {nfeFile && <p className="text-sm text-foreground/80">Selecionado: <span className="font-medium text-foreground">{nfeFile.name}</span></p>}
+          </Campo>
+          {erro && <p className="text-sm text-destructive">{erro}</p>}
           <div>
-            <Button color="primary" isDisabled={!pedidosFile && !nfeFile} isLoading={analisando} onClick={handleAnalisar}>
+            <Botao type="button" variante="primario" disabled={!pedidosFile && !nfeFile} carregando={analisando} onClick={handleAnalisar}>
               Analisar planilhas
-            </Button>
+            </Botao>
           </div>
         </div>
       )}
 
       {linhas && (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
           {temPendencia && (
-            <div className="flex flex-col gap-2 rounded-xl bg-primary p-5 ring-1 ring-error-primary">
-              <p className="text-sm font-medium text-error-primary">Fábricas não cadastradas — cadastre-as antes de importar:</p>
-              <ul className="list-inside list-disc text-sm text-secondary">
+            <div className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-danger-soft p-4">
+              <p className="text-sm font-medium text-destructive">Fábricas não cadastradas — cadastre-as antes de importar:</p>
+              <ul className="list-inside list-disc text-sm text-foreground/80">
                 {pendencias.map((nome) => <li key={nome}>{nome}</li>)}
               </ul>
-              <Link href="/cadastros" className="text-sm text-brand-secondary hover:underline">Ir para Cadastros</Link>
+              <Link href="/cadastros" className="text-sm underline-offset-4 hover:underline">Ir para Cadastros</Link>
             </div>
           )}
 
           <DataTable<LinhaView>
             ariaLabel="Totais mensais a importar"
             titulo="Totais mensais"
-            contadorBadge={`${view.length} linhas`}
+            descricao={`${view.length} linhas`}
             data={view}
             getRowId={(l) => l._id}
             columns={[
-              { id: "periodo", header: "Período", isRowHeader: true, render: (l) => <span className="font-medium text-primary">{MESES[l.mes]}/{l.ano}</span> },
+              { id: "periodo", header: "Período", isRowHeader: true, render: (l) => <span className="font-medium">{MESES[l.mes]}/{l.ano}</span> },
               { id: "fabrica", header: "Fábrica", render: (l) => l.fabricaNome },
               { id: "tipo", header: "Tipo", render: (l) => (l.tipo === "PEDIDO" ? "Pedidos" : "NFes") },
-              { id: "valor", header: "Valor", render: (l) => brl(l.valor) },
+              { id: "valor", header: "Valor", numerica: true, render: (l) => brl(l.valor) },
             ]}
           />
 
-          {erro && <p className="text-sm text-error-primary">{erro}</p>}
-          <div className="flex justify-end gap-3">
-            <Button color="secondary" onClick={() => { setLinhas(null); setPendencias([]); }}>Escolher outros arquivos</Button>
-            <Button color="primary" isDisabled={temPendencia || view.length === 0} isLoading={confirmando} onClick={handleConfirmar}>
+          {erro && <p className="text-sm text-destructive">{erro}</p>}
+          <div className="flex justify-end gap-2">
+            <Botao type="button" variante="secundario" onClick={() => { setLinhas(null); setPendencias([]); }}>Escolher outros arquivos</Botao>
+            <Botao type="button" variante="primario" disabled={temPendencia || view.length === 0} carregando={confirmando} onClick={handleConfirmar}>
               Confirmar importação
-            </Button>
+            </Botao>
           </div>
         </div>
       )}

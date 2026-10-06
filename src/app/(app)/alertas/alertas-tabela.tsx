@@ -19,10 +19,10 @@ export function AlertasTabela({ alertas }: { alertas: AlertaLinha[] }) {
       rowHref={(a) => `/pedidos/${a.id}`}
       vazio="Nenhum pedido sem NFe fora do prazo. 🎉"
       columns={[
-        { id: "numero", header: "Pedido", isRowHeader: true, render: (a) => <span className="font-medium text-primary">{a.numero}</span> },
+        { id: "numero", header: "Pedido", isRowHeader: true, render: (a) => <span className="font-medium">{a.numero}</span> },
         { id: "fabrica", header: "Fábrica", render: (a) => a.fabrica },
         { id: "cliente", header: "Cliente", render: (a) => a.cliente },
-        { id: "dias", header: "Dias sem NFe", render: (a) => <span className="font-medium text-error-primary">{a.diasSemNfe}</span> },
+        { id: "dias", header: "Dias sem NFe", numerica: true, render: (a) => <span className="font-medium text-destructive">{a.diasSemNfe}</span> },
       ]}
     />
   );

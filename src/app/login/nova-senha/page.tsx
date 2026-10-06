@@ -6,8 +6,8 @@ import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase";
 import { traduzirErroAuth } from "@/domain/auth/mensagens";
 import { AuthLayout } from "@/components/layouts/auth-layout";
-import { Button } from "@/components/ui/buttons/button";
-import { Input } from "@/components/ui/input/input";
+import { Botao } from "@/components/patterns/botao";
+import { CampoTexto } from "@/components/patterns/campo";
 
 // Destino do link de recuperação. O Supabase devolve um `code` na URL, trocado aqui
 // por uma sessão; com ela a pessoa grava a senha nova e segue logada.
@@ -57,30 +57,30 @@ function NovaSenha() {
   return (
     <AuthLayout titulo="Criar senha nova">
       {erroLink ? (
-        <div className="flex flex-col gap-5">
-          <p className="text-sm text-error-primary">{erroLink}</p>
-          <Link href="/login/recuperar" className="text-center text-sm font-semibold text-brand-secondary hover:text-brand-secondary_hover">
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-destructive">{erroLink}</p>
+          <Link href="/login/recuperar" className="text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
             Pedir novo link
           </Link>
         </div>
       ) : !pronto ? (
-        <p className="text-center text-sm text-tertiary">Validando o link…</p>
+        <p className="text-center text-sm text-muted-foreground">Validando o link…</p>
       ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <Input isRequired label="Senha nova" type="password" name="senha" autoComplete="new-password" value={senha} onChange={setSenha} />
-          <Input
-            isRequired
-            label="Repita a senha"
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <CampoTexto obrigatorio rotulo="Senha nova" type="password" name="senha" autoComplete="new-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
+          <CampoTexto
+            obrigatorio
+            rotulo="Repita a senha"
             type="password"
             name="confirmacao"
             autoComplete="new-password"
             value={confirmacao}
-            onChange={setConfirmacao}
+            onChange={(e) => setConfirmacao(e.target.value)}
           />
-          {erro && <p className="text-sm text-error-primary">{erro}</p>}
-          <Button type="submit" color="primary" size="lg" isLoading={enviando} className="w-full">
+          {erro && <p className="text-sm text-destructive">{erro}</p>}
+          <Botao type="submit" variante="primario" carregando={enviando} className="w-full">
             Salvar senha
-          </Button>
+          </Botao>
         </form>
       )}
     </AuthLayout>

@@ -1,4 +1,4 @@
-import { Download01 } from "@untitledui/icons";
+import { Download } from "lucide-react";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarPedidosParaAlerta } from "./queries";
 import { pedidosSemNfeVencidos } from "@/domain/alerta/semNfe";
@@ -6,7 +6,7 @@ import { obterParametroNumero } from "@/lib/parametros";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
-import { Button } from "@/components/ui/buttons/button";
+import { Botao } from "@/components/patterns/botao";
 import { AlertasTabela, type AlertaLinha } from "./alertas-tabela";
 
 export default async function AlertasPage() {
@@ -36,7 +36,7 @@ export default async function AlertasPage() {
       <PageHeader
         titulo="Alertas"
         descricao={`Pedidos sem nota fiscal há mais de ${prazoDias} dias.`}
-        acoes={<Button color="secondary" href="/api/export/alertas" iconLeading={<Download01 />}>Exportar XLSX</Button>}
+        acoes={<Botao href="/api/export/alertas" icone={<Download />}>Exportar XLSX</Botao>}
       />
       <AlertasTabela alertas={linhas} />
     </PageContainer>

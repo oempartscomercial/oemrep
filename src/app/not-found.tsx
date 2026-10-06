@@ -1,12 +1,12 @@
 import { AuthLayout } from "@/components/layouts/auth-layout";
-import { Button } from "@/components/ui/buttons/button";
+import { Botao } from "@/components/patterns/botao";
 
 export default function NaoEncontrada() {
   return (
     <AuthLayout titulo="Página não encontrada" subtitulo="O endereço não existe ou o registro foi removido.">
-      <Button color="primary" href="/" className="w-full">
+      <Botao variante="primario" href="/" className="w-full">
         Voltar para o início
-      </Button>
+      </Botao>
     </AuthLayout>
   );
 }

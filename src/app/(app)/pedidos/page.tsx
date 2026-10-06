@@ -1,14 +1,14 @@
 import Link from "next/link";
-import { Download01, Plus, Upload01 } from "@untitledui/icons";
+import { Download, Plus, Upload } from "lucide-react";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarPedidosPermitidos } from "./queries";
 import { filtrarPedidos, type FiltroPedido } from "@/domain/pedido/filtro";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
-import { Button } from "@/components/ui/buttons/button";
+import { Botao } from "@/components/patterns/botao";
 import { PedidosTabela, type PedidoLinha } from "./pedidos-tabela";
-import { cx } from "@/utils/cx";
+import { cn } from "@/lib/utils";
 import { lerPagina, paginar, POR_PAGINA } from "@/domain/paginacao";
 import { Paginacao } from "@/components/patterns/paginacao";
 
@@ -60,33 +60,36 @@ export default async function PedidosPage({
         descricao="Todos os pedidos das fábricas que você acompanha."
         acoes={
           <>
-            <Button color="secondary" href={`/api/export/pedidos?filtro=${filtro}`} iconLeading={<Download01 />}>
+            <Botao variante="secundario" href={`/api/export/pedidos?filtro=${filtro}`} icone={<Download />}>
               Exportar XLSX
-            </Button>
-            <Button color="secondary" href="/pedidos/importar" iconLeading={<Upload01 />}>
+            </Botao>
+            <Botao variante="secundario" href="/pedidos/importar" icone={<Upload />}>
               Importar Excel
-            </Button>
-            <Button color="primary" href="/pedidos/novo" iconLeading={<Plus />}>
+            </Botao>
+            <Botao variante="primario" href="/pedidos/novo" icone={<Plus />}>
               Novo pedido
-            </Button>
+            </Botao>
           </>
         }
       />
 
-      <div className="flex flex-wrap gap-1 border-b border-secondary pb-3">
+      <nav aria-label="Situação dos pedidos" className="flex gap-1 border-b">
         {ABAS.map((aba) => (
           <Link
             key={aba.valor}
             href={`/pedidos?filtro=${aba.valor}`}
-            className={cx(
-              "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-              filtro === aba.valor ? "bg-brand-solid text-white" : "text-tertiary hover:bg-primary_hover",
+            aria-current={filtro === aba.valor ? "page" : undefined}
+            className={cn(
+              "-mb-px border-b-2 px-3 py-2 text-sm",
+              filtro === aba.valor
+                ? "border-foreground font-medium text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
             {aba.rotulo}
           </Link>
         ))}
-      </div>
+      </nav>
 
       <PedidosTabela pedidos={linhas} />
       <Paginacao pagina={pagina} total={total} porPagina={POR_PAGINA} caminho="/pedidos" params={{ filtro }} />

@@ -1,8 +1,7 @@
 "use client";
 
 import { DataTable } from "@/components/patterns/data-table";
-import { StatusBadge } from "@/components/patterns/status-badge";
-import { Badge } from "@/components/ui/badges/badges";
+import { Selo, StatusBadge } from "@/components/patterns/status-badge";
 
 export interface ChamadoLinha {
   id: string;
@@ -29,7 +28,7 @@ export function ChamadosTabela({ chamados, vazio }: { chamados: ChamadoLinha[]; 
       rowHref={(c) => `/divergencias/${c.id}`}
       vazio={vazio}
       columns={[
-        { id: "nfe", header: "NFe", isRowHeader: true, render: (c) => <span className="font-medium text-primary">{c.nfe}</span> },
+        { id: "nfe", header: "NFe", isRowHeader: true, render: (c) => <span className="font-medium">{c.nfe}</span> },
         { id: "motivo", header: "Motivo", render: (c) => c.motivo },
         {
           id: "estado",
@@ -37,7 +36,7 @@ export function ChamadosTabela({ chamados, vazio }: { chamados: ChamadoLinha[]; 
           render: (c) => (
             <div className="flex items-center gap-2">
               <StatusBadge tipo="chamado" valor={c.estado} />
-              {c.critico && <Badge color="error" type="pill-color" size="sm">Crítico</Badge>}
+              {c.critico && <Selo cor="error">Crítico</Selo>}
             </div>
           ),
         },
@@ -47,7 +46,7 @@ export function ChamadosTabela({ chamados, vazio }: { chamados: ChamadoLinha[]; 
           render: (c) => (
             <span title={new Date(c.ultimaAtualizacao).toLocaleString("pt-BR")}>
               {new Date(c.ultimaAtualizacao).toLocaleDateString("pt-BR")}{" "}
-              <span className="text-tertiary">({tempoDesde(c.ultimaAtualizacao)})</span>
+              <span className="text-muted-foreground">({tempoDesde(c.ultimaAtualizacao)})</span>
             </span>
           ),
         },

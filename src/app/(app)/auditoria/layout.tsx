@@ -7,7 +7,7 @@ export default async function AuditoriaLayout({ children }: { children: React.Re
   if (usuario && usuario.perfil === "OPERADOR") {
     return (
       <PageContainer>
-        <p className="text-sm text-error-primary">Acesso restrito a administradores e analistas.</p>
+        <p className="text-sm text-destructive">Acesso restrito a administradores e analistas.</p>
       </PageContainer>
     );
   }

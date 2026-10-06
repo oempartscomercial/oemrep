@@ -2,15 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle } from "@untitledui/icons";
+import { CircleCheck } from "lucide-react";
 import { analisarXmlNFe, confirmarBaixaNFe, type AnaliseNFe, type VinculosManuais } from "./actions";
 import { executarConfirmacaoBaixa } from "./confirmar";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
-import { Button } from "@/components/ui/buttons/button";
-import { Badge } from "@/components/ui/badges/badges";
-import { Select } from "@/components/ui/select/select";
-import { FileUploadDropZone } from "@/components/application/file-upload/file-upload-base";
+import { Botao } from "@/components/patterns/botao";
+import { Selo } from "@/components/patterns/status-badge";
+import { CampoSelect } from "@/components/patterns/campo";
+import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/patterns/data-table";
 
 type ConferenciaLinha = AnaliseNFe["conferencia"][number] & { _id: string; indice: number };
@@ -78,55 +78,60 @@ export default function ConferenciaNFePage() {
         descricao="Envie o XML da nota, revise os vínculos com os pedidos e as divergências, e confirme a baixa."
       />
 
-      <div className="flex max-w-2xl flex-col gap-4 rounded-xl bg-primary p-6 ring-1 ring-secondary">
-        <FileUploadDropZone
-          accept=".xml"
-          allowsMultiple={false}
-          hint="Apenas arquivos .xml"
-          onDropFiles={(files) => setArquivo(files[0] ?? null)}
-        />
-        {arquivo && <p className="text-sm text-secondary">Selecionado: <span className="font-medium text-primary">{arquivo.name}</span></p>}
-        {erro && <p className="text-sm text-error-primary">{erro}</p>}
+      <div className="flex max-w-2xl flex-col gap-4 rounded-lg border bg-card p-4">
+        <div className="flex flex-col gap-2 rounded-lg border border-dashed p-6">
+          <Input
+            type="file"
+            accept=".xml"
+            aria-label="Arquivo XML da NFe"
+            onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
+          />
+          <p className="text-xs text-muted-foreground">Apenas arquivos .xml</p>
+        </div>
+        {arquivo && (
+          <p className="text-sm text-foreground/80">
+            Selecionado: <span className="font-medium text-foreground">{arquivo.name}</span>
+          </p>
+        )}
+        {erro && <p className="text-sm text-destructive">{erro}</p>}
         <div>
-          <Button color="primary" isDisabled={!arquivo} isLoading={analisando} onClick={() => handleAnalisar()}>
+          <Botao variante="primario" disabled={!arquivo} carregando={analisando} onClick={() => handleAnalisar()}>
             Analisar
-          </Button>
+          </Botao>
         </div>
       </div>
 
       {analise && (
         <div className="flex flex-col gap-4">
-          <div className="rounded-xl bg-primary p-5 ring-1 ring-secondary">
-            <h2 className="text-lg font-semibold text-primary">NFe {analise.nfe.numero}</h2>
-            <p className="mt-1 text-sm text-tertiary">Destinatário: {analise.nfe.destinatarioCnpj}</p>
+          <div className="rounded-lg border bg-card p-4">
+            <h2 className="text-sm font-semibold">NFe {analise.nfe.numero}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Destinatário: {analise.nfe.destinatarioCnpj}</p>
             {!analise.fabricaId && (
-              <p className="mt-2 text-sm text-error-primary">A fábrica emitente desta NFe não está cadastrada no sistema.</p>
+              <p className="mt-2 text-sm text-destructive">A fábrica emitente desta NFe não está cadastrada no sistema.</p>
             )}
             {analise.fabricaId && !analise.clienteId && analise.candidatos.length === 0 && (
-              <p className="mt-2 text-sm text-error-primary">
+              <p className="mt-2 text-sm text-destructive">
                 Nenhuma empresa tem o CNPJ {analise.nfe.destinatarioCnpj}, e nenhuma empresa sem CNPJ tem pedido aberto nesta fábrica.
               </p>
             )}
             {analise.fabricaId && !analise.clienteId && analise.candidatos.length > 0 && (
               <div className="mt-4 max-w-md">
-                <Select
-                  label="Para qual empresa é esta nota?"
-                  hint={`Nenhuma empresa tem o CNPJ ${analise.nfe.destinatarioCnpj}. O CNPJ será gravado na empresa escolhida.`}
+                <CampoSelect
+                  name="empresaDaNota"
+                  rotulo="Para qual empresa é esta nota?"
+                  dica={`Nenhuma empresa tem o CNPJ ${analise.nfe.destinatarioCnpj}. O CNPJ será gravado na empresa escolhida.`}
                   placeholder="Escolha a empresa…"
-                  isDisabled={analisando}
-                  onSelectionChange={(key) => key && handleAnalisar(String(key))}
-                  items={analise.candidatos.map((c) => ({
-                    id: c.id,
-                    label: c.nome,
-                    supportingText: [c.cidade, c.uf].filter(Boolean).join("/") || undefined,
-                  }))}
-                >
-                  {(item) => <Select.Item id={item.id} supportingText={item.supportingText}>{item.label}</Select.Item>}
-                </Select>
+                  desabilitado={analisando}
+                  aoMudar={(id) => id && handleAnalisar(id)}
+                  opcoes={analise.candidatos.map((c) => {
+                    const local = [c.cidade, c.uf].filter(Boolean).join("/");
+                    return { id: c.id, label: local ? `${c.nome} — ${local}` : c.nome };
+                  })}
+                />
               </div>
             )}
             {analise.gravarCnpj && (
-              <p className="mt-2 text-sm text-secondary">
+              <p className="mt-2 text-sm text-foreground/80">
                 Ao confirmar, o CNPJ {analise.nfe.destinatarioCnpj} será gravado no cadastro da empresa.
               </p>
             )}
@@ -137,27 +142,25 @@ export default function ConferenciaNFePage() {
             data={linhas}
             getRowId={(r) => r._id}
             columns={[
-              { id: "referencia", header: "Referência", isRowHeader: true, render: (r) => <span className="font-medium text-primary">{r.itemNFe.referencia}</span> },
+              { id: "referencia", header: "Referência", isRowHeader: true, render: (r) => <span className="font-medium">{r.itemNFe.referencia}</span> },
               { id: "descricao", header: "Descrição", render: (r) => r.itemNFe.descricao },
-              { id: "qtd", header: "Qtd. NFe", render: (r) => r.itemNFe.quantidade },
-              { id: "valor", header: "Valor unit.", render: (r) => `R$ ${r.itemNFe.valorUnitario.toFixed(2)}` },
+              { id: "qtd", header: "Qtd. NFe", numerica: true, render: (r) => r.itemNFe.quantidade },
+              { id: "valor", header: "Valor unit.", numerica: true, render: (r) => `R$ ${r.itemNFe.valorUnitario.toFixed(2)}` },
               {
                 id: "vinculo",
                 header: "Baixa no pedido",
                 render: (r) =>
                   analise?.clienteId ? (
                     <div className="min-w-64">
-                      <Select
-                        aria-label={`Item de pedido para ${r.itemNFe.referencia}`}
-                        size="sm"
+                      <CampoSelect
+                        name={`vinculo-${r.indice}`}
                         placeholder="Sem item pendente"
-                        isDisabled={analisando || enviando}
-                        selectedKey={r.pendencia?.itemPedidoId ?? NAO_BAIXAR}
-                        onSelectionChange={(key) => key && trocarVinculo(r.indice, String(key))}
-                        items={opcoesVinculo}
-                      >
-                        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-                      </Select>
+                        desabilitado={analisando || enviando}
+                        ariaLabel={`Item de pedido para ${r.itemNFe.referencia}`}
+                        valor={r.pendencia?.itemPedidoId ?? NAO_BAIXAR}
+                        aoMudar={(id) => id && trocarVinculo(r.indice, id)}
+                        opcoes={opcoesVinculo}
+                      />
                     </div>
                   ) : (
                     "—"
@@ -168,11 +171,11 @@ export default function ConferenciaNFePage() {
                 header: "Divergências",
                 render: (r) =>
                   r.divergencias.length === 0 ? (
-                    <Badge color="success" type="pill-color" size="sm">OK</Badge>
+                    <Selo cor="success">OK</Selo>
                   ) : (
                     <div className="flex flex-col gap-0.5">
                       {r.divergencias.map((d) => (
-                        <span key={d} className="text-sm text-error-primary">{d}</span>
+                        <span key={d} className="text-sm text-destructive">{d}</span>
                       ))}
                     </div>
                   ),
@@ -181,9 +184,9 @@ export default function ConferenciaNFePage() {
           />
 
           <div className="flex justify-end">
-            <Button color="primary" iconLeading={CheckCircle} isLoading={enviando} isDisabled={cadastroIncompleto} onClick={handleConfirmar}>
+            <Botao variante="primario" icone={<CircleCheck />} carregando={enviando} disabled={cadastroIncompleto} onClick={handleConfirmar}>
               Confirmar baixa
-            </Button>
+            </Botao>
           </div>
         </div>
       )}

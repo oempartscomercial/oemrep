@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { registrarEventoChamado } from "../actions";
 import type { EstadoChamado } from "@/domain/chamado/estado";
 import { statusBadgeConfig } from "@/components/patterns/status-badge.config";
-import { Button } from "@/components/ui/buttons/button";
-import { Select } from "@/components/ui/select/select";
-import { TextArea } from "@/components/ui/textarea/textarea";
+import { Botao } from "@/components/patterns/botao";
+import { CampoSelect, CampoTextarea } from "@/components/patterns/campo";
 
 export function ChamadoEventoForm({
   chamadoId,
@@ -37,31 +36,31 @@ export function ChamadoEventoForm({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl bg-primary p-6 ring-1 ring-secondary">
-      <h2 className="text-lg font-semibold text-primary">Registrar andamento</h2>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <Select
-          label="Novo estado"
+    <div className="flex flex-col gap-4 rounded-lg border bg-card p-4">
+      <h2 className="text-sm font-semibold">Registrar andamento</h2>
+      <form onSubmit={handleSubmit} className="flex max-w-xl flex-col gap-4">
+        <CampoSelect
+          name="estado"
+          rotulo="Novo estado"
           className="sm:w-64"
-          selectedKey={estado}
-          onSelectionChange={(key) => setEstado(key as EstadoChamado)}
-          items={proximos.map((s) => ({ id: s, label: statusBadgeConfig("chamado", s).label }))}
-        >
-          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-        </Select>
-        <TextArea
-          label="Observação"
+          valor={estado}
+          aoMudar={(valor) => setEstado(valor as EstadoChamado)}
+          opcoes={proximos.map((s) => ({ id: s, label: statusBadgeConfig("chamado", s).label }))}
+        />
+        <CampoTextarea
+          name="observacao"
+          rotulo="Observação"
           placeholder="Descreva o andamento (obrigatório)"
           value={observacao}
-          onChange={setObservacao}
-          isRequired
+          onChange={(e) => setObservacao(e.target.value)}
+          obrigatorio
           rows={2}
         />
         <div>
-          <Button type="submit" color="primary" isLoading={enviando}>Registrar</Button>
+          <Botao type="submit" variante="primario" carregando={enviando}>Registrar</Botao>
         </div>
       </form>
-      {erro && <p className="text-sm text-error-primary">{erro}</p>}
+      {erro && <p className="text-sm text-destructive">{erro}</p>}
     </div>
   );
 }

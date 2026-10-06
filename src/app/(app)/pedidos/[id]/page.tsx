@@ -7,7 +7,7 @@ import { StatusBadge } from "@/components/patterns/status-badge";
 import { carregarNomesAuditoria } from "@/lib/auditoria-nomes";
 import { descreverEvento } from "@/domain/auditoria/descricao";
 import { etapasDoPedido } from "@/domain/pedido/etapas";
-import { cx } from "@/utils/cx";
+import { cn } from "@/lib/utils";
 import { PedidoAcoes } from "./pedido-acoes";
 import { PedidoDetalheTabs, type EventoLinha, type ItemLinha, type NotaLinha } from "./pedido-detalhe-tabs";
 
@@ -79,30 +79,30 @@ export default async function DetalhePedidoPage({ params }: { params: Promise<{ 
 
   return (
     <PageContainer>
-      <div className="flex flex-col gap-4 border-b border-secondary pb-5 md:flex-row md:items-start md:justify-between">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <h1 className="text-display-xs font-semibold text-primary">Pedido {pedido.semNumero ? "S/N" : pedido.numero}</h1>
-            <StatusBadge tipo="pedido" valor={pedido.estado} size="md" />
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-semibold tracking-tight">Pedido {pedido.semNumero ? "S/N" : pedido.numero}</h1>
+            <StatusBadge tipo="pedido" valor={pedido.estado} />
           </div>
-          <p className="text-md text-tertiary">
+          <p className="mt-0.5 text-sm text-muted-foreground">
             {pedido.fabrica.nome} · {pedido.cliente.nomeFantasia}
           </p>
         </div>
         <PedidoAcoes pedidoId={pedido.id} estado={pedido.estado} />
       </div>
 
-      <ol aria-label="Etapas do pedido" className="flex flex-wrap items-center gap-2 text-sm">
+      <ol aria-label="Etapas do pedido" className="flex flex-wrap items-center gap-2 text-xs">
         {etapasDoPedido(pedido.estado).map((etapa, i) => (
           <li key={etapa.rotulo} className="flex items-center gap-2">
-            {i > 0 && <span className="h-px w-6 bg-border-secondary" aria-hidden />}
+            {i > 0 && <span className="h-px w-5 bg-border" aria-hidden />}
             <span
               aria-current={etapa.situacao === "atual" ? "step" : undefined}
-              className={cx(
-                "rounded-full px-3 py-1 font-medium ring-1",
-                etapa.situacao === "atual" && "bg-brand-solid text-white ring-transparent",
-                etapa.situacao === "feita" && "text-secondary ring-secondary",
-                etapa.situacao === "futura" && "text-quaternary ring-secondary",
+              className={cn(
+                "rounded-md border px-2 py-0.5 font-medium",
+                etapa.situacao === "atual" && "border-transparent bg-foreground text-background",
+                etapa.situacao === "feita" && "text-foreground/80",
+                etapa.situacao === "futura" && "text-muted-foreground",
               )}
             >
               {etapa.rotulo}

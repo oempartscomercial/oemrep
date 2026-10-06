@@ -1,4 +1,4 @@
-import { Download01 } from "@untitledui/icons";
+import { Download } from "lucide-react";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import {
   buscarEventosAuditoria,
@@ -11,7 +11,7 @@ import { descreverEvento, nomeEntidade } from "@/domain/auditoria/descricao";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
-import { Button } from "@/components/ui/buttons/button";
+import { Botao } from "@/components/patterns/botao";
 import { AuditoriaFiltros } from "./auditoria-filtros";
 import { AuditoriaTabela, type EventoAuditoriaLinha } from "./auditoria-tabela";
 
@@ -51,7 +51,7 @@ export default async function AuditoriaPage({
       <PageHeader
         titulo="Auditoria"
         descricao="Histórico de alterações em pedidos, notas fiscais e cadastros."
-        acoes={<Button color="secondary" href={`/api/export/auditoria?${qs.toString()}`} iconLeading={<Download01 />}>Exportar XLSX</Button>}
+        acoes={<Botao href={`/api/export/auditoria?${qs.toString()}`} icone={<Download />}>Exportar XLSX</Botao>}
       />
 
       <AuditoriaFiltros
@@ -63,7 +63,7 @@ export default async function AuditoriaPage({
       <AuditoriaTabela eventos={linhas} />
 
       {eventos.length === AUDITORIA_LIMITE && (
-        <p className="text-xs text-quaternary">
+        <p className="text-xs text-muted-foreground">
           Mostrando os {AUDITORIA_LIMITE} eventos mais recentes. Refine o período ou os filtros para ver o restante.
         </p>
       )}

@@ -9,7 +9,7 @@ export default async function ImportarHistoricoPage() {
   if (!usuario || usuario.perfil !== "ADMIN") {
     return (
       <PageContainer>
-        <p className="text-sm text-error-primary">Acesso restrito a administradores.</p>
+        <p className="text-sm text-destructive">Acesso restrito a administradores.</p>
       </PageContainer>
     );
   }

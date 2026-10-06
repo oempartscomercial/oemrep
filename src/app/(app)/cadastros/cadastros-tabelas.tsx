@@ -1,7 +1,7 @@
 "use client";
 
 import { DataTable } from "@/components/patterns/data-table";
-import { Badge } from "@/components/ui/badges/badges";
+import { Selo } from "@/components/patterns/status-badge";
 
 export interface FabricaLinha {
   id: string;
@@ -25,19 +25,15 @@ export interface UsuarioLinha {
 }
 
 function Situacao({ ativo }: { ativo: boolean }) {
-  return ativo ? (
-    <Badge color="success" type="pill-color" size="sm">Ativo</Badge>
-  ) : (
-    <Badge color="gray" type="pill-color" size="sm">Inativo</Badge>
-  );
+  return ativo ? <Selo cor="success">Ativo</Selo> : <Selo cor="gray">Inativo</Selo>;
 }
 
 function ListaFabricas({ fabricas }: { fabricas: string[] }) {
-  if (fabricas.length === 0) return <span className="text-tertiary">—</span>;
+  if (fabricas.length === 0) return <span className="text-muted-foreground">—</span>;
   return (
     <div className="flex flex-wrap gap-1">
       {fabricas.map((f) => (
-        <Badge key={f} color="gray" type="pill-color" size="sm">{f}</Badge>
+        <Selo key={f} cor="gray">{f}</Selo>
       ))}
     </div>
   );
@@ -52,7 +48,7 @@ export function FabricasTabela({ fabricas }: { fabricas: FabricaLinha[] }) {
       rowHref={(f) => `/cadastros/fabricas/${f.id}`}
       vazio="Nenhuma fábrica cadastrada."
       columns={[
-        { id: "nome", header: "Nome", isRowHeader: true, render: (f) => <span className="font-medium text-primary">{f.nome}</span> },
+        { id: "nome", header: "Nome", isRowHeader: true, render: (f) => <span className="font-medium">{f.nome}</span> },
         { id: "cnpj", header: "CNPJ", render: (f) => f.cnpj },
         { id: "situacao", header: "Situação", render: (f) => <Situacao ativo={f.ativo} /> },
       ]}
@@ -69,8 +65,8 @@ export function ClientesTabela({ clientes }: { clientes: ClienteLinha[] }) {
       rowHref={(c) => `/cadastros/clientes/${c.id}`}
       vazio="Nenhum cliente cadastrado."
       columns={[
-        { id: "nome", header: "Nome fantasia", isRowHeader: true, render: (c) => <span className="font-medium text-primary">{c.nomeFantasia}</span> },
-        { id: "cnpj", header: "CNPJ", render: (c) => c.cnpj ?? <span className="text-tertiary">—</span> },
+        { id: "nome", header: "Nome fantasia", isRowHeader: true, render: (c) => <span className="font-medium">{c.nomeFantasia}</span> },
+        { id: "cnpj", header: "CNPJ", render: (c) => c.cnpj ?? <span className="text-muted-foreground">—</span> },
         { id: "fabricas", header: "Fábricas", render: (c) => <ListaFabricas fabricas={c.fabricas} /> },
       ]}
     />
@@ -86,9 +82,9 @@ export function UsuariosTabela({ usuarios }: { usuarios: UsuarioLinha[] }) {
       rowHref={(u) => `/cadastros/usuarios/${u.id}`}
       vazio="Nenhum usuário cadastrado."
       columns={[
-        { id: "nome", header: "Nome", isRowHeader: true, render: (u) => <span className="font-medium text-primary">{u.nome}</span> },
+        { id: "nome", header: "Nome", isRowHeader: true, render: (u) => <span className="font-medium">{u.nome}</span> },
         { id: "email", header: "E-mail", render: (u) => u.email },
-        { id: "perfil", header: "Perfil", render: (u) => <Badge color={u.perfil === "ADMIN" ? "brand" : "gray"} type="pill-color" size="sm">{u.perfil}</Badge> },
+        { id: "perfil", header: "Perfil", render: (u) => <Selo cor={u.perfil === "ADMIN" ? "blue" : "gray"}>{u.perfil}</Selo> },
         { id: "fabricas", header: "Fábricas", render: (u) => <ListaFabricas fabricas={u.fabricas} /> },
         { id: "situacao", header: "Situação", render: (u) => <Situacao ativo={u.ativo} /> },
       ]}

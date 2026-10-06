@@ -1,51 +1,136 @@
 @import "tailwindcss";
-@import "../styles/theme.css";
-@import "../styles/typography.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-@plugin "@tailwindcss/typography";
-@plugin "tailwindcss-react-aria-components";
-@plugin "tailwindcss-animate";
+/* Direção visual tipo Attio (ADR-014): cinza neutro, bordas finas, raio pequeno,
+   texto de 13–14px. Vermelho da OEM só como destaque e alerta. */
 
-@custom-variant label (& [data-label]);
-@custom-variant focus-input-within (&:has(input:focus));
+@custom-variant dark (&:is(.dark *));
 
-@utility scrollbar-hide {
-    /* Webkit (Chrome, Safari, Opera) */
-    &::-webkit-scrollbar {
-        display: none;
-        -webkit-appearance: none;
+@theme inline {
+    --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    --font-heading: var(--font-sans);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-brand: var(--brand);
+    --color-success: var(--success);
+    --color-success-soft: var(--success-soft);
+    --color-warning: var(--warning);
+    --color-warning-soft: var(--warning-soft);
+    --color-info: var(--info);
+    --color-info-soft: var(--info-soft);
+    --color-danger-soft: var(--danger-soft);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    --radius-sm: calc(var(--radius) - 2px);
+    --radius-md: var(--radius);
+    --radius-lg: calc(var(--radius) + 2px);
+    --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+    --radius: 0.375rem;
+
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.21 0.005 285);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.21 0.005 285);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.21 0.005 285);
+    --primary: oklch(0.21 0.005 285);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.967 0.002 286);
+    --secondary-foreground: oklch(0.21 0.005 285);
+    --muted: oklch(0.967 0.002 286);
+    --muted-foreground: oklch(0.552 0.01 286);
+    --accent: oklch(0.955 0.003 286);
+    --accent-foreground: oklch(0.21 0.005 285);
+    --destructive: oklch(0.577 0.215 27.3);
+    --border: oklch(0.925 0.004 286);
+    --input: oklch(0.905 0.005 286);
+    --ring: oklch(0.7 0.01 286);
+
+    /* Vermelho da OEM (logo): destaque pontual, nunca fundo de área grande. */
+    --brand: oklch(0.577 0.215 27.3);
+
+    /* Estados de domínio (badges, indicadores). */
+    --success: oklch(0.527 0.13 150);
+    --success-soft: oklch(0.962 0.04 150);
+    --warning: oklch(0.55 0.13 70);
+    --warning-soft: oklch(0.966 0.05 85);
+    --info: oklch(0.5 0.15 255);
+    --info-soft: oklch(0.96 0.025 255);
+    --danger-soft: oklch(0.966 0.03 25);
+
+    --sidebar: oklch(0.982 0.002 286);
+    --sidebar-foreground: oklch(0.35 0.01 286);
+    --sidebar-primary: oklch(0.21 0.005 285);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.94 0.004 286);
+    --sidebar-accent-foreground: oklch(0.21 0.005 285);
+    --sidebar-border: oklch(0.925 0.004 286);
+    --sidebar-ring: oklch(0.7 0.01 286);
+
+    --chart-1: oklch(0.21 0.005 285);
+    --chart-2: oklch(0.577 0.215 27.3);
+    --chart-3: oklch(0.55 0.01 286);
+    --chart-4: oklch(0.75 0.008 286);
+    --chart-5: oklch(0.88 0.005 286);
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
     }
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    html {
+        @apply font-sans;
+        font-size: 14px;
+        -webkit-font-smoothing: antialiased;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+    /* Números de tabela e KPIs alinham melhor com algarismos tabulares. */
+    table,
+    .tabular {
+        font-variant-numeric: tabular-nums;
+    }
 }
 
-@utility transition-inherit-all {
-    transition-property: inherit;
-    transition-duration: inherit;
-    transition-timing-function: inherit;
-}
-
-html,
-body {
-    font-family: var(--font-body);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    -webkit-font-variant-ligatures: contextual;
-    font-variant-ligatures: contextual;
-    font-kerning: normal;
-}
-
-/* Esconde as setas padrão dos inputs number. */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
 input[type="number"] {
     -moz-appearance: textfield;
-}
-
-/* Esconde o botão de limpar (X) dos inputs de busca. */
-input[type="search"]::-webkit-search-cancel-button {
-    -webkit-appearance: none;
 }

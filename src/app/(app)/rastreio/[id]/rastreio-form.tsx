@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { avancarRastreio } from "../actions";
 import type { StatusRastreio } from "@/domain/nfe/rastreio";
 import { statusBadgeConfig } from "@/components/patterns/status-badge.config";
-import { Button } from "@/components/ui/buttons/button";
-import { Input } from "@/components/ui/input/input";
-import { Select } from "@/components/ui/select/select";
+import { Botao } from "@/components/patterns/botao";
+import { CampoSelect, CampoTexto } from "@/components/patterns/campo";
 
 export function RastreioForm({
   notaFiscalId,
@@ -38,23 +37,37 @@ export function RastreioForm({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl bg-primary p-6 ring-1 ring-secondary">
-      <h2 className="text-lg font-semibold text-primary">Atualizar status</h2>
+    <div className="flex flex-col gap-4 rounded-lg border bg-card p-4">
+      <h2 className="text-sm font-semibold">Atualizar status</h2>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <Select
-          label="Novo status"
+        <CampoSelect
+          name="status"
+          rotulo="Novo status"
           className="sm:w-52"
-          selectedKey={status}
-          onSelectionChange={(key) => setStatus(key as StatusRastreio)}
-          items={proximos.map((s) => ({ id: s, label: statusBadgeConfig("nfe", s).label }))}
-        >
-          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-        </Select>
-        <Input type="date" label="Data do evento" value={dataEvento} onChange={setDataEvento} isRequired className="sm:w-44" />
-        <Input label="Observação" placeholder="Opcional" value={observacao} onChange={setObservacao} className="sm:flex-1" />
-        <Button type="submit" color="primary" isLoading={enviando}>Registrar</Button>
+          valor={status}
+          aoMudar={(valor) => setStatus(valor as StatusRastreio)}
+          opcoes={proximos.map((s) => ({ id: s, label: statusBadgeConfig("nfe", s).label }))}
+        />
+        <CampoTexto
+          name="dataEvento"
+          type="date"
+          rotulo="Data do evento"
+          value={dataEvento}
+          onChange={(e) => setDataEvento(e.target.value)}
+          obrigatorio
+          className="sm:w-44"
+        />
+        <CampoTexto
+          name="observacao"
+          rotulo="Observação"
+          placeholder="Opcional"
+          value={observacao}
+          onChange={(e) => setObservacao(e.target.value)}
+          className="sm:flex-1"
+        />
+        <Botao type="submit" variante="primario" carregando={enviando}>Registrar</Botao>
       </form>
-      {erro && <p className="text-sm text-error-primary">{erro}</p>}
+      {erro && <p className="text-sm text-destructive">{erro}</p>}
     </div>
   );
 }

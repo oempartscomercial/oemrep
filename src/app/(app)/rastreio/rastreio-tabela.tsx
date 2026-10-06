@@ -19,8 +19,8 @@ export function RastreioTabela({ notas }: { notas: NotaRastreioLinha[] }) {
       rowHref={(n) => `/rastreio/${n.id}`}
       vazio="Nenhuma NFe importada ainda."
       columns={[
-        { id: "numero", header: "Número", isRowHeader: true, render: (n) => <span className="font-medium text-primary">{n.numero}</span> },
-        { id: "chave", header: "Chave de acesso", render: (n) => <span className="text-xs text-tertiary">{n.chaveAcesso}</span> },
+        { id: "numero", header: "Número", isRowHeader: true, render: (n) => <span className="font-medium">{n.numero}</span> },
+        { id: "chave", header: "Chave de acesso", render: (n) => <span className="text-xs text-muted-foreground">{n.chaveAcesso}</span> },
         { id: "status", header: "Status", render: (n) => <StatusBadge tipo="nfe" valor={n.status} /> },
       ]}
     />

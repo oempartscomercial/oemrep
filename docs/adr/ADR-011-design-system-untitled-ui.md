@@ -1,6 +1,6 @@
 # ADR-011 — Untitled UI React (OSS/MIT) como design system oficial
 
-**Data:** 2026-07-15 · **Status:** Aceito · Substitui shadcn/ui como fonte visual
+**Data:** 2026-07-15 · **Status:** Substituído pelo [ADR-014](ADR-014-shadcn-ui-visual-attio.md) · Substitui shadcn/ui como fonte visual
 
 ## Contexto
 Até o Épico 5 a aplicação usava **shadcn/ui** (estilo `base-nova`) sobre

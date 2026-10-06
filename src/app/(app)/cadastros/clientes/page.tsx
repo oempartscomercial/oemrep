@@ -1,7 +1,7 @@
-import { Download01, Plus } from "@untitledui/icons";
+import { Download, Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/patterns/page-header";
-import { Button } from "@/components/ui/buttons/button";
+import { Botao } from "@/components/patterns/botao";
 import { lerPagina, paginar, POR_PAGINA } from "@/domain/paginacao";
 import { Paginacao } from "@/components/patterns/paginacao";
 import { ClientesTabela, type ClienteLinha } from "../cadastros-tabelas";
@@ -24,19 +24,19 @@ export default async function ClientesPage({ searchParams }: { searchParams: Pro
   }));
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
       <PageHeader
         titulo="Clientes"
         descricao="Clientes atendidos (podem pertencer a várias fábricas)."
         acoes={
-          <div className="flex gap-3">
-            <Button color="secondary" href="/api/export/cadastros/clientes" iconLeading={<Download01 />}>Exportar XLSX</Button>
-            <Button color="primary" href="/cadastros/clientes/novo" iconLeading={<Plus />}>Novo cliente</Button>
-          </div>
+          <>
+            <Botao href="/api/export/cadastros/clientes" icone={<Download />}>Exportar XLSX</Botao>
+            <Botao variante="primario" href="/cadastros/clientes/novo" icone={<Plus />}>Novo cliente</Botao>
+          </>
         }
       />
       <ClientesTabela clientes={linhas} />
       <Paginacao pagina={pagina} total={total} porPagina={POR_PAGINA} caminho="/cadastros/clientes" params={{}} />
-    </div>
+    </>
   );
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cx } from "@/utils/cx";
+import { Button } from "@/components/ui/button";
 
 /** Paginação por links (?pagina=N), mantendo os outros filtros da URL. */
 export function Paginacao({
@@ -24,16 +24,18 @@ export function Paginacao({
   };
   const botao = (p: number, rotulo: string, ativo: boolean) =>
     ativo ? (
-      <Link href={href(p)} className="rounded-md px-3 py-1.5 text-sm font-medium text-secondary ring-1 ring-primary hover:bg-primary_hover">
-        {rotulo}
-      </Link>
+      <Button variant="outline" size="sm" asChild>
+        <Link href={href(p)}>{rotulo}</Link>
+      </Button>
     ) : (
-      <span className={cx("rounded-md px-3 py-1.5 text-sm font-medium text-disabled ring-1 ring-secondary")}>{rotulo}</span>
+      <Button variant="outline" size="sm" disabled>
+        {rotulo}
+      </Button>
     );
 
   return (
     <nav aria-label="Paginação" className="flex items-center justify-between gap-3">
-      <p className="text-sm text-tertiary">
+      <p className="text-sm text-muted-foreground">
         Página {pagina} de {paginas} · {total} registros
       </p>
       <div className="flex gap-2">

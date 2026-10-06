@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "@untitledui/icons";
+import { Plus } from "lucide-react";
 import { criarPedidoManual } from "../actions";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
-import { Button } from "@/components/ui/buttons/button";
-import { Input } from "@/components/ui/input/input";
-import { Select } from "@/components/ui/select/select";
-import { Checkbox } from "@/components/ui/checkbox/checkbox";
+import { Botao } from "@/components/patterns/botao";
+import { CampoCheckbox, CampoSelect, CampoTexto } from "@/components/patterns/campo";
+import { Input } from "@/components/ui/input";
 
 type Fabrica = { id: string; nome: string };
 type Cliente = { id: string; nomeFantasia: string };
@@ -49,67 +48,61 @@ export default function NovoPedidoPage() {
     <PageContainer>
       <PageHeader titulo="Novo pedido" descricao="Cadastre um pedido manualmente." />
 
-      <form action={handleSubmit} className="flex max-w-2xl flex-col gap-6 rounded-xl bg-primary p-6 ring-1 ring-secondary">
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Select
+      <form action={handleSubmit} className="flex max-w-xl flex-col gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <CampoSelect
             name="fabricaId"
-            label="Fábrica"
-            placeholder="Selecione…"
-            isRequired
-            selectedKey={fabricaId || null}
-            onSelectionChange={(key) => setFabricaId(key ? String(key) : "")}
-            items={fabricas.map((f) => ({ id: f.id, label: f.nome }))}
-          >
-            {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-          </Select>
-
-          <Select
+            rotulo="Fábrica"
+            obrigatorio
+            aoMudar={setFabricaId}
+            opcoes={fabricas.map((f) => ({ id: f.id, label: f.nome }))}
+          />
+          <CampoSelect
+            key={fabricaId}
             name="clienteId"
-            label="Cliente"
+            rotulo="Cliente"
             placeholder={fabricaId ? "Selecione…" : "Escolha a fábrica primeiro"}
-            isRequired
-            isDisabled={!fabricaId}
-            items={clientes.map((c) => ({ id: c.id, label: c.nomeFantasia }))}
-          >
-            {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-          </Select>
+            obrigatorio
+            desabilitado={!fabricaId}
+            opcoes={clientes.map((c) => ({ id: c.id, label: c.nomeFantasia }))}
+          />
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <Input name="numero" label="Número do pedido" placeholder="Ex.: PED-1001" isDisabled={semNumero} className="sm:max-w-xs" />
-          <div className="pb-2.5">
-            <Checkbox name="semNumero" value="on" isSelected={semNumero} onChange={setSemNumero} label="S/N (sem número)" />
+          <CampoTexto name="numero" rotulo="Número do pedido" placeholder="Ex.: PED-1001" disabled={semNumero} className="sm:max-w-xs sm:flex-1" />
+          <div className="pb-1.5">
+            <CampoCheckbox name="semNumero" rotulo="S/N (sem número)" marcado={semNumero} aoMudar={setSemNumero} />
           </div>
         </div>
 
-        <fieldset className="flex flex-col gap-3">
-          <legend className="mb-1 text-sm font-semibold text-primary">Itens</legend>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-semibold">Itens</legend>
           {linhas.map((linha) => (
-            <div key={linha} className="grid gap-3 sm:grid-cols-4">
-              <Input name="referencia" placeholder="Referência" isRequired aria-label="Referência" />
+            <div key={linha} className="grid gap-2 sm:grid-cols-4">
+              <Input name="referencia" placeholder="Referência" required aria-label="Referência" />
               <Input name="descricao" placeholder="Descrição" aria-label="Descrição" />
-              <Input name="quantidade" type="number" placeholder="Qtd" isRequired aria-label="Quantidade" />
-              <Input name="valorUnitario" type="number" placeholder="Valor unit." isRequired aria-label="Valor unitário" />
+              <Input name="quantidade" type="number" placeholder="Qtd" required aria-label="Quantidade" />
+              <Input name="valorUnitario" type="number" placeholder="Valor unit." required aria-label="Valor unitário" />
             </div>
           ))}
           <div>
-            <Button type="button" color="secondary" size="sm" iconLeading={Plus} onClick={() => setLinhas((atual) => [...atual, atual.length])}>
+            <Botao type="button" variante="secundario" size="sm" icone={<Plus />} onClick={() => setLinhas((atual) => [...atual, atual.length])}>
               Adicionar item
-            </Button>
+            </Botao>
           </div>
         </fieldset>
 
         {erros.length > 0 && (
           <ul className="flex flex-col gap-1">
             {erros.map((erro) => (
-              <li key={erro} className="text-sm text-error-primary">{erro}</li>
+              <li key={erro} className="text-sm text-destructive">{erro}</li>
             ))}
           </ul>
         )}
 
-        <div className="flex justify-end gap-3 border-t border-secondary pt-5">
-          <Button type="button" color="secondary" href="/pedidos">Cancelar</Button>
-          <Button type="submit" color="primary">Salvar pedido</Button>
+        <div className="flex gap-2 border-t pt-4">
+          <Botao type="submit" variante="primario">Salvar pedido</Botao>
+          <Botao type="button" variante="secundario" href="/pedidos">Cancelar</Botao>
         </div>
       </form>
     </PageContainer>

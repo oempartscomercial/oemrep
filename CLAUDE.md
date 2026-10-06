@@ -59,7 +59,7 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   `prazo_chamado_critico_dias` (30, `src/lib/parametros.ts`), ordenando a fila de
   `/divergencias`. Entrada pelo botão "Abrir chamado" na tela de cruzamento de NFe
   (`/conferencia/[id]`); telas `/divergencias`, `/divergencias/nova` e
-  `/divergencias/[id]` já nasceram no Untitled UI (RF25–RF30).
+  `/divergencias/[id]` (RF25–RF30).
 - **Épico 7 — Análise, Alertas & Auditoria**
   (`docs/superpowers/plans/2026-07-16-epico-07-analise-alertas-auditoria.md`, ADR-006/007/009):
   três funções puras de domínio — cálculo do gap de faturamento só de produtos
@@ -73,13 +73,12 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   escopado por fábrica, RF32). Exportação XLSX via route handlers `/api/export/*` com
   botão nas listas de painel, pedidos e divergências (RF33). Toda consulta de dados de
   produto respeita `filtroFabricasPermitidas` (ADR-009).
-- **Design System — Untitled UI** (`docs/adr/ADR-011`,
-  `docs/superpowers/plans/2026-07-15-untitled-ui-design-system.md`): **Untitled UI React
-  OSS (MIT)** substitui o shadcn/ui como fonte visual única. Identidade da OEM (grafite +
-  vermelho, só tema claro) em `src/styles/theme.css`; componentes em
-  `src/components/{ui,application,patterns,layouts}` (React Aria); todas as 18 telas
-  migradas; catálogo em `/design-system`; guia em `DESIGN_SYSTEM.md`. Regras/rotas/APIs/
-  permissões/estados/auditoria preservadas.
+- **Design System — shadcn/ui, direção Attio** (`docs/adr/ADR-014`, substitui o ADR-011):
+  componentes shadcn (Radix) em `src/components/ui`; tokens e tema em `src/app/globals.css`
+  (cinza neutro, bordas finas, raio pequeno, texto 14px, só tema claro; vermelho da OEM
+  como destaque). Nas telas use os wrappers de `src/components/patterns` (`Botao`,
+  `CampoTexto`/`CampoSelect`/`CampoCheckbox`, `DataTable`, `StatusBadge`/`Selo`, `PageHeader`),
+  não os primitivos direto. Catálogo em `/design-system`. **O CRM nasce neste padrão.**
 
 Próximo passo: **MVP completo (Épicos 1–7).** Os 7 épicos do roteiro estão concluídos.
 Evoluções futuras (V2+) — conciliação Autoflex, OCR de DANFE, CCe, parâmetros por
@@ -127,8 +126,7 @@ antes de agir.**
 
 - **Linguagem única:** TypeScript (strict). **Web:** Next.js (App Router, `src/`).
 - **Banco:** PostgreSQL (Supabase) via **Prisma**. **Auth:** Supabase Auth.
-- **Telas:** Tailwind v4 + **Untitled UI React OSS/MIT** (React Aria) — ver ADR-011 e
-  `DESIGN_SYSTEM.md`. shadcn/ui foi removido. **XML NFe:** fast-xml-parser. **XLSX:** ExcelJS.
+- **Telas:** Tailwind v4 + **shadcn/ui** (Radix, ícones lucide) — ver ADR-014. **XML NFe:** fast-xml-parser. **XLSX:** ExcelJS.
 - **Testes:** Vitest (unidade/integração) + Playwright (e2e).
 - **Hospedagem:** Vercel + Supabase (planos gratuitos).
 

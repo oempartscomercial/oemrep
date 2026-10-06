@@ -28,15 +28,15 @@ export function ItensTabela({ itens }: { itens: ItemLinha[] }) {
       rowHref={(i) => `/pedidos/${i.pedidoId}`}
       vazio="Nenhum item com estes filtros."
       columns={[
-        { id: "ref", header: "Referência", isRowHeader: true, render: (i) => <span className="font-medium text-primary">{i.referencia}</span> },
+        { id: "ref", header: "Referência", isRowHeader: true, render: (i) => <span className="font-medium text-foreground">{i.referencia}</span> },
         { id: "desc", header: "Descrição", render: (i) => i.descricao },
-        { id: "pedido", header: "Pedido", render: (i) => <span>{i.pedidoNumero} <span className="text-xs text-tertiary">{i.data}</span></span> },
+        { id: "pedido", header: "Pedido", render: (i) => <span>{i.pedidoNumero} <span className="text-xs text-muted-foreground">{i.data}</span></span> },
         { id: "fabrica", header: "Fábrica", render: (i) => i.fabrica },
         { id: "cliente", header: "Cliente", render: (i) => i.cliente },
-        { id: "qtd", header: "Pedida", render: (i) => i.quantidadePedida },
-        { id: "fat", header: "Faturada", render: (i) => i.quantidadeFaturada },
-        { id: "pend", header: "Pendente", render: (i) => <span className="font-medium text-primary">{i.quantidadePendente}</span> },
-        { id: "valor", header: "Valor unit.", render: (i) => i.valorUnitario },
+        { id: "qtd", header: "Pedida", numerica: true, render: (i) => i.quantidadePedida },
+        { id: "fat", header: "Faturada", numerica: true, render: (i) => i.quantidadeFaturada },
+        { id: "pend", header: "Pendente", numerica: true, render: (i) => <span className="font-medium text-foreground">{i.quantidadePendente}</span> },
+        { id: "valor", header: "Valor unit.", numerica: true, render: (i) => i.valorUnitario },
         { id: "status", header: "Status", render: (i) => <StatusBadge tipo="item" valor={i.status} /> },
       ]}
     />

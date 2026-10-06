@@ -1,33 +1,29 @@
 "use client";
 
-import { Select } from "@/components/ui/select/select";
-import { Input } from "@/components/ui/input/input";
-import { Button } from "@/components/ui/buttons/button";
-
-type Opcao = { id: string; label: string };
+import { CampoSelect, CampoTexto, type OpcaoSelect } from "@/components/patterns/campo";
+import { FiltrosBar } from "@/components/patterns/filtros-bar";
+import { Botao } from "@/components/patterns/botao";
 
 export function AuditoriaFiltros({
   usuarios,
   entidades,
   selecionado,
 }: {
-  usuarios: Opcao[];
-  entidades: Opcao[];
+  usuarios: OpcaoSelect[];
+  entidades: OpcaoSelect[];
   selecionado: { de?: string; ate?: string; usuarioId?: string; entidade?: string };
 }) {
-  const TODOS: Opcao = { id: "", label: "Todos" };
+  const TODOS: OpcaoSelect = { id: "", label: "Todos" };
 
   return (
-    <form method="get" className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-      <Input type="date" name="de" label="De" defaultValue={selecionado.de ?? ""} className="sm:w-44" />
-      <Input type="date" name="ate" label="Até" defaultValue={selecionado.ate ?? ""} className="sm:w-44" />
-      <Select name="usuarioId" label="Usuário" defaultSelectedKey={selecionado.usuarioId ?? ""} className="sm:w-52" items={[TODOS, ...usuarios]}>
-        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-      </Select>
-      <Select name="entidade" label="Tipo de registro" defaultSelectedKey={selecionado.entidade ?? ""} className="sm:w-52" items={[TODOS, ...entidades]}>
-        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-      </Select>
-      <Button type="submit" color="secondary">Filtrar</Button>
+    <form method="get">
+      <FiltrosBar>
+        <CampoTexto type="date" name="de" rotulo="De" defaultValue={selecionado.de ?? ""} className="sm:w-44" />
+        <CampoTexto type="date" name="ate" rotulo="Até" defaultValue={selecionado.ate ?? ""} className="sm:w-44" />
+        <CampoSelect name="usuarioId" rotulo="Usuário" valorPadrao={selecionado.usuarioId ?? ""} className="sm:w-52" opcoes={[TODOS, ...usuarios]} />
+        <CampoSelect name="entidade" rotulo="Tipo de registro" valorPadrao={selecionado.entidade ?? ""} className="sm:w-52" opcoes={[TODOS, ...entidades]} />
+        <Botao type="submit">Filtrar</Botao>
+      </FiltrosBar>
     </form>
   );
 }

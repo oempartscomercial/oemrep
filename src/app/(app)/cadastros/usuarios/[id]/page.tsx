@@ -16,7 +16,7 @@ export default async function EditarUsuarioPage({ params }: { params: Promise<{ 
   const fabricasIds = usuario.fabricas.map((f) => f.fabricaId);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <FormularioUsuario
         titulo="Editar usuário"
         acao={editarUsuario.bind(null, id)}

@@ -1,7 +1,8 @@
 "use client";
 
-import { Select } from "@/components/ui/select/select";
-import { Button } from "@/components/ui/buttons/button";
+import { CampoSelect } from "@/components/patterns/campo";
+import { Botao } from "@/components/patterns/botao";
+import { FiltrosBar } from "@/components/patterns/filtros-bar";
 
 type Opcao = { id: string; label: string };
 
@@ -21,20 +22,14 @@ export function PedidosXNfeFiltros({
   const TODOS: Opcao = { id: "", label: "Todos" };
 
   return (
-    <form method="get" className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-      <Select name="fabrica" label="Fábrica" defaultSelectedKey={selecionado.fabrica ?? ""} className="sm:w-52" items={[TODOS, ...fabricas]}>
-        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-      </Select>
-      <Select name="cliente" label="Cliente" defaultSelectedKey={selecionado.cliente ?? ""} className="sm:w-52" items={[TODOS, ...clientes]}>
-        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-      </Select>
-      <Select name="ano" label="Ano" defaultSelectedKey={selecionado.ano ?? ""} className="sm:w-32" items={[TODOS, ...anos]}>
-        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-      </Select>
-      <Select name="mes" label="Mês" defaultSelectedKey={selecionado.mes ?? ""} className="sm:w-40" items={[TODOS, ...meses]}>
-        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-      </Select>
-      <Button type="submit" color="secondary">Filtrar</Button>
+    <form method="get">
+      <FiltrosBar>
+        <CampoSelect name="fabrica" rotulo="Fábrica" valorPadrao={selecionado.fabrica ?? ""} className="sm:w-52" opcoes={[TODOS, ...fabricas]} />
+        <CampoSelect name="cliente" rotulo="Cliente" valorPadrao={selecionado.cliente ?? ""} className="sm:w-52" opcoes={[TODOS, ...clientes]} />
+        <CampoSelect name="ano" rotulo="Ano" valorPadrao={selecionado.ano ?? ""} className="sm:w-32" opcoes={[TODOS, ...anos]} />
+        <CampoSelect name="mes" rotulo="Mês" valorPadrao={selecionado.mes ?? ""} className="sm:w-40" opcoes={[TODOS, ...meses]} />
+        <Botao type="submit">Filtrar</Botao>
+      </FiltrosBar>
     </form>
   );
 }

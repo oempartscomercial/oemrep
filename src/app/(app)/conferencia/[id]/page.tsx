@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
-import { AlertTriangle } from "@untitledui/icons";
+import { TriangleAlert } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { podeAcessarFabrica } from "@/lib/authz";
 import { obterFabricaIdDaNotaFiscal } from "@/lib/nota-fiscal-fabrica";
 import { agruparCruzamentoPorPedido, type LinhaFaturamento } from "@/domain/nfe/relatorio";
 import { PageContainer } from "@/components/layouts/page-container";
-import { Button } from "@/components/ui/buttons/button";
+import { PageHeader } from "@/components/patterns/page-header";
+import { Botao } from "@/components/patterns/botao";
 import { CruzamentoRelatorio } from "./cruzamento-relatorio";
 
 export default async function RelatorioCruzamentoPage({ params }: { params: Promise<{ id: string }> }) {
@@ -39,15 +40,15 @@ export default async function RelatorioCruzamentoPage({ params }: { params: Prom
 
   return (
     <PageContainer>
-      <div className="flex flex-col gap-4 border-b border-secondary pb-5 md:flex-row md:items-start md:justify-between">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-display-xs font-semibold text-primary">Cruzamento — NFe {notaFiscal.numero}</h1>
-          <p className="text-sm text-tertiary">Chave: {notaFiscal.chaveAcesso}</p>
-        </div>
-        <Button color="secondary" href={`/divergencias/nova?notaFiscalId=${notaFiscal.id}`} iconLeading={<AlertTriangle />}>
-          Abrir chamado
-        </Button>
-      </div>
+      <PageHeader
+        titulo={`Cruzamento — NFe ${notaFiscal.numero}`}
+        descricao={`Chave: ${notaFiscal.chaveAcesso}`}
+        acoes={
+          <Botao variante="secundario" href={`/divergencias/nova?notaFiscalId=${notaFiscal.id}`} icone={<TriangleAlert />}>
+            Abrir chamado
+          </Botao>
+        }
+      />
 
       <CruzamentoRelatorio grupos={grupos} />
     </PageContainer>

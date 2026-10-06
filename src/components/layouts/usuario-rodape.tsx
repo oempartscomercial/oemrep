@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut01 } from "@untitledui/icons";
+import { LogOut } from "lucide-react";
 import { criarClienteNavegador } from "@/lib/supabase";
-import { Button } from "@/components/ui/buttons/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 const NOME_PERFIL = { ADMIN: "Administrador", ANALISTA: "Analista", OPERADOR: "Operador" } as const;
 
 export type UsuarioRodapeProps = { nome: string; perfil: keyof typeof NOME_PERFIL };
 
-/** Quem está logado e o botão de sair, no pé da sidebar. */
+/** Quem está logado e o botão de sair, no pé do menu lateral. */
 export function UsuarioRodape({ nome, perfil }: UsuarioRodapeProps) {
   const router = useRouter();
   const [saindo, setSaindo] = useState(false);
@@ -23,13 +24,16 @@ export function UsuarioRodape({ nome, perfil }: UsuarioRodapeProps) {
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-secondary pt-4">
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-primary">{nome}</p>
-        <p className="truncate text-sm text-tertiary">{NOME_PERFIL[perfil]}</p>
+    <div className="flex items-center gap-2 px-1">
+      <Avatar className="size-7">
+        <AvatarFallback className="text-xs">{nome.slice(0, 1).toUpperCase()}</AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 flex-1 leading-tight">
+        <p className="truncate text-sm font-medium">{nome}</p>
+        <p className="truncate text-xs text-muted-foreground">{NOME_PERFIL[perfil]}</p>
       </div>
-      <Button color="tertiary" size="sm" iconLeading={LogOut01} isLoading={saindo} onClick={sair} aria-label="Sair">
-        Sair
+      <Button variant="ghost" size="icon-sm" onClick={sair} disabled={saindo} aria-label="Sair" title="Sair">
+        <LogOut />
       </Button>
     </div>
   );

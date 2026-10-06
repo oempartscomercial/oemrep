@@ -31,22 +31,20 @@ export default async function DetalheChamadoPage({ params }: { params: Promise<{
 
   return (
     <PageContainer>
-      <div className="flex flex-col gap-4 border-b border-secondary pb-5 md:flex-row md:items-start md:justify-between">
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-display-xs font-semibold text-primary">Chamado — NFe {chamado.notaFiscal.numero}</h1>
-            <StatusBadge tipo="chamado" valor={chamado.estado} size="md" />
-          </div>
-          <p className="text-sm text-tertiary">{chamado.motivo.nome}</p>
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-lg font-semibold tracking-tight">Chamado — NFe {chamado.notaFiscal.numero}</h1>
+          <StatusBadge tipo="chamado" valor={chamado.estado} />
         </div>
+        <p className="text-sm text-muted-foreground">{chamado.motivo.nome}</p>
       </div>
 
-      <div className="rounded-xl bg-primary p-6 ring-1 ring-secondary">
-        <h2 className="text-lg font-semibold text-primary">Itens afetados</h2>
-        <ul className="mt-3 flex flex-col gap-1 text-sm text-secondary">
+      <div className="rounded-lg border bg-card p-4">
+        <h2 className="text-sm font-semibold">Itens afetados</h2>
+        <ul className="mt-3 flex flex-col gap-1 text-sm text-foreground/80">
           {chamado.itensAfetados.map(({ itemPedido }) => (
             <li key={itemPedido.id}>
-              <span className="font-medium text-primary">{itemPedido.referencia}</span> — {itemPedido.descricao}
+              <span className="font-medium text-foreground">{itemPedido.referencia}</span> — {itemPedido.descricao}
             </li>
           ))}
         </ul>
@@ -55,13 +53,13 @@ export default async function DetalheChamadoPage({ params }: { params: Promise<{
       {proximos.length > 0 ? (
         <ChamadoEventoForm chamadoId={chamado.id} proximos={proximos} />
       ) : (
-        <p className="text-sm text-tertiary">Chamado resolvido. Não há próximas transições.</p>
+        <p className="text-sm text-muted-foreground">Chamado resolvido. Não há próximas transições.</p>
       )}
 
-      <div className="flex flex-col gap-4 rounded-xl bg-primary p-6 ring-1 ring-secondary">
-        <h2 className="text-lg font-semibold text-primary">Histórico</h2>
+      <div className="flex flex-col gap-4 rounded-lg border bg-card p-4">
+        <h2 className="text-sm font-semibold">Histórico</h2>
         {timeline.length === 0 ? (
-          <p className="text-sm text-tertiary">Nenhum evento ainda.</p>
+          <p className="text-sm text-muted-foreground">Nenhum evento ainda.</p>
         ) : (
           <Timeline eventos={timeline} />
         )}

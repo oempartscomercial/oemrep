@@ -1,11 +1,11 @@
-import { Download01 } from "@untitledui/icons";
+import { Download } from "lucide-react";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarPedidosParaGap } from "./queries";
 import { calcularGap, filtrarGap, totaisPorAno, type LinhaGap } from "@/domain/analise/gap";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
-import { Button } from "@/components/ui/buttons/button";
+import { Botao } from "@/components/patterns/botao";
 import { PedidosXNfeFiltros } from "./pedidos-x-nfe-filtros";
 import { PedidosXNfeTabela, type LinhaGapView } from "./pedidos-x-nfe-tabela";
 
@@ -66,9 +66,9 @@ export default async function PedidosXNfePage({
         titulo="Pedidos × NFe"
         descricao="Gap de faturamento (valor de produtos) por mês, fábrica e cliente."
         acoes={
-          <Button color="secondary" href={`/api/export/pedidos-x-nfe?${qs.toString()}`} iconLeading={<Download01 />}>
+          <Botao href={`/api/export/pedidos-x-nfe?${qs.toString()}`} icone={<Download />}>
             Exportar XLSX
-          </Button>
+          </Botao>
         }
       />
 
@@ -81,22 +81,22 @@ export default async function PedidosXNfePage({
       />
 
       {anuais.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {anuais.map((t) => (
-            <div key={t.ano} className="flex flex-col gap-3 rounded-xl bg-primary p-5 ring-1 ring-secondary">
-              <span className="text-sm font-semibold text-primary">Total {t.ano}</span>
+            <div key={t.ano} className="flex flex-col gap-2 rounded-lg border bg-card px-4 py-3">
+              <span className="text-sm font-semibold">Total {t.ano}</span>
               <dl className="grid grid-cols-3 gap-2 text-sm">
                 <div>
-                  <dt className="text-tertiary">Pedidos</dt>
-                  <dd className="font-medium text-primary">{brl(t.valorPedido)}</dd>
+                  <dt className="text-xs text-muted-foreground">Pedidos</dt>
+                  <dd className="font-medium tabular">{brl(t.valorPedido)}</dd>
                 </div>
                 <div>
-                  <dt className="text-tertiary">Com NFe</dt>
-                  <dd className="font-medium text-primary">{brl(t.valorFaturado)}</dd>
+                  <dt className="text-xs text-muted-foreground">Com NFe</dt>
+                  <dd className="font-medium tabular">{brl(t.valorFaturado)}</dd>
                 </div>
                 <div>
-                  <dt className="text-tertiary">Gap</dt>
-                  <dd className={t.gap > 0 ? "font-semibold text-error-primary" : "font-medium text-primary"}>{brl(t.gap)}</dd>
+                  <dt className="text-xs text-muted-foreground">Gap</dt>
+                  <dd className={t.gap > 0 ? "font-semibold tabular text-destructive" : "font-medium tabular"}>{brl(t.gap)}</dd>
                 </div>
               </dl>
             </div>
@@ -105,14 +105,14 @@ export default async function PedidosXNfePage({
       )}
 
       {resumo.length > 0 && (
-        <div className="flex flex-col gap-3 rounded-xl bg-primary p-6 ring-1 ring-secondary">
-          <h2 className="text-lg font-semibold text-primary">Gap total por mês</h2>
+        <div className="flex flex-col gap-3 rounded-lg border bg-card p-4">
+          <h2 className="text-sm font-semibold">Gap total por mês</h2>
           <ul className="flex flex-col gap-2">
             {resumo.map(([mesLabel, total]) => (
               <li key={mesLabel} className="flex items-center gap-3">
-                <span className="w-20 shrink-0 text-sm text-tertiary">{mesLabel}</span>
-                <span className="h-3 rounded-full bg-fg-error-primary" style={{ width: `${Math.max(2, (total / gapMax) * 100)}%` }} aria-hidden />
-                <span className="text-sm font-medium text-primary">{brl(total)}</span>
+                <span className="w-20 shrink-0 text-sm text-muted-foreground">{mesLabel}</span>
+                <span className="h-2.5 rounded-sm bg-destructive" style={{ width: `${Math.max(2, (total / gapMax) * 100)}%` }} aria-hidden />
+                <span className="text-sm font-medium tabular">{brl(total)}</span>
               </li>
             ))}
           </ul>

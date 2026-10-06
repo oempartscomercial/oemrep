@@ -1,11 +1,16 @@
 "use client";
 
-import { Input } from "@/components/ui/input/input";
-import { Select } from "@/components/ui/select/select";
-import { Checkbox } from "@/components/ui/checkbox/checkbox";
+import { Campo, CampoSelect, CampoTexto } from "@/components/patterns/campo";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FormularioCadastro, type AcaoCadastro } from "../formulario";
 
 type Fabrica = { id: string; nome: string };
+
+const PERFIS = [
+  { id: "OPERADOR", label: "Operador" },
+  { id: "ANALISTA", label: "Analista" },
+  { id: "ADMIN", label: "Admin" },
+];
 
 export function FormularioUsuario({
   titulo,
@@ -20,33 +25,33 @@ export function FormularioUsuario({
 }) {
   return (
     <FormularioCadastro titulo={titulo} acao={acao} voltarPara="/cadastros/usuarios">
-      <Input name="nome" label="Nome" placeholder="Nome completo" isRequired defaultValue={inicial?.nome} />
-      <Input
+      <CampoTexto name="nome" rotulo="Nome" placeholder="Nome completo" obrigatorio defaultValue={inicial?.nome} />
+      <CampoTexto
         name="email"
         type="email"
-        label="E-mail"
+        rotulo="E-mail"
         placeholder="pessoa@empresa.com.br"
-        isRequired={!inicial}
-        isDisabled={!!inicial}
-        hint={inicial ? "O e-mail não muda: é ele que liga o cadastro ao login." : undefined}
+        obrigatorio={!inicial}
+        disabled={!!inicial}
+        dica={inicial ? "O e-mail não muda: é ele que liga o cadastro ao login." : undefined}
         defaultValue={inicial?.email}
       />
 
-      <Select name="perfil" label="Perfil" defaultSelectedKey={inicial?.perfil ?? "OPERADOR"}>
-        <Select.Item id="OPERADOR">Operador</Select.Item>
-        <Select.Item id="ANALISTA">Analista</Select.Item>
-        <Select.Item id="ADMIN">Admin</Select.Item>
-      </Select>
+      <CampoSelect name="perfil" rotulo="Perfil" opcoes={PERFIS} valorPadrao={inicial?.perfil ?? "OPERADOR"} />
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium text-secondary">Fábricas autorizadas</legend>
-        {fabricas.map((f) => (
-          <Checkbox key={f.id} name="fabricasIds" value={f.id} label={f.nome} defaultSelected={inicial?.fabricasIds.includes(f.id)} />
-        ))}
-      </fieldset>
+      <Campo rotulo="Fábricas autorizadas">
+        <div role="group" aria-label="Fábricas autorizadas" className="flex flex-col gap-2">
+          {fabricas.map((f) => (
+            <label key={f.id} className="flex items-center gap-2 text-sm">
+              <Checkbox name="fabricasIds" value={f.id} defaultChecked={inicial?.fabricasIds.includes(f.id)} />
+              {f.nome}
+            </label>
+          ))}
+        </div>
+      </Campo>
 
       {!inicial && (
-        <p className="rounded-lg bg-secondary/50 p-3 text-xs text-tertiary ring-1 ring-secondary">
+        <p className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
           Crie a senha desta pessoa no painel do Supabase com o mesmo e-mail. O vínculo é feito
           automaticamente no primeiro acesso.
         </p>

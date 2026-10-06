@@ -1,7 +1,7 @@
 "use client";
 
 import { DataTable } from "@/components/patterns/data-table";
-import { cx } from "@/utils/cx";
+import { cn } from "@/lib/utils";
 
 export interface LinhaGapView {
   id: string;
@@ -22,15 +22,16 @@ export function PedidosXNfeTabela({ linhas }: { linhas: LinhaGapView[] }) {
       getRowId={(l) => l.id}
       vazio="Nenhum pedido no filtro selecionado."
       columns={[
-        { id: "mes", header: "Mês", isRowHeader: true, render: (l) => <span className="font-medium text-primary">{l.mes}</span> },
+        { id: "mes", header: "Mês", isRowHeader: true, render: (l) => l.mes },
         { id: "fabrica", header: "Fábrica", render: (l) => l.fabrica },
         { id: "cliente", header: "Cliente", render: (l) => l.cliente },
-        { id: "pedido", header: "Valor pedido", render: (l) => l.valorPedido },
-        { id: "faturado", header: "Valor faturado", render: (l) => l.valorFaturado },
+        { id: "pedido", header: "Valor pedido", numerica: true, render: (l) => l.valorPedido },
+        { id: "faturado", header: "Valor faturado", numerica: true, render: (l) => l.valorFaturado },
         {
           id: "gap",
           header: "Gap",
-          render: (l) => <span className={cx("font-medium", l.gap > 0 ? "text-error-primary" : "text-primary")}>{l.gapFmt}</span>,
+          numerica: true,
+          render: (l) => <span className={cn("font-medium", l.gap > 0 && "text-destructive")}>{l.gapFmt}</span>,
         },
       ]}
     />

@@ -13,7 +13,7 @@ export default async function CadastrosLayout({ children }: { children: React.Re
           {children}
         </>
       ) : (
-        <p className="text-sm text-error-primary">Acesso restrito a administradores.</p>
+        <p className="text-sm text-destructive">Acesso restrito a administradores.</p>
       )}
     </PageContainer>
   );

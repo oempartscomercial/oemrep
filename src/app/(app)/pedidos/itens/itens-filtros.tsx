@@ -1,8 +1,8 @@
 "use client";
 
-import { Select } from "@/components/ui/select/select";
-import { Input } from "@/components/ui/input/input";
-import { Button } from "@/components/ui/buttons/button";
+import { CampoSelect, CampoTexto } from "@/components/patterns/campo";
+import { FiltrosBar } from "@/components/patterns/filtros-bar";
+import { Botao } from "@/components/patterns/botao";
 import type { FiltroItens } from "@/domain/pedido/filtro-itens";
 
 type Opcao = { id: string; label: string };
@@ -19,19 +19,15 @@ export function ItensFiltros({ fabricas, clientes, filtro }: { fabricas: Opcao[]
   const TODAS: Opcao = { id: "", label: "Todas" };
   const TODOS: Opcao = { id: "", label: "Todos" };
   return (
-    <form method="get" className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-      <Select name="status" label="Status" defaultSelectedKey={filtro.status} className="sm:w-44" items={STATUS}>
-        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-      </Select>
-      <Select name="fabricaId" label="Fábrica" defaultSelectedKey={filtro.fabricaId ?? ""} className="sm:w-44" items={[TODAS, ...fabricas]}>
-        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-      </Select>
-      <Select name="clienteId" label="Cliente" defaultSelectedKey={filtro.clienteId ?? ""} className="sm:w-56" items={[TODOS, ...clientes]}>
-        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-      </Select>
-      <Input type="month" name="mes" label="Mês do pedido" defaultValue={filtro.mes ?? ""} className="sm:w-44" />
-      <Input name="referencia" label="Referência" placeholder="Ex.: BW-100" defaultValue={filtro.referencia ?? ""} className="sm:w-44" />
-      <Button type="submit" color="secondary">Filtrar</Button>
+    <form method="get">
+      <FiltrosBar>
+        <CampoSelect name="status" rotulo="Status" valorPadrao={filtro.status} className="sm:w-44" opcoes={STATUS} />
+        <CampoSelect name="fabricaId" rotulo="Fábrica" valorPadrao={filtro.fabricaId ?? ""} className="sm:w-44" opcoes={[TODAS, ...fabricas]} />
+        <CampoSelect name="clienteId" rotulo="Cliente" valorPadrao={filtro.clienteId ?? ""} className="sm:w-56" opcoes={[TODOS, ...clientes]} />
+        <CampoTexto type="month" name="mes" rotulo="Mês do pedido" defaultValue={filtro.mes ?? ""} className="sm:w-44" />
+        <CampoTexto name="referencia" rotulo="Referência" placeholder="Ex.: BW-100" defaultValue={filtro.referencia ?? ""} className="sm:w-44" />
+        <Botao type="submit" variante="secundario">Filtrar</Botao>
+      </FiltrosBar>
     </form>
   );
 }

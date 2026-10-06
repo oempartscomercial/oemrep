@@ -1,4 +1,4 @@
-import { Download01 } from "@untitledui/icons";
+import { Download } from "lucide-react";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { prisma } from "@/lib/prisma";
 import { filtroFabricasPermitidas } from "@/lib/authz";
@@ -8,7 +8,7 @@ import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
 import { Paginacao } from "@/components/patterns/paginacao";
-import { Button } from "@/components/ui/buttons/button";
+import { Botao } from "@/components/patterns/botao";
 import { ItensFiltros } from "./itens-filtros";
 import { ItensTabela, type ItemLinha } from "./itens-tabela";
 
@@ -54,9 +54,9 @@ export default async function ItensPage({ searchParams }: { searchParams: Promis
         titulo="Itens de pedido"
         descricao="O que falta faturar, item a item, nas fábricas que você acompanha."
         acoes={
-          <Button color="secondary" href={`/api/export/itens?${exportar.toString()}`} iconLeading={<Download01 />}>
+          <Botao variante="secundario" href={`/api/export/itens?${exportar.toString()}`} icone={<Download />}>
             Exportar XLSX
-          </Button>
+          </Botao>
         }
       />
       <ItensFiltros

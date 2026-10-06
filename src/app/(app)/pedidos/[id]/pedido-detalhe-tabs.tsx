@@ -1,6 +1,6 @@
 "use client";
 
-import { Tabs } from "@/components/application/tabs/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/patterns/data-table";
 import { StatusBadge } from "@/components/patterns/status-badge";
 import { Timeline, type TimelineItem } from "@/components/patterns/timeline";
@@ -42,33 +42,33 @@ export function PedidoDetalheTabs({ itens, notas, eventos }: { itens: ItemLinha[
   }));
 
   return (
-    <Tabs defaultSelectedKey="itens">
-      <Tabs.List>
-        <Tabs.Item id="itens" label="Itens" />
-        <Tabs.Item id="notas" label="Notas fiscais" />
-        <Tabs.Item id="historico" label="Histórico" />
-      </Tabs.List>
+    <Tabs defaultValue="itens" className="gap-4">
+      <TabsList variant="line" className="w-full justify-start border-b">
+        <TabsTrigger value="itens" className="flex-none">Itens</TabsTrigger>
+        <TabsTrigger value="notas" className="flex-none">Notas fiscais</TabsTrigger>
+        <TabsTrigger value="historico" className="flex-none">Histórico</TabsTrigger>
+      </TabsList>
 
-      <Tabs.Panel id="itens" className="pt-5">
+      <TabsContent value="itens">
         <DataTable<ItemLinha>
           ariaLabel="Itens do pedido"
           data={itens}
           getRowId={(it) => it.id}
           columns={[
-            { id: "referencia", header: "Referência", isRowHeader: true, render: (it) => <span className="font-medium text-primary">{it.referencia}</span> },
+            { id: "referencia", header: "Referência", isRowHeader: true, render: (it) => <span className="font-medium text-foreground">{it.referencia}</span> },
             { id: "descricao", header: "Descrição", render: (it) => it.descricao },
-            { id: "pedida", header: "Pedida", render: (it) => it.quantidadePedida },
-            { id: "faturada", header: "Faturada", render: (it) => it.quantidadeFaturada },
+            { id: "pedida", header: "Pedida", numerica: true, render: (it) => it.quantidadePedida },
+            { id: "faturada", header: "Faturada", numerica: true, render: (it) => it.quantidadeFaturada },
             {
               id: "notas",
               header: "Faturado nas notas",
               render: (it) =>
                 it.notas.length === 0 ? (
-                  <span className="text-tertiary">—</span>
+                  <span className="text-muted-foreground">—</span>
                 ) : (
                   <div className="flex flex-col gap-0.5">
                     {it.notas.map((n) => (
-                      <a key={n.id} href={`/conferencia/${n.id}`} className="text-sm text-brand-secondary hover:underline">
+                      <a key={n.id} href={`/conferencia/${n.id}`} className="text-sm underline-offset-4 hover:underline">
                         NF {n.numero} ({n.quantidade})
                       </a>
                     ))}
@@ -78,13 +78,13 @@ export function PedidoDetalheTabs({ itens, notas, eventos }: { itens: ItemLinha[
             { id: "status", header: "Status", render: (it) => <ItemStatusForm itemId={it.id} statusAtual={it.status} observacaoAtual={it.observacao} /> },
           ]}
         />
-      </Tabs.Panel>
+      </TabsContent>
 
-      <Tabs.Panel id="notas" className="pt-5">
+      <TabsContent value="notas">
         {notas.length === 0 ? (
-          <div className="rounded-xl bg-secondary/50 p-8 text-center ring-1 ring-secondary">
-            <p className="text-sm font-medium text-primary">Nenhuma NFe vinculada</p>
-            <p className="mt-1 text-sm text-tertiary">As notas fiscais aparecem aqui quando forem conferidas.</p>
+          <div className="rounded-lg border border-dashed bg-muted/40 p-8 text-center">
+            <p className="text-sm font-medium text-foreground">Nenhuma NFe vinculada</p>
+            <p className="mt-1 text-sm text-muted-foreground">As notas fiscais aparecem aqui quando forem conferidas.</p>
           </div>
         ) : (
           <DataTable<NotaLinha>
@@ -93,24 +93,24 @@ export function PedidoDetalheTabs({ itens, notas, eventos }: { itens: ItemLinha[
             getRowId={(n) => n.id}
             rowHref={(n) => `/conferencia/${n.id}`}
             columns={[
-              { id: "numero", header: "Número", isRowHeader: true, render: (n) => <span className="font-medium text-primary">{n.numero}</span> },
-              { id: "chave", header: "Chave de acesso", render: (n) => <span className="text-xs text-tertiary">{n.chaveAcesso}</span> },
+              { id: "numero", header: "Número", isRowHeader: true, render: (n) => <span className="font-medium text-foreground">{n.numero}</span> },
+              { id: "chave", header: "Chave de acesso", render: (n) => <span className="text-xs text-muted-foreground">{n.chaveAcesso}</span> },
               { id: "status", header: "Status", render: (n) => <StatusBadge tipo="nfe" valor={n.status} /> },
-              { id: "cruz", header: "Cruzamento", render: () => <span className="text-sm font-semibold text-brand-secondary">Ver cruzamento</span> },
+              { id: "cruz", header: "Cruzamento", render: () => <span className="text-sm font-medium">Ver cruzamento</span> },
             ]}
           />
         )}
-      </Tabs.Panel>
+      </TabsContent>
 
-      <Tabs.Panel id="historico" className="pt-5">
+      <TabsContent value="historico">
         {timeline.length === 0 ? (
-          <p className="text-sm text-tertiary">Nenhum evento registrado ainda.</p>
+          <p className="text-sm text-muted-foreground">Nenhum evento registrado ainda.</p>
         ) : (
-          <div className="rounded-xl bg-primary p-6 ring-1 ring-secondary">
+          <div className="rounded-lg border bg-card p-4">
             <Timeline eventos={timeline} />
           </div>
         )}
-      </Tabs.Panel>
+      </TabsContent>
     </Tabs>
   );
 }

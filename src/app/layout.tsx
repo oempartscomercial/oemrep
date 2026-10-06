@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { RouteProvider } from "@/providers/router-provider";
 import "./globals.css";
-import { cx } from "@/utils/cx";
+import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -15,15 +16,12 @@ export const metadata: Metadata = {
   description: "Gestão de representação comercial",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={cx(inter.variable, "h-full")}>
-      <body className="bg-primary text-primary flex min-h-full flex-col antialiased">
-        <RouteProvider>{children}</RouteProvider>
+    <html lang="pt-BR" className={cn(inter.variable, "h-full")}>
+      <body className="flex min-h-full flex-col bg-background text-foreground antialiased">
+        <TooltipProvider>{children}</TooltipProvider>
+        <Toaster />
       </body>
     </html>
   );

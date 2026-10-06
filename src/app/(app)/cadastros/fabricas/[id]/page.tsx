@@ -12,7 +12,7 @@ export default async function EditarFabricaPage({ params }: { params: Promise<{ 
   if (!fabrica) notFound();
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <FormularioFabrica titulo="Editar fábrica" acao={editarFabrica.bind(null, id)} inicial={{ nome: fabrica.nome, cnpj: fabrica.cnpj }} />
       <AlternarAtivo
         ativo={fabrica.ativo}

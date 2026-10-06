@@ -1,10 +1,10 @@
-import { Download01 } from "@untitledui/icons";
+import { Download } from "lucide-react";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarNotasFiscaisPermitidas } from "./queries";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
-import { Button } from "@/components/ui/buttons/button";
+import { Botao } from "@/components/patterns/botao";
 import { lerPagina, paginar, POR_PAGINA } from "@/domain/paginacao";
 import { Paginacao } from "@/components/patterns/paginacao";
 import { RastreioTabela, type NotaRastreioLinha } from "./rastreio-tabela";
@@ -32,7 +32,7 @@ export default async function RastreioPage({ searchParams }: { searchParams: Pro
       <PageHeader
         titulo="Rastreio de NFe"
         descricao="Acompanhe a situação logística das notas fiscais."
-        acoes={<Button color="secondary" href="/api/export/rastreio" iconLeading={<Download01 />}>Exportar XLSX</Button>}
+        acoes={<Botao variante="secundario" href="/api/export/rastreio" icone={<Download />}>Exportar XLSX</Botao>}
       />
       <RastreioTabela notas={linhas} />
       <Paginacao pagina={pagina} total={total} porPagina={POR_PAGINA} caminho="/rastreio" params={{}} />

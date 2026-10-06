@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { arquivarPedido, reabrirPedido } from "./actions";
-import { Button } from "@/components/ui/buttons/button";
+import { Botao } from "@/components/patterns/botao";
 import type { EstadoPedido } from "@/domain/pedido/estado";
 
 export function PedidoAcoes({ pedidoId, estado }: { pedidoId: string; estado: EstadoPedido }) {
@@ -24,9 +24,9 @@ export function PedidoAcoes({ pedidoId, estado }: { pedidoId: string; estado: Es
 
   return (
     <div className="flex items-center gap-2">
-      {estado === "COMPLETO" && <Button color="secondary" onClick={handleArquivar}>Arquivar</Button>}
-      {estado === "ARQUIVADO" && <Button color="secondary" onClick={handleReabrir}>Reabrir</Button>}
-      {erro && <p className="text-xs text-error-primary">{erro}</p>}
+      {estado === "COMPLETO" && <Botao variante="secundario" type="button" onClick={handleArquivar}>Arquivar</Botao>}
+      {estado === "ARQUIVADO" && <Botao variante="secundario" type="button" onClick={handleReabrir}>Reabrir</Botao>}
+      {erro && <p className="text-xs text-destructive">{erro}</p>}
     </div>
   );
 }

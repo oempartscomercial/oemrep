@@ -37,26 +37,24 @@ export default async function DetalheRastreioPage({ params }: { params: Promise<
 
   return (
     <PageContainer>
-      <div className="flex flex-col gap-4 border-b border-secondary pb-5 md:flex-row md:items-start md:justify-between">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <h1 className="text-display-xs font-semibold text-primary">NFe {nota.numero}</h1>
-            <StatusBadge tipo="nfe" valor={nota.status} size="md" />
-          </div>
-          <p className="text-sm text-tertiary">{nota.chaveAcesso}</p>
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-lg font-semibold tracking-tight">NFe {nota.numero}</h1>
+          <StatusBadge tipo="nfe" valor={nota.status} />
         </div>
+        <p className="text-sm text-muted-foreground">{nota.chaveAcesso}</p>
       </div>
 
       {proximos.length > 0 ? (
         <RastreioForm notaFiscalId={nota.id} proximos={proximos} />
       ) : (
-        <p className="text-sm text-tertiary">Rastreio finalizado ({statusBadgeConfig("nfe", nota.status).label}). Não há próximas transições.</p>
+        <p className="text-sm text-muted-foreground">Rastreio finalizado ({statusBadgeConfig("nfe", nota.status).label}). Não há próximas transições.</p>
       )}
 
-      <div className="flex flex-col gap-4 rounded-xl bg-primary p-6 ring-1 ring-secondary">
-        <h2 className="text-lg font-semibold text-primary">Histórico</h2>
+      <div className="flex flex-col gap-4 rounded-lg border bg-card p-4">
+        <h2 className="text-sm font-semibold">Histórico</h2>
         {timeline.length === 0 ? (
-          <p className="text-sm text-tertiary">Nenhum evento de rastreio ainda.</p>
+          <p className="text-sm text-muted-foreground">Nenhum evento de rastreio ainda.</p>
         ) : (
           <Timeline eventos={timeline} />
         )}

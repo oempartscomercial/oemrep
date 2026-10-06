@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { atualizarStatusItem } from "./actions";
 import type { StatusItemPedido } from "@/domain/pedido/estado";
-import { Select } from "@/components/ui/select/select";
-import { Input } from "@/components/ui/input/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 const OPCOES: { id: StatusItemPedido; label: string }[] = [
   { id: "PENDENTE", label: "Pendente" },
@@ -37,26 +37,29 @@ export function ItemStatusForm({
 
   return (
     <div className="flex min-w-44 flex-col gap-1.5">
-      <Select
-        size="sm"
-        aria-label="Status do item"
-        selectedKey={status}
-        onSelectionChange={(key) => handleChange(key as StatusItemPedido)}
-        items={OPCOES}
-      >
-        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      <Select value={status} onValueChange={(valor) => handleChange(valor as StatusItemPedido)}>
+        <SelectTrigger size="sm" aria-label="Status do item" className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {OPCOES.map((opcao) => (
+            <SelectItem key={opcao.id} value={opcao.id}>
+              {opcao.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
       </Select>
       {precisaObservacao && (
         <Input
-          size="sm"
+          className="h-7"
           aria-label="Observação"
           placeholder="Observação"
           value={observacao}
-          onChange={setObservacao}
+          onChange={(e) => setObservacao(e.target.value)}
           onBlur={() => atualizarStatusItem(itemId, status, observacao)}
         />
       )}
-      {erro && <p className="text-xs text-error-primary">{erro}</p>}
+      {erro && <p className="text-xs text-destructive">{erro}</p>}
     </div>
   );
 }

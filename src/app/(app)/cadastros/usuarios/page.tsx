@@ -1,7 +1,7 @@
-import { Download01, Plus } from "@untitledui/icons";
+import { Download, Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/patterns/page-header";
-import { Button } from "@/components/ui/buttons/button";
+import { Botao } from "@/components/patterns/botao";
 import { UsuariosTabela, type UsuarioLinha } from "../cadastros-tabelas";
 
 // Lista de dados vivos do banco: sempre renderizar por requisição (nunca estática).
@@ -23,18 +23,18 @@ export default async function UsuariosPage() {
   }));
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
       <PageHeader
         titulo="Usuários"
         descricao="Acesso e permissão por fábrica."
         acoes={
-          <div className="flex gap-3">
-            <Button color="secondary" href="/api/export/cadastros/usuarios" iconLeading={<Download01 />}>Exportar XLSX</Button>
-            <Button color="primary" href="/cadastros/usuarios/novo" iconLeading={<Plus />}>Novo usuário</Button>
-          </div>
+          <>
+            <Botao href="/api/export/cadastros/usuarios" icone={<Download />}>Exportar XLSX</Botao>
+            <Botao variante="primario" href="/cadastros/usuarios/novo" icone={<Plus />}>Novo usuário</Botao>
+          </>
         }
       />
       <UsuariosTabela usuarios={linhas} />
-    </div>
+    </>
   );
 }
