@@ -3,8 +3,10 @@ import {
   buscarEventosAuditoria,
   listarUsuariosParaFiltro,
   listarEntidadesAuditadas,
+  carregarNomesAuditoria,
   AUDITORIA_LIMITE,
 } from "./queries";
+import { descreverEvento, nomeEntidade } from "@/domain/auditoria/descricao";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
@@ -33,24 +35,21 @@ export default async function AuditoriaPage({
     listarEntidadesAuditadas(),
   ]);
 
+  const nomes = await carregarNomesAuditoria(eventos);
   const linhas: EventoAuditoriaLinha[] = eventos.map((e) => ({
     id: e.id,
     quando: new Date(e.criadoEm).toLocaleString("pt-BR"),
     usuario: e.usuario.nome,
-    entidade: e.entidade,
-    entidadeId: e.entidadeId,
-    campo: e.campo,
-    de: e.valorAnterior ?? "—",
-    para: e.valorNovo ?? "—",
+    ...descreverEvento(e, nomes),
   }));
 
   return (
     <PageContainer>
-      <PageHeader titulo="Auditoria" descricao="Histórico de alterações em pedidos e notas fiscais." />
+      <PageHeader titulo="Auditoria" descricao="Histórico de alterações em pedidos, notas fiscais e cadastros." />
 
       <AuditoriaFiltros
         usuarios={usuarios.map((u) => ({ id: u.id, label: u.nome }))}
-        entidades={entidades.map((e) => ({ id: e, label: e }))}
+        entidades={entidades.map((e) => ({ id: e, label: nomeEntidade(e) }))}
         selecionado={{ de, ate, usuarioId, entidade }}
       />
 
