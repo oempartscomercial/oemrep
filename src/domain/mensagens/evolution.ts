@@ -25,6 +25,8 @@ export type EventoLido =
     }
   // Conversa individual cujo telefone não dá para saber (ex.: identificador "lid").
   | { tipo: "sem_numero"; idExterno: string; jid: string; motivo: string }
+  // Recibo de uma mensagem que enviamos: chegou ao aparelho ou foi lida.
+  | { tipo: "status"; idExterno: string; status: "ENTREGUE" | "LIDA" }
   | { tipo: "ignorado"; motivo: string };
 
 type Objeto = Record<string, unknown>;
@@ -109,13 +111,26 @@ function lerMensagem(data: Objeto): EventoLido {
   };
 }
 
+// `messages.update` traz o recibo. O id da mensagem vem em `keyId` (ou `key.id`); "SERVER_ACK"
+// só diz que o WhatsApp recebeu, o que já sabemos ao enviar, então não vira status.
+const RECIBOS: Record<string, "ENTREGUE" | "LIDA"> = { DELIVERY_ACK: "ENTREGUE", READ: "LIDA", PLAYED: "LIDA" };
+
+function lerRecibo(data: Objeto): EventoLido {
+  const status = typeof data.status === "string" ? RECIBOS[data.status.toUpperCase()] : undefined;
+  if (!status) return ignorado("recibo sem mudança de estado");
+  const id = texto(data.keyId) ?? (ehObjeto(data.key) ? texto(data.key.id) : null);
+  if (!id) return ignorado("recibo sem id da mensagem");
+  return { tipo: "status", idExterno: id, status };
+}
+
 export function lerEventoEvolution(payload: unknown): EventoLido[] {
   if (!ehObjeto(payload)) return [ignorado("corpo não é um evento")];
   const nome = texto(payload.event)?.toLowerCase().replace(/_/g, ".");
   if (!nome) return [ignorado("evento sem nome")];
-  if (nome !== "messages.upsert") return [ignorado(`evento ${nome}`)];
+  if (nome !== "messages.upsert" && nome !== "messages.update") return [ignorado(`evento ${nome}`)];
 
   const itens = Array.isArray(payload.data) ? payload.data : [payload.data];
-  const lidos = itens.map((d) => (ehObjeto(d) ? lerMensagem(d) : ignorado("evento sem dados")));
+  const ler = nome === "messages.update" ? lerRecibo : lerMensagem;
+  const lidos = itens.map((d) => (ehObjeto(d) ? ler(d) : ignorado("evento sem dados")));
   return lidos.length > 0 ? lidos : [ignorado("evento sem dados")];
 }

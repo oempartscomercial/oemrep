@@ -105,6 +105,8 @@ model Usuario {
   interacoes           Interacao[]
   proximosPassos       ProximoPasso[]
   oportunidadesCriadas Oportunidade[]
+  mensagensCriadas     Mensagem[]        @relation("MensagemCriadaPor")
+  mensagensAprovadas   Mensagem[]        @relation("MensagemAprovadaPor")
 }
 
 model UsuarioFabrica {
@@ -326,21 +328,23 @@ enum CanalContato {
 
 // Pessoa ou canal de uma empresa. Todo contato tem fonte: de onde veio o dado.
 model Contato {
-  id           String       @id @default(cuid())
-  clienteId    String
-  cliente      Cliente      @relation(fields: [clienteId], references: [id])
-  nome         String?
-  funcao       String?
-  canal        CanalContato
-  valor        String
-  servePara    String?
-  status       String?
-  fonte        String
-  verificadoEm DateTime?
-  naoContatar  Boolean      @default(false)
-  observacoes  String?
-  criadoEm     DateTime     @default(now())
-  conversas    Conversa[]
+  id            String         @id @default(cuid())
+  clienteId     String
+  cliente       Cliente        @relation(fields: [clienteId], references: [id])
+  nome          String?
+  funcao        String?
+  canal         CanalContato
+  valor         String
+  servePara     String?
+  status        String?
+  fonte         String
+  verificadoEm  DateTime?
+  naoContatar   Boolean        @default(false)
+  observacoes   String?
+  // De onde veio o número (ADR-015 §4). Sem origem registrada, nenhuma mensagem é enviada.
+  origemContato OrigemContato?
+  criadoEm      DateTime       @default(now())
+  conversas     Conversa[]
 
   @@index([clienteId])
 }
@@ -464,6 +468,13 @@ model Oportunidade {
   @@index([etapa])
 }
 
+enum OrigemContato {
+  PUBLICADO_PELA_EMPRESA
+  INDICACAO
+  BASE_PROFISSIONAL
+  RELACIONAMENTO
+}
+
 // WhatsApp (ADR-015, fase 1: só registro). Cada linha é um número da OEM: a de prospecção
 // fala com empresas; a do assistente (fase 3) fala com o Rômulo.
 enum LinhaWhatsapp {
@@ -528,12 +539,47 @@ model Conversa {
   @@index([ultimaMensagemEm])
 }
 
+// Ciclo da mensagem de saída: RASCUNHO → APROVADA → ENVIANDO → ENVIADA → ENTREGUE → LIDA,
+// com FALHOU e CANCELADA. Mensagem recebida nasce RECEBIDA.
+enum StatusMensagem {
+  RECEBIDA
+  RASCUNHO
+  APROVADA
+  ENVIANDO
+  ENVIADA
+  ENTREGUE
+  LIDA
+  FALHOU
+  CANCELADA
+}
+
+enum TipoEnvio {
+  PRIMEIRO_CONTATO
+  FOLLOW_UP
+  RESPOSTA
+}
+
+enum ClassificacaoMensagem {
+  INTERESSE
+  PERGUNTA_OBJECAO
+  NAO_INTERESSADO
+  NAO_CONTATAR
+  AMBIGUA
+}
+
+enum OrigemClassificacao {
+  REGRA
+  PESSOA
+  IA
+}
+
 model Mensagem {
   id         String          @id @default(cuid())
   conversaId String
   conversa   Conversa        @relation(fields: [conversaId], references: [id])
   linha      LinhaWhatsapp
-  idExterno  String
+  // Rascunho ainda não tem id do WhatsApp; ganha ao ser enviado.
+  idExterno  String?
   direcao    DirecaoMensagem
   origem     OrigemMensagem
   tipo       TipoMensagem
@@ -542,6 +588,21 @@ model Mensagem {
   eventoId   String?
   evento     EventoWhatsapp? @relation(fields: [eventoId], references: [id])
   criadoEm   DateTime        @default(now())
+
+  status              StatusMensagem         @default(RECEBIDA)
+  tipoEnvio           TipoEnvio?
+  geradaPorIa         Boolean                @default(false)
+  criadaPorId         String?
+  criadaPor           Usuario?               @relation("MensagemCriadaPor", fields: [criadaPorId], references: [id])
+  aprovadaPorId       String?
+  aprovadaPor         Usuario?               @relation("MensagemAprovadaPor", fields: [aprovadaPorId], references: [id])
+  aprovadaEm          DateTime?
+  enviadaEm           DateTime?
+  erro                String?
+  // Por que a mensagem aprovada ainda não saiu (fora do horário, linha caída...).
+  motivoBloqueio      String?
+  classificacao       ClassificacaoMensagem?
+  classificacaoOrigem OrigemClassificacao?
 
   // O mesmo evento pode chegar mais de uma vez: o id do WhatsApp evita a duplicata.
   @@unique([linha, idExterno])

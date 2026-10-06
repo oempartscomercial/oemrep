@@ -114,7 +114,20 @@ describe("lerEventoEvolution — o que não é conversa individual", () => {
 
   it("outros eventos (conexão, recibo de leitura) são ignorados", () => {
     expect(lerEventoEvolution(upsert({ state: "open" }, "connection.update"))[0].tipo).toBe("ignorado");
-    expect(lerEventoEvolution(upsert({ key: chave(), status: "READ" }, "messages.update"))[0].tipo).toBe("ignorado");
+    expect(lerEventoEvolution(upsert({ state: "open" }, "messages.delete"))[0].tipo).toBe("ignorado");
+  });
+});
+
+describe("lerEventoEvolution — recibos (messages.update)", () => {
+  it("entregue e lida viram mudança de estado da mensagem enviada", () => {
+    expect(lerEventoEvolution(upsert({ keyId: "3EB0AAAA", status: "DELIVERY_ACK" }, "messages.update"))).toEqual([{ tipo: "status", idExterno: "3EB0AAAA", status: "ENTREGUE" }]);
+    expect(lerEventoEvolution(upsert({ keyId: "3EB0AAAA", status: "READ" }, "messages.update"))).toEqual([{ tipo: "status", idExterno: "3EB0AAAA", status: "LIDA" }]);
+    expect(lerEventoEvolution(upsert({ key: { id: "3EB0BBBB" }, status: "read" }, "messages.update"))).toEqual([{ tipo: "status", idExterno: "3EB0BBBB", status: "LIDA" }]);
+  });
+
+  it("SERVER_ACK e recibo sem id são ignorados", () => {
+    expect(lerEventoEvolution(upsert({ keyId: "x", status: "SERVER_ACK" }, "messages.update"))[0].tipo).toBe("ignorado");
+    expect(lerEventoEvolution(upsert({ status: "READ" }, "messages.update"))[0].tipo).toBe("ignorado");
   });
 
   it("corpo que não parece evento é ignorado com motivo", () => {

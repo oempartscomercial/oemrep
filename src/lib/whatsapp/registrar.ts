@@ -2,6 +2,8 @@ import { Prisma, type LinhaWhatsapp } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { lerEventoEvolution, type EventoLido } from "@/domain/mensagens/evolution";
 import { casarContato } from "@/domain/mensagens/telefone";
+import { classificarPorRegra } from "@/domain/mensagens/supressao";
+import { aplicarEfeitosDaEntrada } from "./efeitos";
 
 // Fase 1 do ADR-015: só registro. Nada aqui envia mensagem, muda situação de empresa ou
 // cria tarefa; isso é da fase 2.
@@ -58,28 +60,77 @@ async function obterConversa(linha: LinhaWhatsapp, m: Mensagem, ocorridoEm: Date
   return prisma.conversa.update({ where: { id: conversa.id }, data: atualizacao });
 }
 
+// A plataforma envia, e o WhatsApp devolve o eco da mesma mensagem como "minha". Se o eco
+// chega antes de a API responder com o id, a mensagem ainda está ENVIANDO sem id: ela é
+// adotada em vez de virar uma segunda mensagem "pelo celular".
+async function adotarEcoDeEnvio(conversaId: string, m: Mensagem, ocorridoEm: Date, eventoId: string): Promise<boolean> {
+  const candidata = await prisma.mensagem.findFirst({
+    where: {
+      conversaId,
+      direcao: "SAIDA",
+      status: "ENVIANDO",
+      idExterno: null,
+      texto: m.texto,
+      criadoEm: { gte: new Date(Date.now() - 10 * 60_000) },
+    },
+    orderBy: { criadoEm: "desc" },
+  });
+  if (!candidata) return false;
+  const { count } = await prisma.mensagem.updateMany({
+    where: { id: candidata.id, status: "ENVIANDO", idExterno: null },
+    data: { idExterno: m.idExterno, status: "ENVIADA", enviadaEm: ocorridoEm, eventoId },
+  });
+  return count > 0;
+}
+
 async function gravarMensagem(linha: LinhaWhatsapp, eventoId: string, m: Mensagem, chegouEm: Date): Promise<string> {
   const ocorridoEm = m.ocorridoEm ?? chegouEm;
   const conversa = await obterConversa(linha, m, ocorridoEm);
+
+  if (m.direcao === "SAIDA" && (await adotarEcoDeEnvio(conversa.id, m, ocorridoEm, eventoId))) return "adotada";
+
+  const classificacao = m.direcao === "ENTRADA" ? classificarPorRegra(m.texto) : null;
   try {
-    await prisma.mensagem.create({
-      data: {
-        conversaId: conversa.id,
-        linha,
-        idExterno: m.idExterno,
-        direcao: m.direcao,
-        origem: m.origem,
-        tipo: m.tipoMensagem,
-        texto: m.texto,
-        ocorridoEm,
-        eventoId,
-      },
+    // A mensagem e o que ela provoca no CRM andam juntos: se os efeitos falham, a mensagem
+    // não fica gravada sem eles e o reenvio do transporte refaz tudo.
+    await prisma.$transaction(async (tx) => {
+      const criada = await tx.mensagem.create({
+        data: {
+          conversaId: conversa.id,
+          linha,
+          idExterno: m.idExterno,
+          direcao: m.direcao,
+          origem: m.origem,
+          tipo: m.tipoMensagem,
+          texto: m.texto,
+          ocorridoEm,
+          eventoId,
+          status: m.direcao === "SAIDA" ? "ENVIADA" : "RECEBIDA",
+          classificacao,
+          classificacaoOrigem: classificacao ? "REGRA" : null,
+        },
+      });
+      if (m.direcao === "ENTRADA") await aplicarEfeitosDaEntrada(tx, { conversa, mensagem: criada, classificacao });
     });
   } catch (erro) {
     if (jaExiste(erro)) return "duplicada";
     throw erro;
   }
   return "mensagem";
+}
+
+// Recibo de uma mensagem nossa. Só avança: LIDA nunca volta a ENTREGUE.
+async function aplicarRecibo(linha: LinhaWhatsapp, idExterno: string, status: "ENTREGUE" | "LIDA"): Promise<string> {
+  const { count } = await prisma.mensagem.updateMany({
+    where: {
+      linha,
+      idExterno,
+      direcao: "SAIDA",
+      status: { in: status === "ENTREGUE" ? ["ENVIANDO", "ENVIADA"] : ["ENVIANDO", "ENVIADA", "ENTREGUE"] },
+    },
+    data: { status },
+  });
+  return count > 0 ? `status: ${status}` : "status: sem mudança";
 }
 
 // Guarda o evento bruto ANTES de ler qualquer coisa, depois processa. Se o processamento
@@ -96,6 +147,7 @@ export async function registrarEvento(linha: LinhaWhatsapp, payload: unknown) {
     for (const lido of lerEventoEvolution(payload)) {
       if (lido.tipo === "ignorado") resultados.push(`ignorado: ${lido.motivo}`);
       else if (lido.tipo === "sem_numero") resultados.push(`sem_numero: ${lido.motivo}`);
+      else if (lido.tipo === "status") resultados.push(await aplicarRecibo(linha, lido.idExterno, lido.status));
       else resultados.push(await gravarMensagem(linha, evento.id, lido, chegouEm));
     }
     await prisma.eventoWhatsapp.update({
