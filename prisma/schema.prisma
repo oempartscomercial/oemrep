@@ -73,6 +73,7 @@ model Cliente {
   proximosPassos   ProximoPasso[]
   pedidosHistorico PedidoHistorico[]
   oportunidades    Oportunidade[]
+  conversas        Conversa[]
 }
 
 model ClienteFabrica {
@@ -339,6 +340,7 @@ model Contato {
   naoContatar  Boolean      @default(false)
   observacoes  String?
   criadoEm     DateTime     @default(now())
+  conversas    Conversa[]
 
   @@index([clienteId])
 }
@@ -460,4 +462,88 @@ model Oportunidade {
 
   @@index([clienteId, fabricaId])
   @@index([etapa])
+}
+
+// WhatsApp (ADR-015, fase 1: só registro). Cada linha é um número da OEM: a de prospecção
+// fala com empresas; a do assistente (fase 3) fala com o Rômulo.
+enum LinhaWhatsapp {
+  PROSPECCAO
+  ASSISTENTE
+}
+
+enum DirecaoMensagem {
+  ENTRADA
+  SAIDA
+}
+
+enum OrigemMensagem {
+  CONTATO
+  ROMULO_NO_CELULAR
+  PLATAFORMA
+  ASSISTENTE
+}
+
+enum TipoMensagem {
+  TEXTO
+  AUDIO
+  IMAGEM
+  VIDEO
+  DOCUMENTO
+  OUTRO
+}
+
+// O que o transporte entregou, exatamente como chegou. Grava-se antes de qualquer leitura:
+// se o formato mudar ou o processamento falhar, o evento pode ser reprocessado.
+model EventoWhatsapp {
+  id           String        @id @default(cuid())
+  linha        LinhaWhatsapp
+  payload      Json
+  recebidoEm   DateTime      @default(now())
+  processadoEm DateTime?
+  // "mensagem", "duplicada", "ignorado: ...", "sem_numero: ..." ou "erro: ..."
+  resultado    String?
+  mensagens    Mensagem[]
+
+  @@index([linha, recebidoEm])
+}
+
+// Um número numa linha. clienteId nulo = número que não casou com nenhum contato
+// (ou que casou com mais de uma empresa): fica na lista "sem identificar".
+model Conversa {
+  id               String        @id @default(cuid())
+  linha            LinhaWhatsapp
+  numero           String
+  clienteId        String?
+  cliente          Cliente?      @relation(fields: [clienteId], references: [id])
+  contatoId        String?
+  contato          Contato?      @relation(fields: [contatoId], references: [id])
+  motivoSemVinculo String?
+  nomeNoWhatsapp   String?
+  ultimaMensagemEm DateTime
+  criadoEm         DateTime      @default(now())
+  mensagens        Mensagem[]
+
+  @@unique([linha, numero])
+  @@index([clienteId])
+  @@index([ultimaMensagemEm])
+}
+
+model Mensagem {
+  id         String          @id @default(cuid())
+  conversaId String
+  conversa   Conversa        @relation(fields: [conversaId], references: [id])
+  linha      LinhaWhatsapp
+  idExterno  String
+  direcao    DirecaoMensagem
+  origem     OrigemMensagem
+  tipo       TipoMensagem
+  texto      String?
+  ocorridoEm DateTime
+  eventoId   String?
+  evento     EventoWhatsapp? @relation(fields: [eventoId], references: [id])
+  criadoEm   DateTime        @default(now())
+
+  // O mesmo evento pode chegar mais de uma vez: o id do WhatsApp evita a duplicata.
+  @@unique([linha, idExterno])
+  @@index([conversaId, ocorridoEm])
 }

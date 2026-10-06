@@ -17,7 +17,7 @@ describe("menuDoPerfil (PRD §4)", () => {
   });
 
   it("CRM é de ADMIN e ANALISTA", () => {
-    for (const rota of ["/funis", "/empresas"]) {
+    for (const rota of ["/funis", "/empresas", "/conversas"]) {
       expect(rotas("ADMIN")).toContain(rota);
       expect(rotas("ANALISTA")).toContain(rota);
       expect(rotas("OPERADOR")).not.toContain(rota);

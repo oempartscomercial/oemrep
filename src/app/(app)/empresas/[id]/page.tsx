@@ -9,6 +9,8 @@ import { Botao } from "@/components/patterns/botao";
 import { Selo, StatusBadge } from "@/components/patterns/status-badge";
 import { Timeline, type TimelineItem } from "@/components/patterns/timeline";
 import { SeloSituacao } from "@/components/crm/selo-situacao";
+import { ConversaWhatsapp } from "@/components/crm/conversa-whatsapp";
+import { formatarNumero } from "@/domain/mensagens/exibicao";
 import { descreverPrazo, formatarDia, hojeEmSaoPaulo, situacaoDoPrazo } from "@/domain/crm/prazo";
 import { cn } from "@/lib/utils";
 import { FichaAcoes } from "./ficha-acoes";
@@ -135,6 +137,15 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
               })}
             />
           )}
+
+          {empresa.conversas.map((c) => (
+            <Bloco key={c.id} titulo={`WhatsApp · ${c.contato?.nome ?? c.nomeNoWhatsapp ?? "Contato"} · ${formatarNumero(c.numero)}`}>
+              <ConversaWhatsapp
+                mensagens={c.mensagens}
+                aviso={c._count.mensagens > c.mensagens.length ? `Mostrando as ${c.mensagens.length} mensagens mais recentes de ${c._count.mensagens}.` : undefined}
+              />
+            </Bloco>
+          ))}
 
           <Bloco titulo="Linha do tempo">
             {eventos.length > 0 ? <Timeline eventos={eventos} /> : <p className="text-sm text-muted-foreground">Ainda não há nada registrado.</p>}

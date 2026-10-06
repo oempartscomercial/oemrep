@@ -129,7 +129,10 @@ reconferir antes de contratar):
    - `Contato`: acrescenta `origemContato` (`PUBLICADO_PELA_EMPRESA`, `INDICACAO`,
      `BASE_PROFISSIONAL`, `RELACIONAMENTO`). A fonte textual que já existe continua.
    - `AcaoPendente` (assistente): a escrita aguardando o "sim".
-   Mensagens aparecem na linha do tempo da ficha (ADR-013) como mais um tipo de item.
+   Mensagens aparecem na ficha da empresa (ADR-013), num bloco de conversa por número.
+   **Fase 1 (feita):** `Conversa`, `Mensagem` e `EventoWhatsapp`, sem `status`, `transcrição`,
+   `geradaPorIa` nem aprovação (nascem na fase 2/3), e sem `Contato.origemContato` (só serve às
+   checagens de envio da fase 2, então entra lá). Chave de idempotência: `(linha, idExterno)`.
 10. **Onde roda.** Webhooks e telas ficam na plataforma (Vercel + Supabase, ADR-001/002). O
     agendador (resumo das 8h, follow-ups vencidos) usa tarefa agendada; **conferir os limites
     do plano gratuito**, que podem não permitir a frequência necessária. O Evolution Go exige
@@ -172,9 +175,27 @@ reconferir antes de contratar):
    [whatsapp-fase0-roteiro](../design/2026-10-06-whatsapp-fase0-roteiro.md). O Arthur faz o papel do assistente num número de
    WhatsApp com o Rômulo. Mede: o que ele pede, se manda áudio, quanto de conversa precisa,
    o que a confirmação atrapalha. Decide as perguntas abertas abaixo.
-1. **Registro.** Webhook, `Mensagem`, linha do tempo na ficha, **só leitura**. Teste com 10 a
+1. **Registro.** Webhook, `Mensagem`, conversa na ficha, **só leitura**. Teste com 10 a
    20 contatos de relacionamento existente ou com permissão documentada. Passa quando 100% das
    mensagens de ida e volta aparecem e a amostra confere com o celular.
+   - **Código pronto (06/10/2026), ainda sem teste com número real.** Rota
+     `POST /api/whatsapp/prospeccao/webhook` (segredo por linha em
+     `WHATSAPP_WEBHOOK_SEGREDO_PROSPECCAO`; sem ele a rota responde 503), evento bruto gravado
+     antes de ler, leitor isolado do transporte (`src/domain/mensagens/evolution.ts`), conversa
+     na ficha e lista em `/conversas` (com "sem identificar").
+   - **Fora desta fase, de propósito:** detectar "parar/sair" (supressão é da fase 2: marcar
+     `naoContatar` sem revisão, por palavra solta, erra mais do que acerta); mover a empresa de
+     etapa e criar "Responder" (fase 2); associar à mão um número desconhecido a uma empresa;
+     baixar mídia; transcrever áudio.
+   - **A conferir no primeiro teste real** (o leitor foi escrito pelo formato documentado da
+     Evolution API v2 e testado só com payloads montados): nome do evento e campos de
+     `messages.upsert` no Evolution Go; se o transporte aceita cabeçalho personalizado ou só o
+     segredo na URL; como chegam contatos "lid" (hoje viram `sem_numero`: o evento fica
+     guardado e a lista avisa quantos, mas a conversa não é criada); o eco de mensagem enviada
+     pela API (fase 2) cairá na deduplicação por id.
+   - **Checklist da amostra:** para cada um dos 10 a 20 contatos, comparar no celular as
+     últimas 10 mensagens (e as horas) com a conversa na ficha, nos dois sentidos, incluindo
+     um áudio, uma imagem e uma mensagem digitada pelo celular do Rômulo.
 2. **Rascunho, aprovação e envio** na linha de prospecção, com supressão, classificação e
    fila diária de follow-ups. IA propõe, humano aprova.
 3. **Assistente do Rômulo** na linha oficial: consultas primeiro, depois escritas com
@@ -193,7 +214,10 @@ reconferir antes de contratar):
    existe modo em que a linha do Business App e a API oficial convivem no mesmo número.
 6. Preço da ativação do Evolution Go e da tarifa oficial no Brasil; limites do agendador no
    plano gratuito.
-7. Retenção das mensagens e base legal (revisão jurídica).
+7. Retenção das mensagens e base legal (revisão jurídica). A fase 1 já guarda texto de
+   terceiros: decidir retenção antes de ligar um número real.
+8. Webhook no ar: onde roda o transporte (a Evolution precisa de servidor sempre ligado) e
+   como o segredo é gerado e trocado.
 
 ## Fontes
 Pesquisa da pasta `rep` (`prospeccao/operacao-mensagens/*`, 03/10/2026) e, nesta data,

@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, Bell, Building2, FileCheck2, FileSearch, House, Kanban, ListChecks, Package, Settings, Truck, type LucideIcon } from "lucide-react";
+import { AlertTriangle, BarChart3, Bell, Building2, FileCheck2, FileSearch, House, Kanban, ListChecks, MessageCircle, Package, Settings, Truck, type LucideIcon } from "lucide-react";
 import type { PerfilUsuario } from "@/lib/authz";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; grupo: string };
@@ -8,6 +8,7 @@ const ITENS: NavItem[] = [
   { href: "/", label: "Início", icon: House, grupo: "" },
   { href: "/funis", label: "Funis", icon: Kanban, grupo: "Comercial" },
   { href: "/empresas", label: "Empresas", icon: Building2, grupo: "Comercial" },
+  { href: "/conversas", label: "Conversas", icon: MessageCircle, grupo: "Comercial" },
   { href: "/pedidos", label: "Pedidos", icon: Package, grupo: "Pedidos" },
   { href: "/pedidos/itens", label: "Itens pendentes", icon: ListChecks, grupo: "Pedidos" },
   { href: "/conferencia", label: "Conferência NFe", icon: FileCheck2, grupo: "Pedidos" },
@@ -23,6 +24,7 @@ const ITENS: NavItem[] = [
 const PERFIS_DA_ROTA: Record<string, PerfilUsuario[]> = {
   "/funis": ["ADMIN", "ANALISTA"],
   "/empresas": ["ADMIN", "ANALISTA"],
+  "/conversas": ["ADMIN", "ANALISTA"],
   "/auditoria": ["ADMIN", "ANALISTA"],
   "/cadastros": ["ADMIN"],
 };

@@ -73,6 +73,15 @@ export async function buscarFicha(id: string, usuario: UsuarioSessao) {
       interacoes: { orderBy: { data: "desc" }, take: 100, include: { usuario: true, oportunidade: { include: { fabrica: true } } } },
       proximosPassos: { where: { concluidoEm: null }, orderBy: { prazo: "asc" }, include: { responsavel: true } },
       oportunidades: { orderBy: { criadoEm: "desc" }, include: { fabrica: true } },
+      // WhatsApp (ADR-015): as 50 mensagens mais recentes de cada número ligado à empresa.
+      conversas: {
+        orderBy: { ultimaMensagemEm: "desc" },
+        include: {
+          contato: { select: { nome: true } },
+          mensagens: { orderBy: { ocorridoEm: "desc" }, take: 50 },
+          _count: { select: { mensagens: true } },
+        },
+      },
       pedidos: {
         where: filtroFabrica,
         orderBy: { criadoEm: "desc" },
