@@ -52,3 +52,31 @@ export function calcularGap(pedidos: PedidoParaGap[]): LinhaGap[] {
     return a.cliente.localeCompare(b.cliente);
   });
 }
+
+export type FiltroGap = { fabrica?: string; cliente?: string; ano?: string; mes?: string };
+
+export function filtrarGap(linhas: LinhaGap[], filtro: FiltroGap): LinhaGap[] {
+  return linhas.filter(
+    (l) =>
+      (!filtro.fabrica || l.fabrica === filtro.fabrica) &&
+      (!filtro.cliente || l.cliente === filtro.cliente) &&
+      (!filtro.ano || l.mes.startsWith(`${filtro.ano}-`)) &&
+      (!filtro.mes || l.mes === filtro.mes),
+  );
+}
+
+export type TotalAnual = { ano: string; valorPedido: number; valorFaturado: number; gap: number };
+
+// RN21: o confronto é por mês e ano, com total anual. Ano mais recente primeiro.
+export function totaisPorAno(linhas: LinhaGap[]): TotalAnual[] {
+  const anos = new Map<string, TotalAnual>();
+  for (const l of linhas) {
+    const ano = l.mes.slice(0, 4);
+    const total = anos.get(ano) ?? { ano, valorPedido: 0, valorFaturado: 0, gap: 0 };
+    total.valorPedido += l.valorPedido;
+    total.valorFaturado += l.valorFaturado;
+    total.gap = total.valorPedido - total.valorFaturado;
+    anos.set(ano, total);
+  }
+  return [...anos.values()].sort((a, b) => b.ano.localeCompare(a.ano));
+}

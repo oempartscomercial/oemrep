@@ -8,13 +8,15 @@ type Opcao = { id: string; label: string };
 export function PedidosXNfeFiltros({
   fabricas,
   clientes,
+  anos,
   meses,
   selecionado,
 }: {
   fabricas: Opcao[];
   clientes: Opcao[];
+  anos: Opcao[];
   meses: Opcao[];
-  selecionado: { fabrica?: string; cliente?: string; mes?: string };
+  selecionado: { fabrica?: string; cliente?: string; ano?: string; mes?: string };
 }) {
   const TODOS: Opcao = { id: "", label: "Todos" };
 
@@ -24,6 +26,9 @@ export function PedidosXNfeFiltros({
         {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
       </Select>
       <Select name="cliente" label="Cliente" defaultSelectedKey={selecionado.cliente ?? ""} className="sm:w-52" items={[TODOS, ...clientes]}>
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select>
+      <Select name="ano" label="Ano" defaultSelectedKey={selecionado.ano ?? ""} className="sm:w-32" items={[TODOS, ...anos]}>
         {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
       </Select>
       <Select name="mes" label="Mês" defaultSelectedKey={selecionado.mes ?? ""} className="sm:w-40" items={[TODOS, ...meses]}>

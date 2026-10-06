@@ -1,7 +1,7 @@
 import { Download01 } from "@untitledui/icons";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarPedidosParaGap } from "./queries";
-import { calcularGap, type LinhaGap } from "@/domain/analise/gap";
+import { calcularGap, filtrarGap, totaisPorAno, type LinhaGap } from "@/domain/analise/gap";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
@@ -18,9 +18,9 @@ function opcoesUnicas(valores: string[]): { id: string; label: string }[] {
 export default async function PedidosXNfePage({
   searchParams,
 }: {
-  searchParams: Promise<{ fabrica?: string; cliente?: string; mes?: string }>;
+  searchParams: Promise<{ fabrica?: string; cliente?: string; ano?: string; mes?: string }>;
 }) {
-  const { fabrica, cliente, mes } = await searchParams;
+  const { fabrica, cliente, ano, mes } = await searchParams;
 
   const usuario = await obterUsuarioLogado();
   if (!usuario) {
@@ -34,9 +34,8 @@ export default async function PedidosXNfePage({
   const pedidos = await buscarPedidosParaGap(usuario);
   const todasLinhas: LinhaGap[] = calcularGap(pedidos);
 
-  const linhasFiltradas = todasLinhas.filter(
-    (l) => (!fabrica || l.fabrica === fabrica) && (!cliente || l.cliente === cliente) && (!mes || l.mes === mes),
-  );
+  const linhasFiltradas = filtrarGap(todasLinhas, { fabrica, cliente, ano, mes });
+  const anuais = totaisPorAno(linhasFiltradas);
 
   const linhasView: LinhaGapView[] = linhasFiltradas.map((l, i) => ({
     id: `${l.mes}-${l.fabrica}-${l.cliente}-${i}`,
@@ -58,6 +57,7 @@ export default async function PedidosXNfePage({
   const qs = new URLSearchParams();
   if (fabrica) qs.set("fabrica", fabrica);
   if (cliente) qs.set("cliente", cliente);
+  if (ano) qs.set("ano", ano);
   if (mes) qs.set("mes", mes);
 
   return (
@@ -75,9 +75,34 @@ export default async function PedidosXNfePage({
       <PedidosXNfeFiltros
         fabricas={opcoesUnicas(todasLinhas.map((l) => l.fabrica))}
         clientes={opcoesUnicas(todasLinhas.map((l) => l.cliente))}
+        anos={opcoesUnicas(todasLinhas.map((l) => l.mes.slice(0, 4))).reverse()}
         meses={opcoesUnicas(todasLinhas.map((l) => l.mes))}
-        selecionado={{ fabrica, cliente, mes }}
+        selecionado={{ fabrica, cliente, ano, mes }}
       />
+
+      {anuais.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {anuais.map((t) => (
+            <div key={t.ano} className="flex flex-col gap-3 rounded-xl bg-primary p-5 ring-1 ring-secondary">
+              <span className="text-sm font-semibold text-primary">Total {t.ano}</span>
+              <dl className="grid grid-cols-3 gap-2 text-sm">
+                <div>
+                  <dt className="text-tertiary">Pedidos</dt>
+                  <dd className="font-medium text-primary">{brl(t.valorPedido)}</dd>
+                </div>
+                <div>
+                  <dt className="text-tertiary">Com NFe</dt>
+                  <dd className="font-medium text-primary">{brl(t.valorFaturado)}</dd>
+                </div>
+                <div>
+                  <dt className="text-tertiary">Gap</dt>
+                  <dd className={t.gap > 0 ? "font-semibold text-error-primary" : "font-medium text-primary"}>{brl(t.gap)}</dd>
+                </div>
+              </dl>
+            </div>
+          ))}
+        </div>
+      )}
 
       {resumo.length > 0 && (
         <div className="flex flex-col gap-3 rounded-xl bg-primary p-6 ring-1 ring-secondary">
