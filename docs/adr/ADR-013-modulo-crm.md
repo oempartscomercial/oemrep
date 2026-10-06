@@ -20,8 +20,11 @@ viram migração depois do go-live.
    regras em funções puras em `src/domain/`. O Claude do Rômulo grava pela API da
    plataforma, nunca direto no banco.
 2. **Um cadastro só de empresa.** `Cliente` passa a guardar também a prospecção:
-   - `cnpj` vira **opcional** (continua único quando preenchido). Pedido e NFe
-     continuam exigindo cliente com CNPJ, porque a conferência casa por CNPJ (RN04).
+   - `cnpj` vira **opcional** (continua único quando preenchido). O pedido pode ser
+     lançado para empresa sem CNPJ; o CNPJ só é exigido na conferência da NFe: se
+     nenhuma empresa tem o CNPJ da nota, a tela oferece as empresas sem CNPJ com pedido
+     aberto naquela fábrica, e a confirmação grava o CNPJ da nota na escolhida (com
+     auditoria). Decisão do Arthur, 06/10/2026.
    - Ganha `situacao`: `CANDIDATA → APROVADA → EM_CONTATO → CONVERSANDO → AVANCO`, mais
      `PAUSADA`, `DESCARTADA` e `CLIENTE`. Ganha também cidade, UF, site, origem e
      `naoContatar`.
@@ -79,8 +82,8 @@ viram migração depois do go-live.
   pergunta do Rômulo sobre a carteira.
 
 ## Consequências
-- Telas e regras que pressupõem CNPJ (novo pedido, importação, conferência) precisam
-  recusar empresa sem CNPJ com uma mensagem clara ("preencha o CNPJ da empresa").
+- A conferência deixa de casar só por CNPJ (RN04): quando o CNPJ da nota não existe,
+  quem confere escolhe a empresa, e o CNPJ passa a valer dali em diante.
 - Cadastros > Clientes é absorvida por Empresas.
 - A importação inicial traz as 66 empresas, os contatos, as interações e o histórico da
   pasta local, deduplicando por CNPJ contra os clientes já cadastrados.
