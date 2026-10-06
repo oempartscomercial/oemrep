@@ -1,7 +1,7 @@
 // Lógica pura de mapeamento estado do domínio → rótulo + cor de badge.
 // Mantida separada do componente para ser testável sem React (TDD, ADR-011).
 
-export type StatusTipo = "pedido" | "nfe" | "chamado";
+export type StatusTipo = "pedido" | "item" | "nfe" | "chamado";
 export type StatusBadgeColor = "gray" | "success" | "warning" | "error" | "blue";
 
 const MAPA: Record<StatusTipo, Record<string, { label: string; color: StatusBadgeColor }>> = {
@@ -10,6 +10,12 @@ const MAPA: Record<StatusTipo, Record<string, { label: string; color: StatusBadg
     PARCIAL: { label: "Parcial", color: "warning" },
     COMPLETO: { label: "Completo", color: "success" },
     ARQUIVADO: { label: "Arquivado", color: "gray" },
+  },
+  item: {
+    PENDENTE: { label: "Pendente", color: "warning" },
+    OK: { label: "OK", color: "success" },
+    FORA_DE_FABRICACAO: { label: "Fora de fabricação", color: "gray" },
+    DESISTENCIA: { label: "Desistência", color: "gray" },
   },
   nfe: {
     TRANSITO: { label: "Em trânsito", color: "blue" },

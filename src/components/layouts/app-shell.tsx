@@ -14,7 +14,7 @@ import { UsuarioRodape, type UsuarioRodapeProps } from "./usuario-rodape";
 export function AppShell({ children, usuario }: { children: ReactNode; usuario: UsuarioRodapeProps | null }) {
   const pathname = usePathname();
   const itens = menuDoPerfil(usuario?.perfil ?? "OPERADOR");
-  const activeUrl = pathname === "/" ? "/" : itens.find((i) => i.href !== "/" && pathname.startsWith(i.href!))?.href ?? pathname;
+  const activeUrl = pathname === "/" ? "/" : itens.filter((i) => i.href !== "/" && pathname.startsWith(i.href!)).sort((a, b) => b.href!.length - a.href!.length)[0]?.href ?? pathname;
 
   return (
     <div className="flex min-h-dvh flex-col bg-primary lg:flex-row">

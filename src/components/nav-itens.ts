@@ -1,10 +1,11 @@
-import { AlertTriangle, BarChartSquare02, Bell01, FileCheck02, FileSearch02, Home01, Package, Settings01, Truck01 } from "@untitledui/icons";
+import { AlertTriangle, BarChartSquare02, Bell01, FileCheck02, FileSearch02, Home01, List, Package, Settings01, Truck01 } from "@untitledui/icons";
 import type { NavItemType } from "@/components/application/app-navigation/config";
 import type { PerfilUsuario } from "@/lib/authz";
 
 const ITENS: NavItemType[] = [
   { href: "/", label: "Dashboard", icon: Home01 },
   { href: "/pedidos", label: "Pedidos", icon: Package },
+  { href: "/pedidos/itens", label: "Itens pendentes", icon: List },
   { href: "/conferencia", label: "Conferência NFe", icon: FileCheck02 },
   { href: "/rastreio", label: "Rastreio", icon: Truck01 },
   { href: "/divergencias", label: "Divergências", icon: AlertTriangle },
