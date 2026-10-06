@@ -9,6 +9,7 @@ import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Button } from "@/components/ui/buttons/button";
 import { Badge } from "@/components/ui/badges/badges";
+import { Select } from "@/components/ui/select/select";
 import { FileUploadDropZone } from "@/components/application/file-upload/file-upload-base";
 import { DataTable } from "@/components/patterns/data-table";
 
@@ -22,13 +23,14 @@ export default function ConferenciaNFePage() {
   const [analise, setAnalise] = useState<AnaliseNFe | null>(null);
   const [enviando, setEnviando] = useState(false);
 
-  async function handleAnalisar() {
+  async function handleAnalisar(clienteId?: string) {
     if (!arquivo) return;
     setErro(null);
-    setAnalise(null);
+    if (!clienteId) setAnalise(null);
     setAnalisando(true);
     const formData = new FormData();
     formData.append("arquivo", arquivo);
+    if (clienteId) formData.append("clienteId", clienteId);
     const resultado = await analisarXmlNFe(formData);
     setAnalisando(false);
     if (resultado.erro) {
@@ -41,7 +43,7 @@ export default function ConferenciaNFePage() {
   async function handleConfirmar() {
     if (!analise) return;
     setEnviando(true);
-    const mensagem = await executarConfirmacaoBaixa(() => confirmarBaixaNFe(analise));
+    const mensagem = await executarConfirmacaoBaixa(() => confirmarBaixaNFe({ xml: analise.xml, clienteId: analise.clienteId }));
     setEnviando(false);
     if (mensagem) {
       setErro(mensagem);
@@ -67,7 +69,7 @@ export default function ConferenciaNFePage() {
         {arquivo && <p className="text-sm text-secondary">Selecionado: <span className="font-medium text-primary">{arquivo.name}</span></p>}
         {erro && <p className="text-sm text-error-primary">{erro}</p>}
         <div>
-          <Button color="primary" isDisabled={!arquivo} isLoading={analisando} onClick={handleAnalisar}>
+          <Button color="primary" isDisabled={!arquivo} isLoading={analisando} onClick={() => handleAnalisar()}>
             Analisar
           </Button>
         </div>
@@ -78,8 +80,36 @@ export default function ConferenciaNFePage() {
           <div className="rounded-xl bg-primary p-5 ring-1 ring-secondary">
             <h2 className="text-lg font-semibold text-primary">NFe {analise.nfe.numero}</h2>
             <p className="mt-1 text-sm text-tertiary">Destinatário: {analise.nfe.destinatarioCnpj}</p>
-            {cadastroIncompleto && (
-              <p className="mt-2 text-sm text-error-primary">Fábrica ou cliente desta NFe não está cadastrado no sistema.</p>
+            {!analise.fabricaId && (
+              <p className="mt-2 text-sm text-error-primary">A fábrica emitente desta NFe não está cadastrada no sistema.</p>
+            )}
+            {analise.fabricaId && !analise.clienteId && analise.candidatos.length === 0 && (
+              <p className="mt-2 text-sm text-error-primary">
+                Nenhuma empresa tem o CNPJ {analise.nfe.destinatarioCnpj}, e nenhuma empresa sem CNPJ tem pedido aberto nesta fábrica.
+              </p>
+            )}
+            {analise.fabricaId && !analise.clienteId && analise.candidatos.length > 0 && (
+              <div className="mt-4 max-w-md">
+                <Select
+                  label="Para qual empresa é esta nota?"
+                  hint={`Nenhuma empresa tem o CNPJ ${analise.nfe.destinatarioCnpj}. O CNPJ será gravado na empresa escolhida.`}
+                  placeholder="Escolha a empresa…"
+                  isDisabled={analisando}
+                  onSelectionChange={(key) => key && handleAnalisar(String(key))}
+                  items={analise.candidatos.map((c) => ({
+                    id: c.id,
+                    label: c.nome,
+                    supportingText: [c.cidade, c.uf].filter(Boolean).join("/") || undefined,
+                  }))}
+                >
+                  {(item) => <Select.Item id={item.id} supportingText={item.supportingText}>{item.label}</Select.Item>}
+                </Select>
+              </div>
+            )}
+            {analise.gravarCnpj && (
+              <p className="mt-2 text-sm text-secondary">
+                Ao confirmar, o CNPJ {analise.nfe.destinatarioCnpj} será gravado no cadastro da empresa.
+              </p>
             )}
           </div>
 

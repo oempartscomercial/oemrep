@@ -2,30 +2,44 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { obterUsuarioLogado } from "@/lib/sessao";
+import { obterUsuarioLogado, type UsuarioSessao } from "@/lib/sessao";
 import { podeAcessarFabrica } from "@/lib/authz";
 import { extrairNFeDoXml, type NFeExtraida } from "@/domain/nfe/parser";
 import { conferirItens, type PendenciaItem, type ResultadoConferenciaItem } from "@/domain/nfe/conferencia";
+import { resolverClienteDaNFe } from "@/domain/nfe/cliente";
 import { validarVinculoPedidos } from "@/domain/nfe/vinculo";
 import { aplicarBaixaItem } from "@/domain/nfe/baixa";
 import { calcularQtdPendente } from "@/domain/pedido/item";
 import { recalcularEstado } from "@/domain/pedido/estado";
 import { compararCampos } from "@/domain/auditoria/evento";
 
+export type EmpresaCandidata = { id: string; nome: string; cidade: string | null; uf: string | null };
+
 export type AnaliseNFe = {
+  // O XML volta para o servidor na confirmação: tudo é recalculado a partir dele,
+  // nada do que a tela mostra é confiado (quantidades, vínculos, ids).
+  xml: string;
   nfe: NFeExtraida;
   clienteId: string | null;
   fabricaId: string | null;
+  // Empresa escolhida ainda sem CNPJ: a confirmação grava o CNPJ da nota nela (ADR-013).
+  gravarCnpj: boolean;
+  // Sem empresa com o CNPJ da nota: empresas sem CNPJ com pedido aberto nesta fábrica.
+  candidatos: EmpresaCandidata[];
   conferencia: ResultadoConferenciaItem[];
 };
 
-export async function analisarXmlNFe(formData: FormData): Promise<{ erro?: string; analise?: AnaliseNFe }> {
-  const arquivo = formData.get("arquivo") as File | null;
-  if (!arquivo || arquivo.size === 0) return { erro: "Selecione um arquivo XML." };
+const SEM_SESSAO = "Sessão expirada. Faça login novamente.";
+const SEM_PERMISSAO = "Você não tem permissão para conferir notas desta fábrica.";
 
+async function montarAnalise(
+  usuario: UsuarioSessao,
+  xml: string,
+  clienteIdEscolhido: string | null,
+): Promise<{ erro: string } | { analise: AnaliseNFe }> {
   let nfe: NFeExtraida;
   try {
-    nfe = extrairNFeDoXml(await arquivo.text());
+    nfe = extrairNFeDoXml(xml);
   } catch (erro) {
     return { erro: erro instanceof Error ? erro.message : "Falha ao ler o XML." };
   }
@@ -33,17 +47,34 @@ export async function analisarXmlNFe(formData: FormData): Promise<{ erro?: strin
   const existente = await prisma.notaFiscal.findUnique({ where: { chaveAcesso: nfe.chaveAcesso } });
   if (existente) return { erro: "Esta NFe já foi importada." };
 
-  const [cliente, fabrica] = await Promise.all([
+  const [clientePorCnpj, fabrica, clienteEscolhido] = await Promise.all([
     prisma.cliente.findUnique({ where: { cnpj: nfe.destinatarioCnpj } }),
     prisma.fabrica.findUnique({ where: { cnpj: nfe.emitenteCnpj } }),
+    clienteIdEscolhido ? prisma.cliente.findUnique({ where: { id: clienteIdEscolhido } }) : null,
   ]);
+  if (fabrica && !podeAcessarFabrica(usuario, fabrica.id)) return { erro: SEM_PERMISSAO };
+  if (clienteIdEscolhido && !clienteEscolhido) return { erro: "Empresa escolhida não encontrada." };
 
-  if (!cliente || !fabrica) {
-    return { analise: { nfe, clienteId: cliente?.id ?? null, fabricaId: fabrica?.id ?? null, conferencia: [] } };
+  const resolucao = resolverClienteDaNFe(nfe.destinatarioCnpj, clientePorCnpj, clienteEscolhido);
+  if ("erro" in resolucao) return { erro: resolucao.erro };
+  const { clienteId, gravarCnpj } = resolucao;
+
+  const base = { xml, nfe, clienteId, fabricaId: fabrica?.id ?? null, gravarCnpj, candidatos: [], conferencia: [] };
+  if (!fabrica) return { analise: base };
+
+  if (!clienteId) {
+    const candidatos = await prisma.cliente.findMany({
+      where: { cnpj: null, pedidos: { some: { fabricaId: fabrica.id, estado: { in: ["SEM_NFE", "PARCIAL"] } } } },
+      select: { id: true, nomeFantasia: true, cidade: true, uf: true },
+      orderBy: { nomeFantasia: "asc" },
+    });
+    return {
+      analise: { ...base, candidatos: candidatos.map((c) => ({ id: c.id, nome: c.nomeFantasia, cidade: c.cidade, uf: c.uf })) },
+    };
   }
 
   const pedidos = await prisma.pedido.findMany({
-    where: { clienteId: cliente.id, fabricaId: fabrica.id, estado: { in: ["SEM_NFE", "PARCIAL"] } },
+    where: { clienteId, fabricaId: fabrica.id, estado: { in: ["SEM_NFE", "PARCIAL"] } },
     include: { itens: { where: { status: "PENDENTE" } } },
   });
 
@@ -61,34 +92,51 @@ export async function analisarXmlNFe(formData: FormData): Promise<{ erro?: strin
     })),
   );
 
-  const conferencia = conferirItens(nfe.destinatarioCnpj, nfe.itens, pendencias);
-
-  return { analise: { nfe, clienteId: cliente.id, fabricaId: fabrica.id, conferencia } };
+  return { analise: { ...base, conferencia: conferirItens(nfe.destinatarioCnpj, nfe.itens, pendencias) } };
 }
 
-export async function confirmarBaixaNFe(analise: AnaliseNFe): Promise<{ erros: string[] }> {
+export async function analisarXmlNFe(formData: FormData): Promise<{ erro?: string; analise?: AnaliseNFe }> {
   const usuario = await obterUsuarioLogado();
-  if (!usuario) return { erros: ["Sessão expirada. Faça login novamente."] };
+  if (!usuario) return { erro: SEM_SESSAO };
+
+  const arquivo = formData.get("arquivo") as File | null;
+  if (!arquivo || arquivo.size === 0) return { erro: "Selecione um arquivo XML." };
+  const clienteId = (formData.get("clienteId") as string | null) || null;
+
+  return montarAnalise(usuario, await arquivo.text(), clienteId);
+}
+
+export async function confirmarBaixaNFe(entrada: { xml: string; clienteId: string | null }): Promise<{ erros: string[] }> {
+  const usuario = await obterUsuarioLogado();
+  if (!usuario) return { erros: [SEM_SESSAO] };
+
+  const resultado = await montarAnalise(usuario, entrada.xml, entrada.clienteId);
+  if ("erro" in resultado) return { erros: [resultado.erro] };
+  const { analise } = resultado;
   if (!analise.clienteId || !analise.fabricaId) {
     return { erros: ["Fábrica ou cliente não cadastrado para esta NFe."] };
   }
-
-  if (!podeAcessarFabrica(usuario, analise.fabricaId)) {
-    return { erros: ["Você não tem permissão para confirmar baixas nesta fábrica."] };
-  }
+  const clienteId = analise.clienteId;
 
   const vinculados = analise.conferencia.filter((r) => r.pendencia !== null);
   if (vinculados.length === 0) return { erros: ["Nenhum item da NFe corresponde a um pedido pendente."] };
 
   const pedidosIds = [...new Set(vinculados.map((r) => r.pendencia!.pedidoId))];
-  const erros = validarVinculoPedidos(pedidosIds.map((id) => ({ id, clienteId: analise.clienteId! })));
+  const erros = validarVinculoPedidos(pedidosIds.map((id) => ({ id, clienteId })));
   if (erros.length > 0) return { erros };
 
-  // Nota fiscal, baixa de itens, recálculo de estado do pedido e auditoria formam uma
-  // única unidade de trabalho: uma falha no meio (ex.: violação de FK na auditoria)
-  // não pode deixar uma baixa parcial gravada sem o pedido saber (regra 4 do CLAUDE.md).
+  // Nota fiscal, CNPJ do cliente, baixa de itens, recálculo de estado do pedido e
+  // auditoria formam uma única unidade de trabalho: uma falha no meio não pode deixar
+  // uma baixa parcial gravada sem o pedido saber (regra 4 do CLAUDE.md).
   try {
     await prisma.$transaction(async (tx) => {
+      if (analise.gravarCnpj) {
+        await tx.cliente.update({ where: { id: clienteId }, data: { cnpj: analise.nfe.destinatarioCnpj } });
+        await tx.eventoAuditoria.createMany({
+          data: compararCampos("Cliente", clienteId, usuario.id, { cnpj: null }, { cnpj: analise.nfe.destinatarioCnpj }),
+        });
+      }
+
       const notaFiscal = await tx.notaFiscal.create({
         data: {
           numero: analise.nfe.numero,
@@ -102,15 +150,15 @@ export async function confirmarBaixaNFe(analise: AnaliseNFe): Promise<{ erros: s
         },
       });
 
-      for (const resultado of vinculados) {
-        const pendencia = resultado.pendencia!;
+      for (const resultadoItem of vinculados) {
+        const pendencia = resultadoItem.pendencia!;
         const item = await tx.itemPedido.findUnique({ where: { id: pendencia.itemPedidoId } });
         if (!item) continue;
 
-        const { quantidadeFaturada, status } = aplicarBaixaItem(item, resultado.itemNFe.quantidade);
+        const { quantidadeFaturada, status } = aplicarBaixaItem(item, resultadoItem.itemNFe.quantidade);
 
         await tx.itemFaturado.create({
-          data: { itemPedidoId: item.id, notaFiscalId: notaFiscal.id, quantidadeFaturada: resultado.itemNFe.quantidade },
+          data: { itemPedidoId: item.id, notaFiscalId: notaFiscal.id, quantidadeFaturada: resultadoItem.itemNFe.quantidade },
         });
         await tx.itemPedido.update({ where: { id: item.id }, data: { quantidadeFaturada, status } });
         const eventosItem = compararCampos(
