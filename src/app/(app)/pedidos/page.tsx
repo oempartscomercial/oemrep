@@ -9,6 +9,9 @@ import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
 import { Button } from "@/components/ui/buttons/button";
 import { PedidosTabela, type PedidoLinha } from "./pedidos-tabela";
 import { cx } from "@/utils/cx";
+import { lerPagina, paginar, POR_PAGINA } from "@/domain/paginacao";
+import { Paginacao } from "@/components/patterns/paginacao";
+
 
 const ABAS: { valor: FiltroPedido; rotulo: string }[] = [
   { valor: "EM_ANDAMENTO", rotulo: "Em andamento" },
@@ -24,9 +27,9 @@ function isFiltroPedido(valor: string): valor is FiltroPedido {
 export default async function PedidosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filtro?: string }>;
+  searchParams: Promise<{ filtro?: string; pagina?: string }>;
 }) {
-  const { filtro: filtroBruto } = await searchParams;
+  const { filtro: filtroBruto, pagina: paginaBruta } = await searchParams;
   const filtro: FiltroPedido = filtroBruto && isFiltroPedido(filtroBruto) ? filtroBruto : "EM_ANDAMENTO";
 
   const usuario = await obterUsuarioLogado();
@@ -39,9 +42,9 @@ export default async function PedidosPage({
   }
 
   const pedidos = await buscarPedidosPermitidos(usuario);
-  const filtrados = filtrarPedidos(pedidos, filtro);
+  const { itens: daPagina, pagina, total } = paginar(filtrarPedidos(pedidos, filtro), lerPagina(paginaBruta));
 
-  const linhas: PedidoLinha[] = filtrados.map((pedido) => ({
+  const linhas: PedidoLinha[] = daPagina.map((pedido) => ({
     id: pedido.id,
     numero: pedido.semNumero ? "S/N" : pedido.numero ?? "—",
     fabrica: pedido.fabrica.nome,
@@ -86,6 +89,7 @@ export default async function PedidosPage({
       </div>
 
       <PedidosTabela pedidos={linhas} />
+      <Paginacao pagina={pagina} total={total} porPagina={POR_PAGINA} caminho="/pedidos" params={{ filtro }} />
     </PageContainer>
   );
 }

@@ -2,17 +2,20 @@ import { Download01, Plus } from "@untitledui/icons";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Button } from "@/components/ui/buttons/button";
+import { lerPagina, paginar, POR_PAGINA } from "@/domain/paginacao";
+import { Paginacao } from "@/components/patterns/paginacao";
 import { ClientesTabela, type ClienteLinha } from "../cadastros-tabelas";
 
 // Lista de dados vivos do banco: sempre renderizar por requisição (nunca estática).
 export const dynamic = "force-dynamic";
 
-export default async function ClientesPage() {
-  const clientes = await prisma.cliente.findMany({
+export default async function ClientesPage({ searchParams }: { searchParams: Promise<{ pagina?: string }> }) {
+  const todos = await prisma.cliente.findMany({
     orderBy: { nomeFantasia: "asc" },
     include: { fabricas: { include: { fabrica: true } } },
   });
 
+  const { itens: clientes, pagina, total } = paginar(todos, lerPagina((await searchParams).pagina));
   const linhas: ClienteLinha[] = clientes.map((c) => ({
     id: c.id,
     nomeFantasia: c.nomeFantasia,
@@ -33,6 +36,7 @@ export default async function ClientesPage() {
         }
       />
       <ClientesTabela clientes={linhas} />
+      <Paginacao pagina={pagina} total={total} porPagina={POR_PAGINA} caminho="/cadastros/clientes" params={{}} />
     </div>
   );
 }

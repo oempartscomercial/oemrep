@@ -8,6 +8,8 @@ import { PageHeader } from "@/components/patterns/page-header";
 import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
 import { Button } from "@/components/ui/buttons/button";
 import { cx } from "@/utils/cx";
+import { lerPagina, paginar, POR_PAGINA } from "@/domain/paginacao";
+import { Paginacao } from "@/components/patterns/paginacao";
 import { ChamadosTabela, type ChamadoLinha } from "./chamados-tabela";
 
 const ABAS: { id: SituacaoFila; rotulo: string }[] = [
@@ -26,10 +28,12 @@ export default async function DivergenciasPage({ searchParams }: { searchParams:
     );
   }
 
-  const situacao = lerSituacaoFila((await searchParams).situacao);
+  const params = await searchParams;
+  const situacao = lerSituacaoFila(params.situacao);
   const chamados = await buscarChamadosPermitidos(usuario);
   const resumo = resumirFila(chamados);
-  const linhas: ChamadoLinha[] = filtrarFila(chamados, situacao).map((chamado) => ({
+  const { itens: daPagina, pagina, total } = paginar(filtrarFila(chamados, situacao), lerPagina(params.pagina));
+  const linhas: ChamadoLinha[] = daPagina.map((chamado) => ({
     id: chamado.id,
     nfe: chamado.notaFiscal.numero,
     motivo: chamado.motivo.nome,
@@ -87,6 +91,7 @@ export default async function DivergenciasPage({ searchParams }: { searchParams:
         chamados={linhas}
         vazio={situacao === "RESOLVIDOS" ? "Nenhum chamado resolvido ainda." : "Nenhum chamado aberto. Tudo em dia."}
       />
+      <Paginacao pagina={pagina} total={total} porPagina={POR_PAGINA} caminho="/divergencias" params={{ situacao }} />
     </PageContainer>
   );
 }

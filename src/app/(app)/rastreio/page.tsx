@@ -5,9 +5,11 @@ import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
 import { Button } from "@/components/ui/buttons/button";
+import { lerPagina, paginar, POR_PAGINA } from "@/domain/paginacao";
+import { Paginacao } from "@/components/patterns/paginacao";
 import { RastreioTabela, type NotaRastreioLinha } from "./rastreio-tabela";
 
-export default async function RastreioPage() {
+export default async function RastreioPage({ searchParams }: { searchParams: Promise<{ pagina?: string }> }) {
   const usuario = await obterUsuarioLogado();
   if (!usuario) {
     return (
@@ -17,7 +19,7 @@ export default async function RastreioPage() {
     );
   }
 
-  const notas = await buscarNotasFiscaisPermitidas(usuario);
+  const { itens: notas, pagina, total } = paginar(await buscarNotasFiscaisPermitidas(usuario), lerPagina((await searchParams).pagina));
   const linhas: NotaRastreioLinha[] = notas.map((nota) => ({
     id: nota.id,
     numero: nota.numero,
@@ -33,6 +35,7 @@ export default async function RastreioPage() {
         acoes={<Button color="secondary" href="/api/export/rastreio" iconLeading={<Download01 />}>Exportar XLSX</Button>}
       />
       <RastreioTabela notas={linhas} />
+      <Paginacao pagina={pagina} total={total} porPagina={POR_PAGINA} caminho="/rastreio" params={{}} />
     </PageContainer>
   );
 }
