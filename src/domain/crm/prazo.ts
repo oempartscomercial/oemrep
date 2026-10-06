@@ -30,3 +30,9 @@ export function formatarDia(dia: string): string {
 }
 
 export const hojeEmSaoPaulo = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+
+/** Sábado e domingo passam para a segunda seguinte. */
+export function proximoDiaUtil(dia: string): string {
+  const semana = new Date(`${dia}T00:00:00Z`).getUTCDay();
+  return semana === 6 ? somarDias(dia, 2) : semana === 0 ? somarDias(dia, 1) : dia;
+}
