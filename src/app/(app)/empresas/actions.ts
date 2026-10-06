@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado, type UsuarioSessao } from "@/lib/sessao";
 import { podeVerCrm } from "@/lib/authz";
 import { compararCampos } from "@/domain/auditoria/evento";
+import { hojeEmSaoPaulo } from "@/domain/crm/prazo";
 import { etapaAtiva, resumoDoMovimento, validarMovimento, type DadosMovimento } from "@/domain/crm/funil";
 
 const SEM_SESSAO = "Sessão expirada. Faça login novamente.";
@@ -13,7 +14,6 @@ const SEM_PERMISSAO = "Você não tem permissão para acessar o CRM.";
 export type PassoEntrada = { acao: string; prazo: string; responsavelId: string };
 export type Resultado = { erros: string[] };
 
-const hojeEmSaoPaulo = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 const comoData = (dia: string) => new Date(`${dia}T00:00:00Z`);
 
 async function sessaoCrm(): Promise<{ usuario: UsuarioSessao } | { erro: string }> {

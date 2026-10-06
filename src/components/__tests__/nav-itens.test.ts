@@ -16,6 +16,14 @@ describe("menuDoPerfil (PRD §4)", () => {
     expect(rotas("OPERADOR")).not.toContain("/auditoria");
   });
 
+  it("CRM é de ADMIN e ANALISTA", () => {
+    for (const rota of ["/funis", "/empresas"]) {
+      expect(rotas("ADMIN")).toContain(rota);
+      expect(rotas("ANALISTA")).toContain(rota);
+      expect(rotas("OPERADOR")).not.toContain(rota);
+    }
+  });
+
   it("todos veem a operação de pedidos", () => {
     for (const perfil of ["OPERADOR", "ANALISTA", "ADMIN"] as const) {
       expect(rotas(perfil)).toEqual(expect.arrayContaining(["/", "/pedidos", "/conferencia", "/rastreio", "/divergencias"]));

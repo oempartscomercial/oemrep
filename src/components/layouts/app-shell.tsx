@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import { OemLogo } from "@/components/foundations/logo/oem-logo";
 import { menuAgrupado, menuDoPerfil } from "@/components/nav-itens";
+import { BuscaGlobalBotao } from "./busca-global";
 import { UsuarioRodape, type UsuarioRodapeProps } from "./usuario-rodape";
 
 /**
@@ -41,8 +42,9 @@ export function AppShell({ children, usuario }: { children: ReactNode; usuario: 
   return (
     <SidebarProvider>
       <Sidebar>
-        <SidebarHeader className="px-3 pt-3">
+        <SidebarHeader className="gap-3 px-3 pt-3">
           <OemLogo />
+          {usuario && <BuscaGlobalBotao />}
         </SidebarHeader>
         <SidebarContent>
           {menuAgrupado(perfil).map(({ grupo, itens: itensDoGrupo }) => (

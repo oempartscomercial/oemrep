@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { UsuarioSessao } from "@/lib/sessao";
-import { filtroFabricasPermitidas } from "@/lib/authz";
+import { filtroFabricasPermitidas, podeVerCrm } from "@/lib/authz";
+import { hojeEmSaoPaulo } from "@/domain/crm/prazo";
 import { obterParametroNumero } from "@/lib/parametros";
 import { buscarPedidosParaAlerta } from "./alertas/queries";
 import { pedidosSemNfeVencidos } from "@/domain/alerta/semNfe";
@@ -105,4 +106,34 @@ export async function buscarSerieMensal(usuario: UsuarioSessao): Promise<PontoMe
   );
 
   return combinarSeries(historico, aoVivo);
+}
+
+export type TarefasCrm = {
+  passos: { id: string; empresaId: string; empresa: string; acao: string; prazo: string }[];
+  candidatas: number;
+};
+
+/** Próximos passos do usuário que vencem hoje ou já venceram, e empresas esperando avaliação. */
+export async function buscarTarefasCrm(usuario: UsuarioSessao): Promise<TarefasCrm | null> {
+  if (!podeVerCrm(usuario)) return null;
+  const hoje = hojeEmSaoPaulo();
+  const [passos, candidatas] = await Promise.all([
+    prisma.proximoPasso.findMany({
+      where: { responsavelId: usuario.id, concluidoEm: null, prazo: { lte: new Date(`${hoje}T00:00:00Z`) } },
+      orderBy: { prazo: "asc" },
+      take: 10,
+      include: { cliente: true },
+    }),
+    prisma.cliente.count({ where: { situacao: "CANDIDATA" } }),
+  ]);
+  return {
+    candidatas,
+    passos: passos.map((p) => ({
+      id: p.id,
+      empresaId: p.clienteId,
+      empresa: p.cliente.nomeFantasia,
+      acao: p.acao,
+      prazo: p.prazo.toISOString().slice(0, 10),
+    })),
+  };
 }

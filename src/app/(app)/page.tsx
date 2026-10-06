@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Bell, Package, TriangleAlert, Truck } from "lucide-react";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { cn } from "@/lib/utils";
-import { buscarResumoDashboard, buscarSerieMensal } from "./queries";
+import { buscarResumoDashboard, buscarSerieMensal, buscarTarefasCrm } from "./queries";
+import { descreverPrazo, hojeEmSaoPaulo, situacaoDoPrazo } from "@/domain/crm/prazo";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
@@ -22,6 +23,8 @@ export default async function InicioPage() {
   const { kpis, fila } = await buscarResumoDashboard(usuario);
 
   const serie = await buscarSerieMensal(usuario);
+  const tarefas = await buscarTarefasCrm(usuario);
+  const hoje = hojeEmSaoPaulo();
   const serieMax = Math.max(1, ...serie.map((p) => Math.max(p.valorPedido, p.valorNfe)));
   const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const rotuloMes = (mes: string) => {
@@ -42,6 +45,42 @@ export default async function InicioPage() {
   return (
     <PageContainer>
       <PageHeader titulo="Início" descricao="Visão geral da operação de representação comercial." />
+
+      {tarefas && (
+        <div className="flex flex-col gap-3 rounded-lg border bg-card p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Para fazer hoje</h2>
+            <div className="flex gap-3 text-sm">
+              {tarefas.candidatas > 0 && (
+                <Link href="/funis" className={linkClasse}>
+                  {tarefas.candidatas} {tarefas.candidatas === 1 ? "empresa esperando" : "empresas esperando"} avaliação
+                </Link>
+              )}
+              <Link href="/funis" className={linkClasse}>Ver funil</Link>
+            </div>
+          </div>
+          {tarefas.passos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum próximo passo vencendo hoje.</p>
+          ) : (
+            <ul className="flex flex-col divide-y">
+              {tarefas.passos.map((p) => {
+                const atrasado = situacaoDoPrazo(p.prazo, hoje) === "atrasado";
+                return (
+                  <li key={p.id}>
+                    <Link href={`/empresas/${p.empresaId}`} className="flex items-center gap-3 py-2 hover:bg-muted/40">
+                      <span className="flex-1 text-sm">
+                        <span className="font-medium">{p.empresa}</span>
+                        <span className="text-muted-foreground"> · {p.acao}</span>
+                      </span>
+                      <span className={cn("text-xs", atrasado ? "font-medium text-destructive" : "text-muted-foreground")}>{descreverPrazo(p.prazo, hoje)}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {cartoes.map((c) => {

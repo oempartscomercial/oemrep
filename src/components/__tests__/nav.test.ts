@@ -8,7 +8,7 @@ const ITENS_MENU = menuDoPerfil("ADMIN");
 describe("menu lateral", () => {
   it("tem os módulos do MVP em ordem", () => {
     expect(ITENS_MENU.map((i) => i.href)).toEqual([
-      "/", "/pedidos", "/pedidos/itens", "/conferencia", "/rastreio",
+      "/", "/funis", "/empresas", "/pedidos", "/pedidos/itens", "/conferencia", "/rastreio",
       "/divergencias", "/pedidos-x-nfe", "/alertas", "/auditoria", "/cadastros",
     ]);
   });
