@@ -7,6 +7,7 @@ export interface FabricaLinha {
   id: string;
   nome: string;
   cnpj: string;
+  ativo: boolean;
 }
 export interface ClienteLinha {
   id: string;
@@ -19,7 +20,16 @@ export interface UsuarioLinha {
   nome: string;
   email: string;
   perfil: string;
+  ativo: boolean;
   fabricas: string[];
+}
+
+function Situacao({ ativo }: { ativo: boolean }) {
+  return ativo ? (
+    <Badge color="success" type="pill-color" size="sm">Ativo</Badge>
+  ) : (
+    <Badge color="gray" type="pill-color" size="sm">Inativo</Badge>
+  );
 }
 
 function ListaFabricas({ fabricas }: { fabricas: string[] }) {
@@ -39,10 +49,12 @@ export function FabricasTabela({ fabricas }: { fabricas: FabricaLinha[] }) {
       ariaLabel="Fábricas"
       data={fabricas}
       getRowId={(f) => f.id}
+      rowHref={(f) => `/cadastros/fabricas/${f.id}`}
       vazio="Nenhuma fábrica cadastrada."
       columns={[
         { id: "nome", header: "Nome", isRowHeader: true, render: (f) => <span className="font-medium text-primary">{f.nome}</span> },
         { id: "cnpj", header: "CNPJ", render: (f) => f.cnpj },
+        { id: "situacao", header: "Situação", render: (f) => <Situacao ativo={f.ativo} /> },
       ]}
     />
   );
@@ -54,6 +66,7 @@ export function ClientesTabela({ clientes }: { clientes: ClienteLinha[] }) {
       ariaLabel="Clientes"
       data={clientes}
       getRowId={(c) => c.id}
+      rowHref={(c) => `/cadastros/clientes/${c.id}`}
       vazio="Nenhum cliente cadastrado."
       columns={[
         { id: "nome", header: "Nome fantasia", isRowHeader: true, render: (c) => <span className="font-medium text-primary">{c.nomeFantasia}</span> },
@@ -70,12 +83,14 @@ export function UsuariosTabela({ usuarios }: { usuarios: UsuarioLinha[] }) {
       ariaLabel="Usuários"
       data={usuarios}
       getRowId={(u) => u.id}
+      rowHref={(u) => `/cadastros/usuarios/${u.id}`}
       vazio="Nenhum usuário cadastrado."
       columns={[
         { id: "nome", header: "Nome", isRowHeader: true, render: (u) => <span className="font-medium text-primary">{u.nome}</span> },
         { id: "email", header: "E-mail", render: (u) => u.email },
         { id: "perfil", header: "Perfil", render: (u) => <Badge color={u.perfil === "ADMIN" ? "brand" : "gray"} type="pill-color" size="sm">{u.perfil}</Badge> },
         { id: "fabricas", header: "Fábricas", render: (u) => <ListaFabricas fabricas={u.fabricas} /> },
+        { id: "situacao", header: "Situação", render: (u) => <Situacao ativo={u.ativo} /> },
       ]}
     />
   );

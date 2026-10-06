@@ -29,6 +29,8 @@ model Fabrica {
   nome             String
   cnpj             String            @unique
   flagConciliacao  Boolean           @default(false)
+  // Fábrica desativada some dos formulários; histórico e pedidos continuam.
+  ativo            Boolean           @default(true)
   criadoEm         DateTime          @default(now())
   clientes         ClienteFabrica[]
   usuarios         UsuarioFabrica[]
@@ -89,6 +91,8 @@ model Usuario {
   nome            String
   email           String            @unique
   perfil          PerfilUsuario     @default(OPERADOR)
+  // Usuário desativado não entra mais (obterUsuarioLogado devolve null).
+  ativo           Boolean           @default(true)
   criadoEm        DateTime          @default(now())
   fabricas        UsuarioFabrica[]
   eventos         EventoAuditoria[]

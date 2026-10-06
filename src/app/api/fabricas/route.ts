@@ -10,7 +10,7 @@ export async function GET() {
 
   const permitidas = filtroFabricasPermitidas(usuario);
   const fabricas = await prisma.fabrica.findMany({
-    where: permitidas ? { id: { in: permitidas } } : {},
+    where: { ativo: true, ...(permitidas ? { id: { in: permitidas } } : {}) },
     select: { id: true, nome: true },
     orderBy: { nome: "asc" },
   });

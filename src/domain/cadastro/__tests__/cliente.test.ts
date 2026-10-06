@@ -18,6 +18,10 @@ describe("validarDadosCliente", () => {
     ).toContain("Selecione ao menos uma fábrica.");
   });
 
+  it("aceita empresa sem CNPJ: ele é pedido na conferência da NFe (ADR-013)", () => {
+    expect(validarDadosCliente({ nomeFantasia: "Distribuidora X", cnpj: "  ", fabricasIds: ["fab-1"] })).toEqual([]);
+  });
+
   it("rejeita CNPJ inválido", () => {
     expect(
       validarDadosCliente({ nomeFantasia: "Distribuidora X", cnpj: "123", fabricasIds: ["fab-1"] }),

@@ -90,6 +90,18 @@ describe("obterUsuarioLogado — sessão de desenvolvimento (SKIP_AUTH)", () => 
     expect(await obterUsuarioLogado()).toBeNull();
   });
 
+  it("não deixa entrar usuário desativado", async () => {
+    vi.stubEnv("SKIP_AUTH", "true");
+    vi.stubEnv("SKIP_AUTH_EMAIL", EMAIL_DEV);
+    vi.stubEnv("NODE_ENV", "development");
+    await prisma.usuario.update({ where: { id: usuarioId }, data: { ativo: false } });
+    try {
+      expect(await obterUsuarioLogado()).toBeNull();
+    } finally {
+      await prisma.usuario.update({ where: { id: usuarioId }, data: { ativo: true } });
+    }
+  });
+
   it("ignora o atalho quando SKIP_AUTH não é 'true'", async () => {
     vi.stubEnv("SKIP_AUTH", "false");
     vi.stubEnv("SKIP_AUTH_EMAIL", EMAIL_DEV);

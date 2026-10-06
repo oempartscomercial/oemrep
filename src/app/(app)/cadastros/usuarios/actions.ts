@@ -52,3 +52,60 @@ export async function criarUsuario(formData: FormData): Promise<{ erros: string[
   revalidatePath("/cadastros/usuarios");
   return { erros: [] };
 }
+
+const SO_ADMIN = "Apenas ADMIN pode alterar usuários.";
+
+// E-mail não muda: é a chave do vínculo com o login do Supabase (ADR-010).
+export async function editarUsuario(id: string, formData: FormData): Promise<{ erros: string[] }> {
+  const ator = await obterUsuarioLogado();
+  if (!ator) return { erros: ["Sessão expirada. Faça login novamente."] };
+  if (ator.perfil !== "ADMIN") return { erros: [SO_ADMIN] };
+
+  const atual = await prisma.usuario.findUnique({ where: { id }, include: { fabricas: true } });
+  if (!atual) return { erros: ["Usuário não encontrado."] };
+
+  const nome = String(formData.get("nome") ?? "");
+  const perfil = String(formData.get("perfil") ?? "OPERADOR") as PerfilUsuario;
+  const fabricasIds = formData.getAll("fabricasIds").map(String).sort();
+
+  const erros = validarDadosUsuario({ nome, email: atual.email, perfil, fabricasIds });
+  if (erros.length > 0) return { erros };
+  if (id === ator.id && perfil !== "ADMIN") return { erros: ["Você não pode tirar o próprio perfil de ADMIN."] };
+
+  const fabricasAtuais = atual.fabricas.map((f) => f.fabricaId).sort();
+  await prisma.$transaction(async (tx) => {
+    await tx.usuario.update({ where: { id }, data: { nome, perfil } });
+    await tx.usuarioFabrica.deleteMany({ where: { usuarioId: id } });
+    await tx.usuarioFabrica.createMany({ data: fabricasIds.map((fabricaId) => ({ usuarioId: id, fabricaId })) });
+    await tx.eventoAuditoria.createMany({
+      data: compararCampos(
+        "Usuario",
+        id,
+        ator.id,
+        { nome: atual.nome, perfil: atual.perfil, fabricasIds: fabricasAtuais.join(",") },
+        { nome, perfil, fabricasIds: fabricasIds.join(",") },
+      ),
+    });
+  });
+
+  revalidatePath("/cadastros/usuarios");
+  return { erros: [] };
+}
+
+export async function alterarAtivoUsuario(id: string, ativo: boolean): Promise<{ erros: string[] }> {
+  const ator = await obterUsuarioLogado();
+  if (!ator) return { erros: ["Sessão expirada. Faça login novamente."] };
+  if (ator.perfil !== "ADMIN") return { erros: [SO_ADMIN] };
+  if (id === ator.id && !ativo) return { erros: ["Você não pode desativar o próprio acesso."] };
+
+  const atual = await prisma.usuario.findUnique({ where: { id } });
+  if (!atual) return { erros: ["Usuário não encontrado."] };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.usuario.update({ where: { id }, data: { ativo } });
+    await tx.eventoAuditoria.createMany({ data: compararCampos("Usuario", id, ator.id, { ativo: atual.ativo }, { ativo }) });
+  });
+
+  revalidatePath("/cadastros/usuarios");
+  return { erros: [] };
+}

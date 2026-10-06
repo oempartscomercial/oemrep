@@ -1,17 +1,13 @@
 import { Plus } from "@untitledui/icons";
 import { prisma } from "@/lib/prisma";
-import { obterUsuarioLogado } from "@/lib/sessao";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Button } from "@/components/ui/buttons/button";
 import { UsuariosTabela, type UsuarioLinha } from "../cadastros-tabelas";
 
+// Lista de dados vivos do banco: sempre renderizar por requisição (nunca estática).
+export const dynamic = "force-dynamic";
+
 export default async function UsuariosPage() {
-  const usuarioLogado = await obterUsuarioLogado();
-
-  if (!usuarioLogado || usuarioLogado.perfil !== "ADMIN") {
-    return <p className="text-sm text-error-primary">Acesso restrito a administradores.</p>;
-  }
-
   const usuarios = await prisma.usuario.findMany({
     orderBy: { nome: "asc" },
     include: { fabricas: { include: { fabrica: true } } },
@@ -22,6 +18,7 @@ export default async function UsuariosPage() {
     nome: u.nome,
     email: u.email,
     perfil: u.perfil,
+    ativo: u.ativo,
     fabricas: u.fabricas.map((uf) => uf.fabrica.nome),
   }));
 

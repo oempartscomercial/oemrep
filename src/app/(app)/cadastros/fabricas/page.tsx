@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function FabricasPage() {
   const fabricas = await prisma.fabrica.findMany({ orderBy: { nome: "asc" } });
-  const linhas: FabricaLinha[] = fabricas.map((f) => ({ id: f.id, nome: f.nome, cnpj: f.cnpj }));
+  const linhas: FabricaLinha[] = fabricas.map((f) => ({ id: f.id, nome: f.nome, cnpj: f.cnpj, ativo: f.ativo }));
 
   return (
     <div className="flex flex-col gap-6">

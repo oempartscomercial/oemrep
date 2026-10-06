@@ -41,7 +41,7 @@ export async function obterUsuarioLogado(): Promise<UsuarioSessao | null> {
       where: { email },
       include: { fabricas: true },
     });
-    return usuarioDev ? paraSessao(usuarioDev) : null;
+    return usuarioDev?.ativo ? paraSessao(usuarioDev) : null;
   }
 
   const cookieStore = await cookies();
@@ -82,5 +82,6 @@ export async function obterUsuarioLogado(): Promise<UsuarioSessao | null> {
     }
   }
 
-  return usuario ? paraSessao(usuario) : null;
+  // Usuário desativado no cadastro perde o acesso mesmo com login válido no Supabase.
+  return usuario?.ativo ? paraSessao(usuario) : null;
 }
