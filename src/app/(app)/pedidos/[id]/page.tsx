@@ -4,6 +4,10 @@ import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarPedidoComPermissao } from "../queries";
 import { PageContainer } from "@/components/layouts/page-container";
 import { StatusBadge } from "@/components/patterns/status-badge";
+import { carregarNomesAuditoria } from "@/lib/auditoria-nomes";
+import { descreverEvento } from "@/domain/auditoria/descricao";
+import { etapasDoPedido } from "@/domain/pedido/etapas";
+import { cx } from "@/utils/cx";
 import { PedidoAcoes } from "./pedido-acoes";
 import { PedidoDetalheTabs, type EventoLinha, type ItemLinha, type NotaLinha } from "./pedido-detalhe-tabs";
 
@@ -16,9 +20,23 @@ export default async function DetalhePedidoPage({ params }: { params: Promise<{ 
   const pedido = await buscarPedidoComPermissao(id, usuario);
   if (!pedido) notFound();
 
+  const itensIds = pedido.itens.map((i) => i.id);
+  // Histórico do pedido e dos itens dele (baixas, mudanças de status), com quem fez.
   const eventos = await prisma.eventoAuditoria.findMany({
-    where: { entidade: "Pedido", entidadeId: pedido.id },
+    where: {
+      OR: [
+        { entidade: "Pedido", entidadeId: pedido.id },
+        { entidade: "ItemPedido", entidadeId: { in: itensIds } },
+      ],
+    },
+    include: { usuario: true },
     orderBy: { criadoEm: "desc" },
+  });
+  const nomes = await carregarNomesAuditoria(eventos);
+  const faturamentos = await prisma.itemFaturado.findMany({
+    where: { itemPedidoId: { in: itensIds } },
+    include: { notaFiscal: true },
+    orderBy: { notaFiscal: { dataEmissao: "asc" } },
   });
 
   const notasFiscais = await prisma.notaFiscalPedido.findMany({
@@ -35,6 +53,9 @@ export default async function DetalhePedidoPage({ params }: { params: Promise<{ 
     quantidadeFaturada: Number(item.quantidadeFaturada),
     status: item.status,
     observacao: item.observacao ?? "",
+    notas: faturamentos
+      .filter((f) => f.itemPedidoId === item.id)
+      .map((f) => ({ id: f.notaFiscal.id, numero: f.notaFiscal.numero, quantidade: f.quantidadeFaturada })),
   }));
 
   const notas: NotaLinha[] = notasFiscais.map(({ notaFiscal }) => ({
@@ -44,13 +65,17 @@ export default async function DetalhePedidoPage({ params }: { params: Promise<{ 
     status: notaFiscal.status,
   }));
 
-  const eventosLinha: EventoLinha[] = eventos.map((ev) => ({
-    id: ev.id,
-    campo: ev.campo,
-    valorAnterior: ev.valorAnterior,
-    valorNovo: ev.valorNovo,
-    criadoEm: ev.criadoEm.toISOString(),
-  }));
+  const eventosLinha: EventoLinha[] = eventos.map((ev) => {
+    const descricao = descreverEvento(ev, nomes);
+    return {
+      id: ev.id,
+      titulo: ev.entidade === "ItemPedido" ? `${descricao.campo} · ${nomes.registros[ev.entidadeId] ?? "item"}` : descricao.campo,
+      de: descricao.de,
+      para: descricao.para,
+      autor: ev.usuario.nome,
+      criadoEm: ev.criadoEm.toISOString(),
+    };
+  });
 
   return (
     <PageContainer>
@@ -66,6 +91,25 @@ export default async function DetalhePedidoPage({ params }: { params: Promise<{ 
         </div>
         <PedidoAcoes pedidoId={pedido.id} estado={pedido.estado} />
       </div>
+
+      <ol aria-label="Etapas do pedido" className="flex flex-wrap items-center gap-2 text-sm">
+        {etapasDoPedido(pedido.estado).map((etapa, i) => (
+          <li key={etapa.rotulo} className="flex items-center gap-2">
+            {i > 0 && <span className="h-px w-6 bg-border-secondary" aria-hidden />}
+            <span
+              aria-current={etapa.situacao === "atual" ? "step" : undefined}
+              className={cx(
+                "rounded-full px-3 py-1 font-medium ring-1",
+                etapa.situacao === "atual" && "bg-brand-solid text-white ring-transparent",
+                etapa.situacao === "feita" && "text-secondary ring-secondary",
+                etapa.situacao === "futura" && "text-quaternary ring-secondary",
+              )}
+            >
+              {etapa.rotulo}
+            </span>
+          </li>
+        ))}
+      </ol>
 
       <PedidoDetalheTabs itens={itens} notas={notas} eventos={eventosLinha} />
     </PageContainer>

@@ -3,9 +3,9 @@ import {
   buscarEventosAuditoria,
   listarUsuariosParaFiltro,
   listarEntidadesAuditadas,
-  carregarNomesAuditoria,
   AUDITORIA_LIMITE,
 } from "./queries";
+import { carregarNomesAuditoria } from "@/lib/auditoria-nomes";
 import { descreverEvento, nomeEntidade } from "@/domain/auditoria/descricao";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";

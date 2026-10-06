@@ -15,6 +15,7 @@ export interface ItemLinha {
   quantidadeFaturada: number;
   status: StatusItemPedido;
   observacao: string;
+  notas: { id: string; numero: string; quantidade: number }[];
 }
 export interface NotaLinha {
   id: string;
@@ -24,18 +25,20 @@ export interface NotaLinha {
 }
 export interface EventoLinha {
   id: string;
-  campo: string;
-  valorAnterior: string | null;
-  valorNovo: string | null;
+  titulo: string;
+  de: string;
+  para: string;
+  autor: string;
   criadoEm: string;
 }
 
 export function PedidoDetalheTabs({ itens, notas, eventos }: { itens: ItemLinha[]; notas: NotaLinha[]; eventos: EventoLinha[] }) {
   const timeline: TimelineItem[] = eventos.map((ev) => ({
     id: ev.id,
-    titulo: ev.campo,
-    descricao: `${ev.valorAnterior ?? "—"} → ${ev.valorNovo ?? "—"}`,
+    titulo: ev.titulo,
+    descricao: `${ev.de} → ${ev.para}`,
     data: new Date(ev.criadoEm).toLocaleString("pt-BR"),
+    autor: ev.autor,
   }));
 
   return (
@@ -56,6 +59,22 @@ export function PedidoDetalheTabs({ itens, notas, eventos }: { itens: ItemLinha[
             { id: "descricao", header: "Descrição", render: (it) => it.descricao },
             { id: "pedida", header: "Pedida", render: (it) => it.quantidadePedida },
             { id: "faturada", header: "Faturada", render: (it) => it.quantidadeFaturada },
+            {
+              id: "notas",
+              header: "Faturado nas notas",
+              render: (it) =>
+                it.notas.length === 0 ? (
+                  <span className="text-tertiary">—</span>
+                ) : (
+                  <div className="flex flex-col gap-0.5">
+                    {it.notas.map((n) => (
+                      <a key={n.id} href={`/conferencia/${n.id}`} className="text-sm text-brand-secondary hover:underline">
+                        NF {n.numero} ({n.quantidade})
+                      </a>
+                    ))}
+                  </div>
+                ),
+            },
             { id: "status", header: "Status", render: (it) => <ItemStatusForm itemId={it.id} statusAtual={it.status} observacaoAtual={it.observacao} /> },
           ]}
         />
