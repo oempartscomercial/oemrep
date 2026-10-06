@@ -168,7 +168,8 @@ reconferir antes de contratar):
   mensagens por categoria. Nenhum valor em reais foi validado.
 
 ## Fases e critérios
-0. **Manual (1 a 2 semanas, sem código).** O Arthur faz o papel do assistente num número de
+0. **Manual (1 a 2 semanas, sem código).** Roteiro em
+   [whatsapp-fase0-roteiro](../design/2026-10-06-whatsapp-fase0-roteiro.md). O Arthur faz o papel do assistente num número de
    WhatsApp com o Rômulo. Mede: o que ele pede, se manda áudio, quanto de conversa precisa,
    o que a confirmação atrapalha. Decide as perguntas abertas abaixo.
 1. **Registro.** Webhook, `Mensagem`, linha do tempo na ficha, **só leitura**. Teste com 10 a
