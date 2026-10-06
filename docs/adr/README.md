@@ -15,3 +15,7 @@ e por quê**.
 | [ADR-007](ADR-007-gap-produtos.md) | Painel PEDIDOS × NFE compara só valor de produtos (sem frete/impostos) |
 | [ADR-008](ADR-008-estados-nfe.md) | S/NFE é do pedido; estados da NFe; snapshot da qtd pendente |
 | [ADR-009](ADR-009-usuarios-permissoes.md) | Multiusuário com perfis e permissão por fábrica desde o MVP |
+| [ADR-010](ADR-010-cadastro-usuario-sem-convite.md) | Cadastro de usuário sem convite por e-mail; vínculo ao login no 1º acesso |
+| [ADR-011](ADR-011-design-system-untitled-ui.md) | Untitled UI React (OSS/MIT) como design system oficial |
+| [ADR-012](ADR-012-historico-mensal-agregado.md) | Histórico anterior ao sistema entra como totais mensais agregados |
+| [ADR-013](ADR-013-modulo-crm.md) | Módulo de CRM dentro da plataforma, com cadastro único de empresa |

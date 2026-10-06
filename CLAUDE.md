@@ -86,6 +86,14 @@ Evoluções futuras (V2+) — conciliação Autoflex, OCR de DANFE, CCe, parâme
 fábrica/motivo — não têm épico aberto. Mantenha esta seção atualizada conforme novos
 trabalhos forem concluídos.
 
+**Próximo trabalho planejado — Módulo de CRM (Épico 8).** Antes de qualquer tarefa
+que envolva CRM, empresas, prospecção, funis, carteira, contatos ou WhatsApp, **leia
+`docs/design/2026-10-06-crm-contexto.md`** (contexto, UX combinada, pendências) e o
+**`docs/adr/ADR-013-modulo-crm.md`** (decisões). Resumo: o CRM vive dentro desta
+plataforma, `Cliente` passa a guardar também a prospecção (CNPJ opcional + `situacao`),
+há dois funis com arraste (outbound e carteira) e as mudanças de banco entram antes do
+go-live dos pedidos; as telas vêm depois que o MVP estabilizar.
+
 ## 2. Como o agente deve trabalhar aqui (fases × skills do Superpowers)
 
 Use as skills do Superpowers em cada fase. **Sempre verifique se uma skill se aplica
@@ -219,3 +227,4 @@ numa tela; `npm test` (e `npm run e2e` quando houver) verdes; auditoria funciona
 2. `plans/2026-06-22-epic-01-fundacao.md` — o que executar agora.
 3. `docs/adr/` — as regras de produto que não podem ser violadas.
 4. `docs/design/2026-06-22-mvp-design.md` — o design completo do MVP.
+5. `docs/design/2026-10-06-crm-contexto.md` + `docs/adr/ADR-013-modulo-crm.md` — o módulo de CRM.
