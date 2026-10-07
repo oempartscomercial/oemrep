@@ -8,8 +8,7 @@ import { SessaoExpirada } from "@/components/patterns/sessao-expirada";
 import { Botao } from "@/components/patterns/botao";
 import { PedidosXNfeFiltros } from "./pedidos-x-nfe-filtros";
 import { PedidosXNfeTabela, type LinhaGapView } from "./pedidos-x-nfe-tabela";
-
-const brl = (valor: number) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+import { formatarReais as brl } from "@/domain/formato/moeda";
 
 function opcoesUnicas(valores: string[]): { id: string; label: string }[] {
   return [...new Set(valores)].sort().map((v) => ({ id: v, label: v }));

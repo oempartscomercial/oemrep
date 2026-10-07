@@ -28,6 +28,11 @@ export async function criarCliente(formData: FormData): Promise<{ erros: string[
     return { erros: ["Já existe uma empresa com este CNPJ."] };
   }
 
+  const fabricas = await prisma.fabrica.findMany({ where: { id: { in: fabricasIds } }, select: { id: true } });
+  if (fabricas.length !== fabricasIds.length) {
+    return { erros: ["Uma das fábricas selecionadas não existe mais. Recarregue a página."] };
+  }
+
   await prisma.$transaction(async (tx) => {
     const cliente = await tx.cliente.create({ data: { nomeFantasia, cnpj: cnpjNormalizado } });
 

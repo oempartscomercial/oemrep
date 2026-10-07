@@ -55,4 +55,76 @@ describe("conferirItens (RN04)", () => {
     const [resultado] = conferirItens(CNPJ_CLIENTE, [itemNFe({ quantidade: 4 })], [pendencia({ quantidadePendente: 10 })]);
     expect(resultado.divergencias).toEqual([]);
   });
+
+  // A NFe traz vUnCom com mais de duas casas (o layout da SEFAZ permite até 10); o pedido
+  // guarda Decimal(12,2). Comparar com !== acusava divergência em todo item, e a mensagem
+  // imprimia os dois lados com toFixed(2) — dois números idênticos na tela.
+  it("não sinaliza divergência quando os valores são iguais em centavos, mesmo com mais casas na NFe", () => {
+    const [resultado] = conferirItens(
+      CNPJ_CLIENTE,
+      [itemNFe({ valorUnitario: 25.5031 })],
+      [pendencia({ valorUnitario: 25.5 })],
+    );
+    expect(resultado.divergencias).toEqual([]);
+  });
+
+  it("sinaliza divergência de valor a partir de um centavo de diferença", () => {
+    const [resultado] = conferirItens(
+      CNPJ_CLIENTE,
+      [itemNFe({ valorUnitario: 25.51 })],
+      [pendencia({ valorUnitario: 25.5 })],
+    );
+    expect(resultado.divergencias.some((d) => d.includes("Valor unitário"))).toBe(true);
+  });
+
+  it("descreve a divergência de valor em reais no formato brasileiro", () => {
+    const [resultado] = conferirItens(
+      CNPJ_CLIENTE,
+      [itemNFe({ valorUnitario: 1250.5 })],
+      [pendencia({ valorUnitario: 1200 })],
+    );
+    expect(resultado.divergencias[0]).toContain("R$ 1.250,50");
+    expect(resultado.divergencias[0]).toContain("R$ 1.200,00");
+  });
+
+  // A referência do pedido vem de planilha (e vai vir de PDF), então chega com espaço
+  // sobrando e caixa trocada. Casar com === exato fazia toda a NFe virar "item não encontrado".
+  it("casa a referência ignorando espaços em volta e caixa", () => {
+    const [resultado] = conferirItens(
+      CNPJ_CLIENTE,
+      [itemNFe({ referencia: "ref-1" })],
+      [pendencia({ referencia: "  REF-1 " })],
+    );
+    expect(resultado.pendencia).not.toBeNull();
+    expect(resultado.divergencias).toEqual([]);
+  });
+
+  // Duas linhas det com o mesmo cProd casavam com o MESMO ItemPedido via .find(),
+  // somando baixa em dobro e deixando a quantidade pendente negativa.
+  it("não casa a mesma pendência com duas linhas da NFe", () => {
+    const resultados = conferirItens(
+      CNPJ_CLIENTE,
+      [itemNFe({ quantidade: 6 }), itemNFe({ quantidade: 4 })],
+      [pendencia()],
+    );
+    expect(resultados[0].pendencia?.itemPedidoId).toBe("item-1");
+    expect(resultados[1].pendencia).toBeNull();
+    expect(resultados[1].divergencias).toHaveLength(1);
+  });
+
+  // RN10: uma NFe cobre vários pedidos do mesmo cliente. Duas linhas com a mesma
+  // referência devem consumir as pendências de pedidos diferentes, uma cada.
+  it("distribui linhas de mesma referência entre pendências de pedidos diferentes", () => {
+    const resultados = conferirItens(
+      CNPJ_CLIENTE,
+      [itemNFe({ quantidade: 10 }), itemNFe({ quantidade: 10 })],
+      [
+        pendencia({ itemPedidoId: "item-1", pedidoId: "pedido-1" }),
+        pendencia({ itemPedidoId: "item-2", pedidoId: "pedido-2" }),
+      ],
+    );
+    expect(resultados[0].pendencia?.pedidoId).toBe("pedido-1");
+    expect(resultados[1].pendencia?.pedidoId).toBe("pedido-2");
+    expect(resultados.flatMap((r) => r.divergencias)).toEqual([]);
+  });
 });

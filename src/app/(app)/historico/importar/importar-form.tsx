@@ -9,9 +9,10 @@ import { Botao } from "@/components/patterns/botao";
 import { Campo } from "@/components/patterns/campo";
 import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/patterns/data-table";
+import { formatarReais } from "@/domain/formato/moeda";
 
 const MESES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const brl = formatarReais;
 
 type LinhaView = LinhaHistorico & { _id: string };
 

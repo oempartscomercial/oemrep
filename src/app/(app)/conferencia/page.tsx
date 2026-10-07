@@ -12,6 +12,7 @@ import { Selo } from "@/components/patterns/status-badge";
 import { CampoSelect } from "@/components/patterns/campo";
 import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/patterns/data-table";
+import { formatarReais } from "@/domain/formato/moeda";
 
 type ConferenciaLinha = AnaliseNFe["conferencia"][number] & { _id: string; indice: number };
 
@@ -145,7 +146,7 @@ export default function ConferenciaNFePage() {
               { id: "referencia", header: "Referência", isRowHeader: true, render: (r) => <span className="font-medium">{r.itemNFe.referencia}</span> },
               { id: "descricao", header: "Descrição", render: (r) => r.itemNFe.descricao },
               { id: "qtd", header: "Qtd. NFe", numerica: true, render: (r) => r.itemNFe.quantidade },
-              { id: "valor", header: "Valor unit.", numerica: true, render: (r) => `R$ ${r.itemNFe.valorUnitario.toFixed(2)}` },
+              { id: "valor", header: "Valor unit.", numerica: true, render: (r) => formatarReais(r.itemNFe.valorUnitario) },
               {
                 id: "vinculo",
                 header: "Baixa no pedido",

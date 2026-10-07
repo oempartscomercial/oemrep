@@ -182,7 +182,14 @@ export async function confirmarBaixaNFe(entrada: {
         const { quantidadeFaturada, status } = aplicarBaixaItem(item, resultadoItem.itemNFe.quantidade);
 
         await tx.itemFaturado.create({
-          data: { itemPedidoId: item.id, notaFiscalId: notaFiscal.id, quantidadeFaturada: resultadoItem.itemNFe.quantidade },
+          data: {
+            itemPedidoId: item.id,
+            notaFiscalId: notaFiscal.id,
+            quantidadeFaturada: resultadoItem.itemNFe.quantidade,
+            // O preço REALMENTE faturado, vindo da NFe — não o do pedido. É o que permite
+            // o painel de gap enxergar sobrefaturamento em vez de mostrar sempre R$ 0.
+            valorUnitario: resultadoItem.itemNFe.valorUnitario,
+          },
         });
         await tx.itemPedido.update({ where: { id: item.id }, data: { quantidadeFaturada, status } });
         const eventosItem = compararCampos(

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download, Plus, Upload } from "lucide-react";
+import { Download, FilePlus2, Plus, Upload } from "lucide-react";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarPedidosPermitidos } from "./queries";
 import { filtrarPedidos, type FiltroPedido } from "@/domain/pedido/filtro";
@@ -65,6 +65,9 @@ export default async function PedidosPage({
             </Botao>
             <Botao variante="secundario" href="/pedidos/importar" icone={<Upload />}>
               Importar Excel
+            </Botao>
+            <Botao variante="secundario" href="/pedidos/importar-pdf" icone={<FilePlus2 />}>
+              Importar PDF
             </Botao>
             <Botao variante="primario" href="/pedidos/novo" icone={<Plus />}>
               Novo pedido
