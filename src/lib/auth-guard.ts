@@ -1,6 +1,8 @@
+// /auth/confirm troca o token do e-mail (convite, recuperação) por sessão: é a entrada de
+// quem ainda não está logado.
 // /api/whatsapp recebe o webhook do transporte, que não tem sessão: a rota se protege
 // por segredo próprio (src/lib/whatsapp/segredo.ts).
-const PUBLICAS = ["/login", "/_next", "/favicon.ico", "/api/whatsapp"];
+const PUBLICAS = ["/login", "/auth", "/_next", "/favicon.ico", "/api/whatsapp"];
 export function rotaProtegida(pathname: string): boolean {
   return !PUBLICAS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }

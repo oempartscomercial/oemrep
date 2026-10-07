@@ -5,6 +5,10 @@ describe("proteção de rotas", () => {
   it("não protege /login", () => {
     expect(rotaProtegida("/login")).toBe(false);
   });
+  it("não protege /auth/confirm (entrada dos links de convite e recuperação)", () => {
+    expect(rotaProtegida("/auth/confirm")).toBe(false);
+    expect(rotaProtegida("/autorizacao")).toBe(true);
+  });
   it("não protege o webhook do WhatsApp (quem o protege é o segredo, não a sessão)", () => {
     expect(rotaProtegida("/api/whatsapp/prospeccao/webhook")).toBe(false);
   });

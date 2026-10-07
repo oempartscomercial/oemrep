@@ -7,6 +7,9 @@ import { validarDadosUsuario } from "@/domain/cadastro/usuario";
 import type { PerfilUsuario } from "@/lib/authz";
 import { compararCampos } from "@/domain/auditoria/evento";
 import { registrarAlteracoes } from "@/lib/auditoria";
+import { criarClienteAdmin } from "@/lib/supabase-admin";
+import { enviarConvite } from "@/lib/convite";
+import { origemDoApp } from "@/lib/origem";
 
 export async function criarUsuario(formData: FormData): Promise<{ erros: string[] }> {
   const ator = await obterUsuarioLogado();
@@ -50,7 +53,21 @@ export async function criarUsuario(formData: FormData): Promise<{ erros: string[
   );
 
   revalidatePath("/cadastros/usuarios");
+
+  // O cadastro já está salvo; se o e-mail não sair, a pessoa continua cadastrada e o convite
+  // pode ser reenviado pela tela do usuário.
+  if (formData.get("enviarConvite") === "on") {
+    const convite = await enviarConvite(criarClienteAdmin(), email, await origemDoApp(), nome);
+    if (!convite.ok) {
+      return { erros: [`Usuário cadastrado, mas o convite não saiu: ${convite.mensagem} Abra o usuário e use “Enviar convite”.`] };
+    }
+    await registrarConviteEnviado(usuario.id, ator.id);
+  }
   return { erros: [] };
+}
+
+async function registrarConviteEnviado(usuarioId: string, atorId: string) {
+  await registrarAlteracoes(compararCampos("Usuario", usuarioId, atorId, {}, { conviteEnviadoEm: new Date().toISOString() }));
 }
 
 const SO_ADMIN = "Apenas ADMIN pode alterar usuários.";
@@ -107,5 +124,22 @@ export async function alterarAtivoUsuario(id: string, ativo: boolean): Promise<{
   });
 
   revalidatePath("/cadastros/usuarios");
+  return { erros: [] };
+}
+
+// Envia (ou reenvia) o convite por e-mail de quem já está cadastrado e ativo.
+export async function convidarUsuario(id: string): Promise<{ erros: string[] }> {
+  const ator = await obterUsuarioLogado();
+  if (!ator) return { erros: ["Sessão expirada. Faça login novamente."] };
+  if (ator.perfil !== "ADMIN") return { erros: [SO_ADMIN] };
+
+  const usuario = await prisma.usuario.findUnique({ where: { id } });
+  if (!usuario) return { erros: ["Usuário não encontrado."] };
+  if (!usuario.ativo) return { erros: ["Este usuário está desativado. Reative antes de convidar."] };
+
+  const convite = await enviarConvite(criarClienteAdmin(), usuario.email, await origemDoApp(), usuario.nome);
+  if (!convite.ok) return { erros: [convite.mensagem] };
+
+  await registrarConviteEnviado(usuario.id, ator.id);
   return { erros: [] };
 }

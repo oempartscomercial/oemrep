@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { editarUsuario, alterarAtivoUsuario } from "../actions";
+import { editarUsuario, alterarAtivoUsuario, convidarUsuario } from "../actions";
 import { FormularioUsuario } from "../formulario-usuario";
 import { AlternarAtivo } from "../../formulario";
+import { ConvidarUsuario } from "../convidar-usuario";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function EditarUsuarioPage({ params }: { params: Promise<{ 
         fabricas={fabricas.filter((f) => f.ativo || fabricasIds.includes(f.id))}
         inicial={{ nome: usuario.nome, email: usuario.email, perfil: usuario.perfil, fabricasIds }}
       />
+      {usuario.ativo && <ConvidarUsuario email={usuario.email} acao={convidarUsuario.bind(null, id)} />}
       <AlternarAtivo
         ativo={usuario.ativo}
         acao={alterarAtivoUsuario.bind(null, id)}

@@ -51,10 +51,15 @@ export function FormularioUsuario({
       </Campo>
 
       {!inicial && (
-        <p className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
-          Crie a senha desta pessoa no painel do Supabase com o mesmo e-mail. O vínculo é feito
-          automaticamente no primeiro acesso.
-        </p>
+        <label className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
+          <Checkbox name="enviarConvite" defaultChecked className="mt-0.5" />
+          <span className="flex flex-col gap-0.5">
+            <span>Enviar convite por e-mail agora</span>
+            <span className="text-xs text-muted-foreground">
+              A pessoa recebe um link para criar a própria senha. Sem convite, ela só entra depois que você enviar um.
+            </span>
+          </span>
+        </label>
       )}
     </FormularioCadastro>
   );

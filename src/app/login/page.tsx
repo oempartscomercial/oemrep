@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase";
+import { validarAcesso } from "./actions";
 import { traduzirErroAuth } from "@/domain/auth/mensagens";
 import { AuthLayout } from "@/components/layouts/auth-layout";
 import { Botao } from "@/components/patterns/botao";
@@ -30,7 +31,15 @@ export default function LoginPage() {
       setEnviando(false);
       return;
     }
-    router.push("/");
+    const acesso = await validarAcesso();
+    if (!acesso.ok) {
+      await supabase.auth.signOut();
+      setErro(acesso.mensagem);
+      setEnviando(false);
+      return;
+    }
+    router.replace("/");
+    router.refresh();
   }
 
   return (
