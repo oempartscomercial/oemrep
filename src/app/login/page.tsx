@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase";
 import { validarAcesso } from "./actions";
 import { traduzirErroAuth } from "@/domain/auth/mensagens";
+import { interpretarLinkDeAcesso } from "@/domain/auth/link";
 import { AuthLayout } from "@/components/layouts/auth-layout";
 import { Botao } from "@/components/patterns/botao";
 import { CampoTexto } from "@/components/patterns/campo";
@@ -16,6 +17,15 @@ export default function LoginPage() {
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+
+  // Convite ou recuperação disparados pelo painel do Supabase aterrissam na raiz com o token
+  // no fragmento (#access_token=…); o proxy leva a raiz para cá. A tela de senha é quem os lê.
+  useEffect(() => {
+    const { search, hash } = window.location;
+    if (interpretarLinkDeAcesso(search, hash).tipo !== "nenhum") {
+      window.location.replace(`/login/nova-senha${search}${hash}`);
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
