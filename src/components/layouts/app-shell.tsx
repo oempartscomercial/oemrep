@@ -68,7 +68,7 @@ export function AppShell({
                     const selo = item.href === "/conversas" ? formatarSeloPendencias(pendenciasConversas) : null;
                     return (
                       <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton asChild isActive={item.href === ativo} className="h-10 md:h-8">
+                        <SidebarMenuButton asChild isActive={item.href === ativo} className="h-11 md:h-8">
                           <Link href={item.href}>
                             <item.icon />
                             <span>{item.label}</span>
@@ -95,8 +95,16 @@ export function AppShell({
       </Sidebar>
       <SidebarInset>
         <header className="flex h-12 items-center gap-2 border-b px-3 md:hidden">
-          <SidebarTrigger className="size-10 md:size-7" />
+          <SidebarTrigger className="size-11 md:size-7" />
           <OemLogo />
+          {(() => {
+            const selo = formatarSeloPendencias(pendenciasConversas);
+            return selo ? (
+              <Link href="/conversas" className="ml-auto inline-flex h-11 items-center rounded-full bg-warning-soft px-3 text-xs font-medium text-warning">
+                {selo.rotulo}
+              </Link>
+            ) : null;
+          })()}
         </header>
         {children}
       </SidebarInset>

@@ -59,7 +59,7 @@ export function BuscaGlobalBotao() {
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className="flex h-10 md:h-8 w-full items-center gap-2 rounded-md border bg-background px-2 text-sm text-muted-foreground hover:bg-muted"
+        className="flex h-11 md:h-8 w-full items-center gap-2 rounded-md border bg-background px-2 text-sm text-muted-foreground hover:bg-muted"
       >
         <Search className="size-3.5" />
         <span className="flex-1 text-left">Buscar…</span>

@@ -27,7 +27,7 @@ export function Timeline({ eventos }: { eventos: TimelineItem[] }) {
               {ev.data && <time className="text-xs text-muted-foreground">{ev.data}</time>}
             </div>
             {ev.descricao && <div className="mt-0.5 text-sm text-muted-foreground">{ev.descricao}</div>}
-            {ev.autor && <p className="mt-0.5 text-xs text-muted-foreground/70">por {ev.autor}</p>}
+            {ev.autor && <p className="mt-0.5 text-xs text-muted-foreground">por {ev.autor}</p>}
           </div>
         </li>
       ))}

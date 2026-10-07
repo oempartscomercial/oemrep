@@ -71,7 +71,7 @@
     --secondary: oklch(0.967 0.002 286);
     --secondary-foreground: oklch(0.21 0.005 285);
     --muted: oklch(0.967 0.002 286);
-    --muted-foreground: oklch(0.552 0.01 286);
+    --muted-foreground: oklch(0.5 0.01 286);
     --accent: oklch(0.955 0.003 286);
     --accent-foreground: oklch(0.21 0.005 285);
     --destructive: oklch(0.577 0.215 27.3);
@@ -85,7 +85,7 @@
     /* Estados de domínio (badges, indicadores). */
     --success: oklch(0.527 0.13 150);
     --success-soft: oklch(0.962 0.04 150);
-    --warning: oklch(0.55 0.13 70);
+    --warning: oklch(0.48 0.13 70);
     --warning-soft: oklch(0.966 0.05 85);
     --info: oklch(0.5 0.15 255);
     --info-soft: oklch(0.96 0.025 255);
@@ -123,6 +123,13 @@
     table,
     .tabular {
         font-variant-numeric: tabular-nums;
+    }
+}
+
+/* No celular a base sobe para 16px: texto legível, campos sem zoom do iPhone e alvos de toque de 44px. */
+@media (max-width: 767px) {
+    html {
+        font-size: 16px;
     }
 }
 

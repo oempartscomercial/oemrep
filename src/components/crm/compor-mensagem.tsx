@@ -102,11 +102,11 @@ export function ComporMensagem({ contatoId, nome, aoFechar }: { contatoId: strin
         )}
 
         <DialogFooter>
-          <Botao variante="ghost" className="h-10 md:h-8" onClick={aoFechar}>{resultado ? "Fechar" : "Cancelar"}</Botao>
+          <Botao variante="ghost" className="h-11 md:h-8" onClick={aoFechar}>{resultado ? "Fechar" : "Cancelar"}</Botao>
           {consulta && !resultado && (
             <>
-              <Botao className="h-10 md:h-8" carregando={ocupado} onClick={() => salvar(false)}>Salvar rascunho</Botao>
-              <Botao variante="primario" className="h-10 md:h-8" carregando={ocupado} disabled={definitivos.length > 0} onClick={() => salvar(true)}>
+              <Botao className="h-11 md:h-8" carregando={ocupado} onClick={() => salvar(false)}>Salvar rascunho</Botao>
+              <Botao variante="primario" className="h-11 md:h-8" carregando={ocupado} disabled={definitivos.length > 0} onClick={() => salvar(true)}>
                 Aprovar e enviar
               </Botao>
             </>
