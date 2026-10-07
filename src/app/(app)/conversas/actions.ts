@@ -414,6 +414,11 @@ export type ConsultaDeEnvio = {
   tipo?: TipoEnvio;
   textoSugerido?: string;
   bloqueios?: Bloqueio[];
+  /** Mensagem nossa que já espera aprovação ou envio: o compositor não deve abrir em branco por cima dela. */
+  pendente?: { texto: string; status: "RASCUNHO" | "APROVADA" };
+  /** O que a pessoa disse por último, para quem escreve saber a quem e o que está respondendo. */
+  ultimaRecebida?: string;
+  numero?: string;
 };
 
 /** Abre o compositor: o tipo da mensagem, um texto-base e o que impediria (ou seguraria) o envio agora. */
@@ -444,5 +449,27 @@ export async function consultarEnvio(entrada: { contatoId: string }): Promise<Co
     limites: await lerLimites(),
     linha: "conectada",
   });
-  return { erros: [], tipo, textoSugerido, bloqueios: verificacao.ok ? [] : verificacao.bloqueios };
+  const [pendente, recebida] = conversa
+    ? await Promise.all([
+        prisma.mensagem.findFirst({
+          where: { conversaId: conversa.id, direcao: "SAIDA", status: { in: [...PENDENTES] } },
+          orderBy: { criadoEm: "desc" },
+          select: { texto: true, status: true },
+        }),
+        prisma.mensagem.findFirst({
+          where: { conversaId: conversa.id, direcao: "ENTRADA", texto: { not: null } },
+          orderBy: { ocorridoEm: "desc" },
+          select: { texto: true },
+        }),
+      ])
+    : [null, null];
+  return {
+    erros: [],
+    tipo,
+    textoSugerido,
+    bloqueios: verificacao.ok ? [] : verificacao.bloqueios,
+    pendente: pendente?.texto ? { texto: pendente.texto, status: pendente.status as "RASCUNHO" | "APROVADA" } : undefined,
+    ultimaRecebida: recebida?.texto ?? undefined,
+    numero: numero ?? undefined,
+  };
 }

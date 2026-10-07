@@ -33,7 +33,7 @@ export function ConversasTabela({ linhas, titulo, vazio }: { linhas: ConversaLin
         </div>
       ),
     },
-    { id: "previa", header: "Última mensagem", classe: "hidden md:table-cell", render: (c) => <span className="line-clamp-1 text-muted-foreground">{c.previa}</span> },
+    { id: "previa", header: "Última mensagem", classe: "hidden md:table-cell w-full max-w-0", render: (c) => <span className="block truncate text-muted-foreground" title={c.previa}>{c.previa}</span> },
     {
       id: "situacao",
       header: "",

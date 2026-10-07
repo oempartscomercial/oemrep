@@ -159,7 +159,7 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
               <DialogTitle>Editar rascunho</DialogTitle>
               <DialogDescription>Depois de editar, você ainda precisa aprovar.</DialogDescription>
             </DialogHeader>
-            <CampoTextarea rotulo="Mensagem" rows={7} value={novoTexto} onChange={(e) => setNovoTexto(e.target.value)} />
+            <CampoTextarea rotulo="Mensagem" rows={7} style={{ minHeight: "10rem" }} value={novoTexto} onChange={(e) => setNovoTexto(e.target.value)} />
             {erros.map((e) => (
               <p key={e} className="text-sm text-destructive">{e}</p>
             ))}
