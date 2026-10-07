@@ -12,6 +12,10 @@ describe("proteção de rotas", () => {
   it("não protege o webhook do WhatsApp (quem o protege é o segredo, não a sessão)", () => {
     expect(rotaProtegida("/api/whatsapp/prospeccao/webhook")).toBe(false);
   });
+  it("não protege o cron de envio do WhatsApp (quem o protege é o CRON_SECRET, não a sessão)", () => {
+    expect(rotaProtegida("/api/cron/whatsapp")).toBe(false);
+    expect(rotaProtegida("/api/cronista")).toBe(true);
+  });
   it("o resto de /api continua protegido", () => {
     expect(rotaProtegida("/api/clientes")).toBe(true);
     expect(rotaProtegida("/api/whatsapp-outra-coisa")).toBe(true);

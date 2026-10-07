@@ -2,7 +2,8 @@
 // quem ainda não está logado.
 // /api/whatsapp recebe o webhook do transporte, que não tem sessão: a rota se protege
 // por segredo próprio (src/lib/whatsapp/segredo.ts).
-const PUBLICAS = ["/login", "/auth", "/_next", "/favicon.ico", "/api/whatsapp"];
+// /api/cron é chamado pelo cron da Vercel, sem sessão: protegido por CRON_SECRET.
+const PUBLICAS = ["/login", "/auth", "/_next", "/favicon.ico", "/api/whatsapp", "/api/cron"];
 export function rotaProtegida(pathname: string): boolean {
   return !PUBLICAS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
