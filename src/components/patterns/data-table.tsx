@@ -11,6 +11,8 @@ export interface DataTableColumn<T> {
   isRowHeader?: boolean;
   /** Alinha à direita (valores numéricos). */
   numerica?: boolean;
+  /** Classe extra da coluna (cabeçalho e células), ex.: esconder no celular. */
+  classe?: string;
   render: (row: T) => ReactNode;
 }
 
@@ -55,7 +57,7 @@ export function DataTable<T>({
         <TableHeader>
           <TableRow className="bg-muted/40 hover:bg-muted/40">
             {columns.map((col) => (
-              <TableHead key={col.id} className={cn("h-8 px-3 text-xs font-medium text-muted-foreground", col.numerica && "text-right")}>
+              <TableHead key={col.id} className={cn("h-8 px-3 text-xs font-medium text-muted-foreground", col.numerica && "text-right", col.classe)}>
                 {col.header}
               </TableHead>
             ))}
@@ -80,7 +82,7 @@ export function DataTable<T>({
                 onKeyDown={href ? (e) => e.key === "Enter" && router.push(href) : undefined}
               >
                 {columns.map((col) => (
-                  <TableCell key={col.id} className={cn("px-3 py-2 text-sm", col.isRowHeader && "font-medium", col.numerica && "text-right tabular")}>
+                  <TableCell key={col.id} className={cn("px-3 py-2 text-sm", col.isRowHeader && "font-medium", col.numerica && "text-right tabular", col.classe)}>
                     {col.render(row)}
                   </TableCell>
                 ))}

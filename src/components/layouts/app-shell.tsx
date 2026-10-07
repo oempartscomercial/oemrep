@@ -54,7 +54,7 @@ export function AppShell({ children, usuario }: { children: ReactNode; usuario: 
                 <SidebarMenu>
                   {itensDoGrupo.map((item) => (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={item.href === ativo}>
+                      <SidebarMenuButton asChild isActive={item.href === ativo} className="h-10 md:h-8">
                         <Link href={item.href}>
                           <item.icon />
                           <span>{item.label}</span>
@@ -75,7 +75,7 @@ export function AppShell({ children, usuario }: { children: ReactNode; usuario: 
       </Sidebar>
       <SidebarInset>
         <header className="flex h-12 items-center gap-2 border-b px-3 md:hidden">
-          <SidebarTrigger />
+          <SidebarTrigger className="size-10 md:size-7" />
           <OemLogo />
         </header>
         {children}

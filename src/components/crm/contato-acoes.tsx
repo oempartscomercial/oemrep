@@ -57,9 +57,9 @@ export function ContatoAcoes({
       )}
       <div className="flex flex-wrap gap-1.5">
         {podeEscrever && !naoContatar && (
-          <Botao size="xs" icone={<MessageCircle />} onClick={() => setEscrevendo(true)}>Escrever no WhatsApp</Botao>
+          <Botao size="xs" className="h-10 md:h-6" icone={<MessageCircle />} onClick={() => setEscrevendo(true)}>Escrever no WhatsApp</Botao>
         )}
-        {naoContatar && <Botao size="xs" onClick={reativar}>Reativar contato</Botao>}
+        {naoContatar && <Botao size="xs" className="h-10 md:h-6" onClick={reativar}>Reativar contato</Botao>}
       </div>
       {erro && <p className="text-xs text-destructive">{erro}</p>}
       {escrevendo && <ComporMensagem contatoId={contatoId} nome={nome} aoFechar={() => setEscrevendo(false)} />}
@@ -72,7 +72,7 @@ export function BotaoEscrever({ contatoId, nome, rotulo }: { contatoId: string; 
   const [aberto, setAberto] = useState(false);
   return (
     <>
-      <Botao size="xs" icone={<MessageCircle />} onClick={() => setAberto(true)}>{rotulo}</Botao>
+      <Botao size="xs" className="h-10 md:h-6" icone={<MessageCircle />} onClick={() => setAberto(true)}>{rotulo}</Botao>
       {aberto && <ComporMensagem contatoId={contatoId} nome={nome} aoFechar={() => setAberto(false)} />}
     </>
   );

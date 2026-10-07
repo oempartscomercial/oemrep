@@ -33,14 +33,14 @@ export function ConversasTabela({ linhas, titulo, vazio }: { linhas: ConversaLin
         </div>
       ),
     },
-    { id: "previa", header: "Última mensagem", render: (c) => <span className="line-clamp-1 text-muted-foreground">{c.previa}</span> },
+    { id: "previa", header: "Última mensagem", classe: "hidden md:table-cell", render: (c) => <span className="line-clamp-1 text-muted-foreground">{c.previa}</span> },
     {
       id: "situacao",
       header: "",
       render: (c) => (c.motivoSemVinculo ? <Selo cor="warning">{MOTIVO[c.motivoSemVinculo] ?? "Sem empresa"}</Selo> : null),
     },
     { id: "quando", header: "Quando", render: (c) => <span className="whitespace-nowrap text-muted-foreground">{c.quando}</span> },
-    { id: "total", header: "Mensagens", numerica: true, render: (c) => <span className="tabular">{c.total}</span> },
+    { id: "total", header: "Mensagens", numerica: true, classe: "hidden md:table-cell", render: (c) => <span className="tabular">{c.total}</span> },
   ];
   return (
     <DataTable

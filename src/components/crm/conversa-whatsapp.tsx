@@ -80,11 +80,11 @@ export function ConversaWhatsapp({ mensagens, aviso }: { mensagens: MensagemExib
                       {situacao.rotulo}
                     </p>
                   )}
-                  {situacao?.detalhe && <p className="text-xs text-muted-foreground">{situacao.detalhe}</p>}
-                  {tipo && <p className="text-xs italic text-muted-foreground">{tipo}</p>}
+                  {situacao?.detalhe && <p className="break-words text-xs text-muted-foreground">{situacao.detalhe}</p>}
+                  {tipo && <p className="break-words text-xs italic text-muted-foreground">{tipo}</p>}
                   {texto && <p className={cn("whitespace-pre-wrap break-words", cancelada && "line-through")}>{texto}</p>}
                   {!minha && m.classificacao && CLASSIFICACAO[m.classificacao] && (
-                    <p className="mt-1 text-xs font-medium text-destructive">{CLASSIFICACAO[m.classificacao]}</p>
+                    <p className="mt-1 break-words text-xs font-medium text-destructive">{CLASSIFICACAO[m.classificacao]}</p>
                   )}
                   <p className="mt-1 text-right text-[11px] text-muted-foreground">{extras}</p>
                   {minha && (m.status === "RASCUNHO" || m.status === "APROVADA") && texto && (

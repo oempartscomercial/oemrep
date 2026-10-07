@@ -38,20 +38,20 @@ export function AcoesDaMensagem({ id, status, texto }: { id: string; status: "RA
       <div className="flex flex-wrap justify-end gap-1.5">
         {status === "RASCUNHO" && (
           <>
-            <Botao size="xs" onClick={() => setEditando(true)} disabled={ocupado}>Editar</Botao>
-            <Botao size="xs" variante="primario" carregando={ocupado} onClick={() => rodar(() => aprovarMensagem({ id }))}>Aprovar e enviar</Botao>
+            <Botao size="xs" className="h-10 md:h-6" onClick={() => setEditando(true)} disabled={ocupado}>Editar</Botao>
+            <Botao size="xs" className="h-10 md:h-6" variante="primario" carregando={ocupado} onClick={() => rodar(() => aprovarMensagem({ id }))}>Aprovar e enviar</Botao>
           </>
         )}
         {status === "APROVADA" && (
-          <Botao size="xs" variante="primario" carregando={ocupado} onClick={() => rodar(() => tentarEnviar({ id }))}>Tentar enviar agora</Botao>
+          <Botao size="xs" className="h-10 md:h-6" variante="primario" carregando={ocupado} onClick={() => rodar(() => tentarEnviar({ id }))}>Tentar enviar agora</Botao>
         )}
-        <Botao size="xs" variante="ghost" disabled={ocupado} onClick={() => rodar(() => cancelarMensagem({ id }))}>Cancelar</Botao>
+        <Botao size="xs" className="h-10 md:h-6" variante="ghost" disabled={ocupado} onClick={() => rodar(() => cancelarMensagem({ id }))}>Cancelar</Botao>
       </div>
       {retorno && <p className="max-w-xs text-right text-xs text-muted-foreground">{retorno}</p>}
 
       {editando && (
         <Dialog open onOpenChange={(aberto) => !aberto && setEditando(false)}>
-          <DialogContent className="sm:max-w-xl">
+          <DialogContent className="sm:max-w-xl max-md:max-h-[calc(100dvh-2rem)] max-md:overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Editar rascunho</DialogTitle>
               <DialogDescription>Depois de editar, você ainda precisa aprovar.</DialogDescription>
@@ -61,8 +61,8 @@ export function AcoesDaMensagem({ id, status, texto }: { id: string; status: "RA
               <p key={e} className="text-sm text-destructive">{e}</p>
             ))}
             <DialogFooter>
-              <Botao variante="ghost" onClick={() => setEditando(false)}>Cancelar</Botao>
-              <Botao variante="primario" onClick={salvarEdicao}>Salvar</Botao>
+              <Botao variante="ghost" className="h-10 md:h-8" onClick={() => setEditando(false)}>Cancelar</Botao>
+              <Botao variante="primario" className="h-10 md:h-8" onClick={salvarEdicao}>Salvar</Botao>
             </DialogFooter>
           </DialogContent>
         </Dialog>

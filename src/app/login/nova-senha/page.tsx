@@ -96,7 +96,7 @@ export default function NovaSenhaPage() {
       {estado.etapa === "erro" ? (
         <div className="flex flex-col gap-4">
           <p className="text-sm text-destructive" role="alert">{estado.mensagem}</p>
-          <Link href="/login/recuperar" className="text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+          <Link href="/login/recuperar" className="inline-flex min-h-10 items-center justify-center text-center text-sm md:min-h-0 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
             Pedir novo link
           </Link>
         </div>
@@ -116,7 +116,7 @@ export default function NovaSenhaPage() {
             onChange={(e) => setConfirmacao(e.target.value)}
           />
           {erro && <p className="text-sm text-destructive" role="alert">{erro}</p>}
-          <Botao type="submit" variante="primario" carregando={enviando} className="w-full">
+          <Botao type="submit" variante="primario" carregando={enviando} className="w-full h-10 md:h-8">
             {convite ? "Criar senha e entrar" : "Salvar senha"}
           </Botao>
         </form>

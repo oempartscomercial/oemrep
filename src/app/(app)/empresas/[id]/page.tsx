@@ -84,13 +84,13 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
               <span className="flex items-center gap-1"><MapPin className="size-3.5" />{[empresa.cidade, empresa.uf].filter(Boolean).join("/")}</span>
             )}
             {empresa.site && (
-              <span className="flex items-center gap-1"><Globe className="size-3.5" />{empresa.site}</span>
+              <span className="flex min-w-0 items-center gap-1 break-all"><Globe className="size-3.5" />{empresa.site}</span>
             )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {usuario.perfil === "ADMIN" && (
-            <Botao variante="ghost" icone={<Pencil />} href={`/cadastros/clientes/${empresa.id}`}>Editar cadastro</Botao>
+            <Botao variante="ghost" className="h-10 md:h-8" icone={<Pencil />} href={`/cadastros/clientes/${empresa.id}`}>Editar cadastro</Botao>
           )}
         </div>
       </div>
@@ -104,7 +104,7 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
         usuarioId={usuario.id}
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_20rem]">
         <div className="flex flex-col gap-4">
           <section className={cn("rounded-lg border bg-card px-4 py-3", atrasado && "border-destructive/40 bg-danger-soft")}>
             <p className="text-xs font-medium text-muted-foreground">Próximo passo</p>
@@ -162,15 +162,15 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
 
         <div className="flex flex-col gap-4">
           <Bloco titulo="Dados">
-            <dl className="grid grid-cols-[6rem_1fr] gap-y-2 text-sm">
+            <dl className="grid grid-cols-[6rem_minmax(0,1fr)] gap-y-2 text-sm">
               <dt className="text-muted-foreground">CNPJ</dt>
-              <dd>{empresa.cnpj ?? "—"}</dd>
+              <dd className="break-words">{empresa.cnpj ?? "—"}</dd>
               <dt className="text-muted-foreground">Origem</dt>
-              <dd>{empresa.origem ?? "—"}</dd>
+              <dd className="break-words">{empresa.origem ?? "—"}</dd>
               <dt className="text-muted-foreground">Grupo</dt>
-              <dd>{empresa.grupo ?? "—"}</dd>
+              <dd className="break-words">{empresa.grupo ?? "—"}</dd>
               <dt className="text-muted-foreground">Fábricas</dt>
-              <dd className="flex flex-wrap gap-1">{empresa.fabricas.length ? empresa.fabricas.map((cf) => <Selo key={cf.fabricaId}>{cf.fabrica.nome}</Selo>) : "—"}</dd>
+              <dd className="flex flex-wrap gap-1 break-words">{empresa.fabricas.length ? empresa.fabricas.map((cf) => <Selo key={cf.fabricaId}>{cf.fabrica.nome}</Selo>) : "—"}</dd>
             </dl>
             {empresa.observacoes && <p className="mt-3 border-t pt-3 text-sm text-muted-foreground">{empresa.observacoes}</p>}
           </Bloco>
@@ -190,8 +190,8 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
                       {c.funcao && <span className="font-normal text-muted-foreground"> · {c.funcao}</span>}
                       {c.naoContatar && <span className="ml-2"><Selo cor="error">Não contatar</Selo></span>}
                     </p>
-                    <p>{c.valor} <span className="text-muted-foreground">({CANAL[c.canal] ?? c.canal})</span></p>
-                    <p className="text-xs text-muted-foreground">Fonte: {c.fonte}</p>
+                    <p className="break-all">{c.valor} <span className="text-muted-foreground">({CANAL[c.canal] ?? c.canal})</span></p>
+                    <p className="break-words text-xs text-muted-foreground">Fonte: {c.fonte}</p>
                     {(c.canal === "WHATSAPP" || c.canal === "TELEFONE" || c.naoContatar) && (
                       <ContatoAcoes
                         contatoId={c.id}

@@ -32,7 +32,7 @@ export function UsuarioRodape({ nome, perfil }: UsuarioRodapeProps) {
         <p className="truncate text-sm font-medium">{nome}</p>
         <p className="truncate text-xs text-muted-foreground">{NOME_PERFIL[perfil]}</p>
       </div>
-      <Button variant="ghost" size="icon-sm" onClick={sair} disabled={saindo} aria-label="Sair" title="Sair">
+      <Button variant="ghost" size="icon-sm" className="size-10 md:size-7" onClick={sair} disabled={saindo} aria-label="Sair" title="Sair">
         <LogOut />
       </Button>
     </div>

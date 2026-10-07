@@ -55,7 +55,7 @@ export default async function ConversasPage() {
         <Bloco titulo={`Para aprovar (${pendentes.length})`} dica="Nada sai sem o seu OK. Aprovada que não saiu está esperando horário, limite ou a linha.">
           {pendentes.map((m) => (
             <li key={m.id} className="flex flex-col gap-1 py-2 text-sm">
-              <div className="flex items-baseline justify-between gap-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                 <Link href={`/empresas/${m.conversa.cliente?.id}`} className="font-medium hover:underline">
                   {m.conversa.cliente?.nomeFantasia ?? "Sem empresa"}
                 </Link>
@@ -83,8 +83,8 @@ export default async function ConversasPage() {
       {followUps.length > 0 && (
         <Bloco titulo={`Follow-ups para hoje (${followUps.length})`} dica="Já passou o intervalo, o contato não respondeu e ainda há tentativas. Você revisa e aprova.">
           {followUps.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-              <Link href={`/empresas/${c.cliente!.id}`} className="font-medium hover:underline">{c.cliente!.nomeFantasia}</Link>
+            <li key={c.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-2 text-sm">
+              <Link href={`/empresas/${c.cliente!.id}`} className="min-w-0 font-medium hover:underline">{c.cliente!.nomeFantasia}</Link>
               <BotaoEscrever contatoId={c.contato!.id} nome={c.contato!.nome ?? c.cliente!.nomeFantasia} rotulo="Preparar follow-up" />
             </li>
           ))}

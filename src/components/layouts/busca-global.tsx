@@ -59,7 +59,7 @@ export function BuscaGlobalBotao() {
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className="flex h-8 w-full items-center gap-2 rounded-md border bg-background px-2 text-sm text-muted-foreground hover:bg-muted"
+        className="flex h-10 md:h-8 w-full items-center gap-2 rounded-md border bg-background px-2 text-sm text-muted-foreground hover:bg-muted"
       >
         <Search className="size-3.5" />
         <span className="flex-1 text-left">Buscar…</span>
@@ -75,7 +75,7 @@ export function BuscaGlobalBotao() {
             {visivel.empresas.length > 0 && (
               <CommandGroup heading="Empresas">
                 {visivel.empresas.map((e) => (
-                  <CommandItem key={e.id} value={`empresa-${e.id}`} onSelect={() => ir(`/empresas/${e.id}`)}>
+                  <CommandItem key={e.id} className="py-2.5 md:py-1.5" value={`empresa-${e.id}`} onSelect={() => ir(`/empresas/${e.id}`)}>
                     <Building2 />
                     <span>{e.nome}</span>
                     <span className="ml-auto text-xs text-muted-foreground">{e.detalhe}</span>
@@ -86,7 +86,7 @@ export function BuscaGlobalBotao() {
             {visivel.contatos.length > 0 && (
               <CommandGroup heading="Pessoas">
                 {visivel.contatos.map((c) => (
-                  <CommandItem key={c.id} value={`contato-${c.id}`} onSelect={() => ir(`/empresas/${c.empresaId}`)}>
+                  <CommandItem key={c.id} className="py-2.5 md:py-1.5" value={`contato-${c.id}`} onSelect={() => ir(`/empresas/${c.empresaId}`)}>
                     <User />
                     <span>{c.nome}</span>
                     <span className="ml-auto text-xs text-muted-foreground">{c.detalhe}</span>
@@ -97,7 +97,7 @@ export function BuscaGlobalBotao() {
             {visivel.pedidos.length > 0 && (
               <CommandGroup heading="Pedidos">
                 {visivel.pedidos.map((p) => (
-                  <CommandItem key={p.id} value={`pedido-${p.id}`} onSelect={() => ir(`/pedidos/${p.id}`)}>
+                  <CommandItem key={p.id} className="py-2.5 md:py-1.5" value={`pedido-${p.id}`} onSelect={() => ir(`/pedidos/${p.id}`)}>
                     <Package />
                     <span>{p.numero}</span>
                     <span className="ml-auto text-xs text-muted-foreground">{p.detalhe}</span>

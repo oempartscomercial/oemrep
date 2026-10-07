@@ -76,10 +76,10 @@ export default function LoginPage() {
           onChange={(e) => setSenha(e.target.value)}
         />
         {erro && <p className="text-sm text-destructive">{erro}</p>}
-        <Botao type="submit" variante="primario" carregando={enviando} className="w-full">
+        <Botao type="submit" variante="primario" carregando={enviando} className="w-full h-10 md:h-8">
           Entrar
         </Botao>
-        <Link href="/login/recuperar" className="text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+        <Link href="/login/recuperar" className="inline-flex min-h-10 items-center justify-center text-center text-sm md:min-h-0 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
           Esqueci minha senha
         </Link>
       </form>
