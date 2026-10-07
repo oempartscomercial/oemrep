@@ -8,7 +8,7 @@
     "build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run",
+    "test": "VITEST_MAX_WORKERS=1 vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
     "db:local:recriar": "scripts/db-local.sh recriar",

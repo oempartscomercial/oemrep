@@ -31,7 +31,10 @@ case "${1:-}" in
   testar)
     zerar test
     shift
-    npx vitest run "$@"
+    # Um arquivo de teste por vez: eles dividem um banco só e usam CNPJs, e-mails e contagens que
+    # não são únicos entre arquivos, então em paralelo um estraga o outro de forma intermitente.
+    # (As opções fileParallelism/maxWorkers do vitest.config.ts não surtem efeito aqui; a variável sim.)
+    VITEST_MAX_WORKERS=1 npx vitest run "$@"
     ;;
   *)
     echo "uso: scripts/db-local.sh recriar|testar" >&2
