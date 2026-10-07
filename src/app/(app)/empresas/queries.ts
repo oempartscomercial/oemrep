@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { UsuarioSessao } from "@/lib/sessao";
 import { filtroFabricasPermitidas } from "@/lib/authz";
+import { numeroDoContato } from "@/domain/crm/contato";
 
 export const EMPRESAS_POR_PAGINA = 50;
 export const TIPOS_EMPRESA = ["todas", "clientes", "prospeccao"] as const;
@@ -92,6 +93,15 @@ export async function buscarFicha(id: string, usuario: UsuarioSessao) {
   });
   if (!empresa) return null;
 
+  // Contato com conversa não pode trocar de número (a conversa é do número). Conta a conversa
+  // ligada ao contato e a conversa solta com o mesmo número.
+  const numeros = empresa.contatos.map((c) => numeroDoContato(c.canal, c.valor)).filter((n): n is string => n !== null);
+  const conversasDosNumeros = numeros.length > 0 ? await prisma.conversa.findMany({ where: { linha: "PROSPECCAO", numero: { in: numeros } }, select: { numero: true } }) : [];
+  const numerosComConversa = new Set(conversasDosNumeros.map((c) => c.numero));
+  const contatosComConversa = empresa.contatos
+    .filter((c) => empresa.conversas.some((cv) => cv.contatoId === c.id) || numerosComConversa.has(numeroDoContato(c.canal, c.valor) ?? ""))
+    .map((c) => c.id);
+
   // Histórico da planilha: linhas suspeitas de duplicidade ficam fora das somas (ADR-013 §5).
   const historico = await prisma.pedidoHistorico.groupBy({
     by: ["fabricaId"],
@@ -105,6 +115,7 @@ export async function buscarFicha(id: string, usuario: UsuarioSessao) {
 
   return {
     empresa,
+    contatosComConversa,
     historico: historico
       .map((h) => ({
         fabrica: nomeFabrica.get(h.fabricaId) ?? "—",

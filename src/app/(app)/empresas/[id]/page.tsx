@@ -13,18 +13,23 @@ import { ConversaWhatsapp } from "@/components/crm/conversa-whatsapp";
 import { formatarNumero } from "@/domain/mensagens/exibicao";
 import { normalizarTelefone } from "@/domain/mensagens/telefone";
 import { ContatoAcoes } from "@/components/crm/contato-acoes";
+import { BotaoEditarContato, BotaoNovoContato } from "@/components/crm/formulario-contato";
 import { descreverPrazo, formatarDia, hojeEmSaoPaulo, situacaoDoPrazo } from "@/domain/crm/prazo";
 import { cn } from "@/lib/utils";
+import { podeVerCrm } from "@/lib/authz";
 import { FichaAcoes } from "./ficha-acoes";
 import { OportunidadesFicha } from "./oportunidades-ficha";
 
 const CANAL: Record<string, string> = { WHATSAPP: "WhatsApp", TELEFONE: "Ligação", EMAIL: "E-mail", VISITA: "Visita", REUNIAO: "Reunião", PESQUISA: "Pesquisa", OUTRO: "Anotação", LINKEDIN: "LinkedIn" };
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-function Bloco({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+function Bloco({ titulo, acao, children }: { titulo: string; acao?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="rounded-lg border bg-card">
-      <h2 className="border-b px-4 py-2.5 text-xs font-medium text-muted-foreground">{titulo}</h2>
+      <div className="flex items-center justify-between gap-2 border-b px-4 py-2.5">
+        <h2 className="text-xs font-medium text-muted-foreground">{titulo}</h2>
+        {acao}
+      </div>
       <div className="p-4">{children}</div>
     </section>
   );
@@ -40,7 +45,8 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
     prisma.fabrica.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
   ]);
   if (!ficha) notFound();
-  const { empresa, historico } = ficha;
+  const { empresa, historico, contatosComConversa } = ficha;
+  const podeEditarContatos = podeVerCrm(usuario);
   const hoje = hojeEmSaoPaulo();
   const passo = empresa.proximosPassos.find((p) => !p.oportunidadeId) ?? null;
   const prazo = passo?.prazo.toISOString().slice(0, 10);
@@ -169,7 +175,10 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
             {empresa.observacoes && <p className="mt-3 border-t pt-3 text-sm text-muted-foreground">{empresa.observacoes}</p>}
           </Bloco>
 
-          <Bloco titulo={`Contatos (${empresa.contatos.length})`}>
+          <Bloco
+            titulo={`Contatos (${empresa.contatos.length})`}
+            acao={podeEditarContatos ? <BotaoNovoContato clienteId={empresa.id} empresa={empresa.nomeFantasia} /> : undefined}
+          >
             {empresa.contatos.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum contato com fonte anotada.</p>
             ) : (
@@ -191,6 +200,16 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
                         naoContatar={c.naoContatar}
                         podeEscrever={normalizarTelefone(c.valor) !== null && (c.canal === "WHATSAPP" || c.canal === "TELEFONE")}
                       />
+                    )}
+                    {podeEditarContatos && (
+                      <div className="mt-1.5">
+                        <BotaoEditarContato
+                          clienteId={empresa.id}
+                          empresa={empresa.nomeFantasia}
+                          numeroTravado={contatosComConversa.includes(c.id)}
+                          contato={{ id: c.id, nome: c.nome, funcao: c.funcao, canal: c.canal, valor: c.valor, fonte: c.fonte, observacoes: c.observacoes }}
+                        />
+                      </div>
                     )}
                   </li>
                 ))}

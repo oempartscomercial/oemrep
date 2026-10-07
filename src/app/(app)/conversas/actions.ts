@@ -5,7 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado, type UsuarioSessao } from "@/lib/sessao";
 import { podeVerCrm } from "@/lib/authz";
 import { compararCampos } from "@/domain/auditoria/evento";
+import type { CanalContato } from "@prisma/client";
 import { normalizarTelefone } from "@/domain/mensagens/telefone";
+import { chaveDuplicidade, numeroDoContato, validarContato } from "@/domain/crm/contato";
 import { tipoDeEnvioSugerido, validarRascunho, rascunhoDeFollowUp, rascunhoDePrimeiroContato, type TipoEnvio } from "@/domain/mensagens/rascunho";
 import { verificarEnvio, type Bloqueio } from "@/domain/mensagens/envio";
 import { despachar, lerLimites, type ResultadoDoDespacho } from "@/lib/whatsapp/despachar";
@@ -186,6 +188,147 @@ export async function reativarContato(entrada: { contatoId: string }): Promise<R
     });
   });
   revalidar(contato.clienteId);
+  return { erros: [] };
+}
+
+export type EntradaContato = {
+  clienteId: string;
+  nome?: string;
+  funcao?: string;
+  canal: string;
+  valor: string;
+  fonte: string;
+  observacoes?: string;
+};
+
+export type EntradaEdicaoContato = {
+  contatoId: string;
+  nome?: string;
+  funcao?: string;
+  canal: string;
+  valor: string;
+  fonte: string;
+  observacoes?: string;
+  /** Só muda se vier preenchido (a tela de cadastro ainda não pede este campo). */
+  servePara?: string;
+};
+
+const textoOuNulo = (v?: string) => (v?.trim() ? v.trim() : null);
+const semValores = (campos: Record<string, unknown>) => Object.fromEntries(Object.keys(campos).map((c) => [c, null]));
+const MENSAGEM_CONVERSA = "Este número já tem conversa. Cadastre um contato novo em vez de trocar o número.";
+const MENSAGEM_OUTRA_EMPRESA = "Este número já está ligado a outra empresa.";
+const MENSAGEM_DUPLICADO = "Esta empresa já tem esse contato cadastrado.";
+
+/** Cadastra um contato na empresa. Se o número já aparece numa conversa sem empresa, a conversa passa a ser dele. */
+export async function criarContato(entrada: EntradaContato): Promise<Resultado & { id?: string }> {
+  const sessao = await sessaoCrm();
+  if ("erro" in sessao) return { erros: [sessao.erro] };
+  const cliente = await prisma.cliente.findUnique({ where: { id: entrada.clienteId }, select: { id: true } });
+  if (!cliente) return { erros: ["Empresa não encontrada."] };
+
+  const validacao = validarContato(entrada);
+  const valor = validacao.valorNormalizado;
+  if (validacao.erros.length > 0 || valor === undefined) return { erros: validacao.erros };
+  const canal = entrada.canal as CanalContato;
+  const numero = numeroDoContato(canal, valor);
+
+  const outros = await prisma.contato.findMany({ where: { clienteId: cliente.id, canal }, select: { valor: true } });
+  const chave = chaveDuplicidade(canal, valor);
+  if (outros.some((o) => chaveDuplicidade(canal, o.valor) === chave)) return { erros: [MENSAGEM_DUPLICADO] };
+
+  const conversa = numero ? await prisma.conversa.findUnique({ where: { linha_numero: { linha: "PROSPECCAO", numero } } }) : null;
+  if (conversa?.clienteId && conversa.clienteId !== cliente.id) return { erros: [MENSAGEM_OUTRA_EMPRESA] };
+
+  const dados = {
+    nome: textoOuNulo(entrada.nome),
+    funcao: textoOuNulo(entrada.funcao),
+    canal,
+    valor,
+    fonte: entrada.fonte.trim(),
+    observacoes: textoOuNulo(entrada.observacoes),
+  };
+  const { usuario } = sessao;
+  const contato = await prisma.$transaction(async (tx) => {
+    const novo = await tx.contato.create({ data: { ...dados, clienteId: cliente.id } });
+    if (conversa && !conversa.clienteId) {
+      await tx.conversa.update({ where: { id: conversa.id }, data: { clienteId: cliente.id, contatoId: novo.id, motivoSemVinculo: null } });
+    }
+    await tx.eventoAuditoria.createMany({ data: compararCampos("Contato", novo.id, usuario.id, semValores(dados), dados) });
+    return novo;
+  });
+  revalidar(cliente.id);
+  return { erros: [], id: contato.id };
+}
+
+/**
+ * Edita um contato. Trocar o número (ou o canal) só vale se ainda não há conversa com ele;
+ * trocar o número zera a origem, que era de outro número. "Não contatar" nunca muda aqui.
+ */
+export async function editarContato(entrada: EntradaEdicaoContato): Promise<Resultado> {
+  const sessao = await sessaoCrm();
+  if ("erro" in sessao) return { erros: [sessao.erro] };
+  const atual = await prisma.contato.findUnique({ where: { id: entrada.contatoId } });
+  if (!atual) return { erros: ["Contato não encontrado."] };
+
+  const validacao = validarContato(entrada);
+  const valor = validacao.valorNormalizado;
+  if (validacao.erros.length > 0 || valor === undefined) return { erros: validacao.erros };
+  const canal = entrada.canal as CanalContato;
+
+  const mudouNumero = atual.canal !== canal || chaveDuplicidade(atual.canal, atual.valor) !== chaveDuplicidade(canal, valor);
+  const numeroAtual = numeroDoContato(atual.canal, atual.valor);
+  const numeroNovo = numeroDoContato(canal, valor);
+
+  let conversaNova: { id: string; clienteId: string | null } | null = null;
+  if (mudouNumero) {
+    const comConversa = await prisma.conversa.findFirst({
+      where: { OR: [{ contatoId: atual.id }, ...(numeroAtual ? [{ linha: "PROSPECCAO" as const, numero: numeroAtual }] : [])] },
+      select: { id: true },
+    });
+    if (comConversa) return { erros: [MENSAGEM_CONVERSA] };
+
+    if (numeroNovo) {
+      conversaNova = await prisma.conversa.findUnique({ where: { linha_numero: { linha: "PROSPECCAO", numero: numeroNovo } }, select: { id: true, clienteId: true } });
+      if (conversaNova?.clienteId && conversaNova.clienteId !== atual.clienteId) return { erros: [MENSAGEM_OUTRA_EMPRESA] };
+    }
+
+    const outros = await prisma.contato.findMany({ where: { clienteId: atual.clienteId, canal, id: { not: atual.id } }, select: { valor: true } });
+    const chave = chaveDuplicidade(canal, valor);
+    if (outros.some((o) => chaveDuplicidade(canal, o.valor) === chave)) return { erros: [MENSAGEM_DUPLICADO] };
+  }
+
+  const novos = {
+    nome: textoOuNulo(entrada.nome),
+    funcao: textoOuNulo(entrada.funcao),
+    canal,
+    valor: mudouNumero ? valor : atual.valor,
+    fonte: entrada.fonte.trim(),
+    observacoes: textoOuNulo(entrada.observacoes),
+    ...(entrada.servePara !== undefined ? { servePara: textoOuNulo(entrada.servePara) } : {}),
+    origemContato: mudouNumero ? null : atual.origemContato,
+  };
+  const antes: Record<string, unknown> = {
+    nome: atual.nome,
+    funcao: atual.funcao,
+    canal: atual.canal,
+    valor: atual.valor,
+    servePara: atual.servePara,
+    fonte: atual.fonte,
+    observacoes: atual.observacoes,
+    origemContato: atual.origemContato,
+  };
+  const { usuario } = sessao;
+  await prisma.$transaction(async (tx) => {
+    await tx.contato.update({ where: { id: atual.id }, data: novos });
+    if (conversaNova && !conversaNova.clienteId) {
+      await tx.conversa.update({
+        where: { id: conversaNova.id },
+        data: { clienteId: atual.clienteId, contatoId: atual.id, motivoSemVinculo: null },
+      });
+    }
+    await tx.eventoAuditoria.createMany({ data: compararCampos("Contato", atual.id, usuario.id, antes, novos) });
+  });
+  revalidar(atual.clienteId);
   return { erros: [] };
 }
 
