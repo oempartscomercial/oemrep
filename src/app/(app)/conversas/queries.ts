@@ -1,5 +1,7 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verificarEnvio } from "@/domain/mensagens/envio";
+import { ETAPAS_DO_QUADRO } from "@/domain/crm/funil";
 import { lerLimites } from "@/lib/whatsapp/despachar";
 
 const LIMITE = 100;
@@ -70,4 +72,47 @@ export async function listarFollowUpsDeHoje() {
     });
     return r.ok || r.bloqueios.every((b) => NAO_DESQUALIFICAM.has(b.codigo));
   });
+}
+
+export type PendenciasDeConversas = { paraAprovar: number; aguardandoResposta: number; total: number };
+
+/**
+ * Quantas conversas pedem ação do Rômulo agora, para o selo do menu. Mesmas regras das
+ * listas da tela: rascunho para aprovar, e conversa cuja última mensagem real é do contato.
+ * Só conta (nada de listas). Empresa fora do funil (pausada, descartada, cliente) não entra.
+ */
+export async function contarPendenciasDeConversas(opcoes: { clienteIds?: string[] } = {}): Promise<PendenciasDeConversas> {
+  // `clienteIds` restringe a contagem a certas empresas (usado nos testes, que dividem o banco
+  // com outros); o menu não passa nada e conta tudo.
+  const recorte = opcoes.clienteIds;
+  const filtroEmpresa = recorte ? { id: { in: recorte } } : {};
+  const sqlEmpresa = recorte ? Prisma.sql`AND cl."id" IN (${Prisma.join(recorte.length > 0 ? recorte : [""])})` : Prisma.empty;
+  const [paraAprovar, ultimas] = await Promise.all([
+    prisma.mensagem.count({
+      where: {
+        linha: "PROSPECCAO",
+        direcao: "SAIDA",
+        status: "RASCUNHO",
+        conversa: { cliente: { situacao: { in: [...ETAPAS_DO_QUADRO] }, ...filtroEmpresa } },
+      },
+    }),
+    // Última mensagem real de cada conversa (mesma regra de REAIS da tela), e só as que são do contato.
+    prisma.$queryRaw<{ total: number }[]>`
+      SELECT COUNT(*)::int AS total
+      FROM (
+        SELECT DISTINCT ON (m."conversaId") m."direcao"::text AS direcao
+        FROM "Mensagem" m
+        JOIN "Conversa" c ON c."id" = m."conversaId"
+        JOIN "Cliente" cl ON cl."id" = c."clienteId"
+        WHERE c."linha"::text = 'PROSPECCAO'
+          AND cl."situacao"::text IN (${Prisma.join([...ETAPAS_DO_QUADRO])})
+          AND m."status"::text IN (${Prisma.join([...REAIS])})
+          ${sqlEmpresa}
+        ORDER BY m."conversaId", m."ocorridoEm" DESC
+      ) ultimas
+      WHERE ultimas.direcao = 'ENTRADA'
+    `,
+  ]);
+  const aguardandoResposta = ultimas[0]?.total ?? 0;
+  return { paraAprovar, aguardandoResposta, total: paraAprovar + aguardandoResposta };
 }

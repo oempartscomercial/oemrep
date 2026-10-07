@@ -45,6 +45,7 @@ export async function prepararMensagem(entrada: { contatoId: string; texto: stri
 
   const contato = await prisma.contato.findUnique({ where: { id: entrada.contatoId } });
   if (!contato) return { erros: ["Contato não encontrado."] };
+  if (contato.naoContatar) return { erros: ["Este contato pediu para não ser contatado. Só uma pessoa pode desfazer isso na ficha."] };
   const numero = normalizarTelefone(contato.valor);
   if (!numero) return { erros: ["O número deste contato não é um telefone válido."] };
 
@@ -154,7 +155,56 @@ export async function definirOrigemContato(entrada: { contatoId: string; origem:
   if (!(ORIGENS as readonly string[]).includes(entrada.origem)) return { erros: ["Escolha de onde veio o número."] };
   const contato = await prisma.contato.findUnique({ where: { id: entrada.contatoId } });
   if (!contato) return { erros: ["Contato não encontrado."] };
-  await prisma.contato.update({ where: { id: contato.id }, data: { origemContato: entrada.origem as (typeof ORIGENS)[number] } });
+  const nova = entrada.origem as (typeof ORIGENS)[number];
+  const { usuario } = sessao;
+  await prisma.$transaction(async (tx) => {
+    await tx.contato.update({ where: { id: contato.id }, data: { origemContato: nova } });
+    await tx.eventoAuditoria.createMany({
+      data: compararCampos("Contato", contato.id, usuario.id, { origemContato: contato.origemContato ?? null }, { origemContato: nova }),
+    });
+  });
+  revalidar(contato.clienteId);
+  return { erros: [] };
+}
+
+const MENSAGEM_PEDIU_PARAR = "Contato pediu para não ser contatado.";
+
+/**
+ * Uma pessoa marca UM contato como "não contatar" (a empresa continua como está). Cancela os
+ * rascunhos e as aprovadas dele; o que já saiu fica como está. Se já estava marcado, não repete
+ * a interação nem a auditoria, mas ainda cancela o que tiver ficado pendente.
+ */
+export async function marcarNaoContatar(entrada: { contatoId: string; motivo?: string }): Promise<Resultado> {
+  const sessao = await sessaoCrm();
+  if ("erro" in sessao) return { erros: [sessao.erro] };
+  const contato = await prisma.contato.findUnique({ where: { id: entrada.contatoId } });
+  if (!contato) return { erros: ["Contato não encontrado."] };
+  const { usuario } = sessao;
+  const motivo = textoOuNulo(entrada.motivo);
+  const nome = contato.nome ?? null;
+
+  await prisma.$transaction(async (tx) => {
+    const marcou = await tx.contato.updateMany({ where: { id: contato.id, naoContatar: false }, data: { naoContatar: true } });
+    await tx.mensagem.updateMany({
+      where: { direcao: "SAIDA", status: { in: [...PENDENTES] }, conversa: { contatoId: contato.id } },
+      data: { status: "CANCELADA", motivoBloqueio: MENSAGEM_PEDIU_PARAR },
+    });
+    if (marcou.count === 0) return;
+    await tx.interacao.create({
+      data: {
+        clienteId: contato.clienteId,
+        data: new Date(),
+        canal: "OUTRO",
+        comQuem: nome,
+        origem: "USUARIO",
+        usuarioId: usuario.id,
+        resumo: `${usuario.nome} marcou "não contatar" para ${nome ?? "um contato"}.${motivo ? ` Motivo: ${motivo}` : ""}`,
+      },
+    });
+    await tx.eventoAuditoria.createMany({
+      data: compararCampos("Contato", contato.id, usuario.id, { naoContatar: false }, { naoContatar: true }),
+    });
+  });
   revalidar(contato.clienteId);
   return { erros: [] };
 }
@@ -169,6 +219,9 @@ export async function reativarContato(entrada: { contatoId: string }): Promise<R
 
   await prisma.$transaction(async (tx) => {
     await tx.contato.update({ where: { id: contato.id }, data: { naoContatar: false } });
+    await tx.eventoAuditoria.createMany({
+      data: compararCampos("Contato", contato.id, usuario.id, { naoContatar: true }, { naoContatar: false }),
+    });
     if (contato.cliente.naoContatar) {
       await tx.cliente.update({ where: { id: contato.clienteId }, data: { naoContatar: false } });
       await tx.eventoAuditoria.createMany({

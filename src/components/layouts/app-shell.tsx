@@ -13,6 +13,7 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
@@ -20,14 +21,24 @@ import {
 } from "@/components/ui/sidebar";
 import { OemLogo } from "@/components/foundations/logo/oem-logo";
 import { menuAgrupado, menuDoPerfil } from "@/components/nav-itens";
+import { formatarSeloPendencias } from "@/components/nav-pendencias";
 import { BuscaGlobalBotao } from "./busca-global";
 import { UsuarioRodape, type UsuarioRodapeProps } from "./usuario-rodape";
 
 /**
  * Casca do app: menu lateral compacto (colapsa em cabeçalho no mobile) + conteúdo.
  * Sem usuário, mostra o menu de operador; as telas exibem o aviso de sessão expirada.
+ * `pendenciasConversas` vem do layout servidor; nulo (sem CRM ou erro) = sem selo.
  */
-export function AppShell({ children, usuario }: { children: ReactNode; usuario: UsuarioRodapeProps | null }) {
+export function AppShell({
+  children,
+  usuario,
+  pendenciasConversas = null,
+}: {
+  children: ReactNode;
+  usuario: UsuarioRodapeProps | null;
+  pendenciasConversas?: number | null;
+}) {
   const pathname = usePathname();
   const perfil = usuario?.perfil ?? "OPERADOR";
   const itens = menuDoPerfil(perfil);
@@ -52,16 +63,25 @@ export function AppShell({ children, usuario }: { children: ReactNode; usuario: 
               {grupo && <SidebarGroupLabel>{grupo}</SidebarGroupLabel>}
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {itensDoGrupo.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={item.href === ativo} className="h-10 md:h-8">
-                        <Link href={item.href}>
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {itensDoGrupo.map((item) => {
+                    // Só Conversas leva selo; o menu já esconde o CRM de quem é OPERADOR.
+                    const selo = item.href === "/conversas" ? formatarSeloPendencias(pendenciasConversas) : null;
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton asChild isActive={item.href === ativo} className="h-10 md:h-8">
+                          <Link href={item.href}>
+                            <item.icon />
+                            <span>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                        {selo && (
+                          <SidebarMenuBadge role="img" aria-label={selo.rotulo}>
+                            {selo.texto}
+                          </SidebarMenuBadge>
+                        )}
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
