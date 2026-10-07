@@ -6,7 +6,7 @@ import { obterUsuarioLogado, type UsuarioSessao } from "@/lib/sessao";
 import { podeVerCrm } from "@/lib/authz";
 import { compararCampos } from "@/domain/auditoria/evento";
 import type { CanalContato } from "@prisma/client";
-import { normalizarTelefone } from "@/domain/mensagens/telefone";
+import { mesmoTelefone, normalizarTelefone } from "@/domain/mensagens/telefone";
 import { chaveDuplicidade, numeroDoContato, validarContato } from "@/domain/crm/contato";
 import { tipoDeEnvioSugerido, validarRascunho, rascunhoDeFollowUp, rascunhoDePrimeiroContato, type TipoEnvio } from "@/domain/mensagens/rascunho";
 import { verificarEnvio, type Bloqueio } from "@/domain/mensagens/envio";
@@ -217,6 +217,26 @@ const textoOuNulo = (v?: string) => (v?.trim() ? v.trim() : null);
 const semValores = (campos: Record<string, unknown>) => Object.fromEntries(Object.keys(campos).map((c) => [c, null]));
 const MENSAGEM_CONVERSA = "Este número já tem conversa. Cadastre um contato novo em vez de trocar o número.";
 const MENSAGEM_OUTRA_EMPRESA = "Este número já está ligado a outra empresa.";
+const MENSAGEM_NAO_CONTATAR = "Este número está marcado como 'não contatar'. Reative o contato antes de cadastrá-lo de novo.";
+
+/**
+ * Antes de gravar um número: ele não pode estar em outra empresa (a conversa ficaria sem dono)
+ * nem em contato desta empresa marcado "não contatar" (cadastrar de novo por outro canal
+ * contornaria a supressão). Compara pelo número normalizado, em qualquer canal de telefone.
+ */
+async function conflitoDoNumero(numero: string, clienteId: string, ignorarContatoId?: string): Promise<string | null> {
+  const todos = await prisma.contato.findMany({
+    where: { canal: { in: ["WHATSAPP", "TELEFONE"] }, ...(ignorarContatoId ? { id: { not: ignorarContatoId } } : {}) },
+    select: { clienteId: true, valor: true, naoContatar: true },
+  });
+  const iguais = todos.filter((c) => {
+    const n = normalizarTelefone(c.valor);
+    return n !== null && mesmoTelefone(n, numero);
+  });
+  if (iguais.some((c) => c.clienteId !== clienteId)) return MENSAGEM_OUTRA_EMPRESA;
+  if (iguais.some((c) => c.naoContatar)) return MENSAGEM_NAO_CONTATAR;
+  return null;
+}
 const MENSAGEM_DUPLICADO = "Esta empresa já tem esse contato cadastrado.";
 
 /** Cadastra um contato na empresa. Se o número já aparece numa conversa sem empresa, a conversa passa a ser dele. */
@@ -238,6 +258,8 @@ export async function criarContato(entrada: EntradaContato): Promise<Resultado &
 
   const conversa = numero ? await prisma.conversa.findUnique({ where: { linha_numero: { linha: "PROSPECCAO", numero } } }) : null;
   if (conversa?.clienteId && conversa.clienteId !== cliente.id) return { erros: [MENSAGEM_OUTRA_EMPRESA] };
+  const conflito = numero ? await conflitoDoNumero(numero, cliente.id) : null;
+  if (conflito) return { erros: [conflito] };
 
   const dados = {
     nome: textoOuNulo(entrada.nome),
@@ -290,6 +312,8 @@ export async function editarContato(entrada: EntradaEdicaoContato): Promise<Resu
     if (numeroNovo) {
       conversaNova = await prisma.conversa.findUnique({ where: { linha_numero: { linha: "PROSPECCAO", numero: numeroNovo } }, select: { id: true, clienteId: true } });
       if (conversaNova?.clienteId && conversaNova.clienteId !== atual.clienteId) return { erros: [MENSAGEM_OUTRA_EMPRESA] };
+      const conflito = await conflitoDoNumero(numeroNovo, atual.clienteId, atual.id);
+      if (conflito) return { erros: [conflito] };
     }
 
     const outros = await prisma.contato.findMany({ where: { clienteId: atual.clienteId, canal, id: { not: atual.id } }, select: { valor: true } });

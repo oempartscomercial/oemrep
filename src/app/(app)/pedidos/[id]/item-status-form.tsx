@@ -51,7 +51,7 @@ export function ItemStatusForm({
       </Select>
       {precisaObservacao && (
         <Input
-          className="h-7"
+          className="h-7 md:h-7"
           aria-label="Observação"
           placeholder="Observação"
           value={observacao}

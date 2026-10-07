@@ -17,6 +17,7 @@ afterEach(() => {
 
 const MENSAGEM_CONVERSA = "Este número já tem conversa. Cadastre um contato novo em vez de trocar o número.";
 const MENSAGEM_OUTRA_EMPRESA = "Este número já está ligado a outra empresa.";
+const MENSAGEM_NAO_CONTATAR = "Este número está marcado como 'não contatar'. Reative o contato antes de cadastrá-lo de novo.";
 const MENSAGEM_DUPLICADO = "Esta empresa já tem esse contato cadastrado.";
 
 // DDD 97: espaço de números próprio deste arquivo (o de actions.test.ts usa o 96).
@@ -158,6 +159,35 @@ describe("criarContato", () => {
     }
   });
 
+  it("o mesmo número em outra empresa (ainda sem conversa) também não entra", async () => {
+    const a = await cenario();
+    const b = await cenario();
+    try {
+      const n = numeroUnico();
+      await prisma.contato.create({ data: { clienteId: b.empresa.id, canal: "TELEFONE", valor: n.formatado, fonte: "Site" } });
+      a.logar();
+      expect((await criarContato({ clienteId: a.empresa.id, canal: "WHATSAPP", valor: n.digitado, fonte: "Site" })).erros).toEqual([MENSAGEM_OUTRA_EMPRESA]);
+      expect(await prisma.contato.count({ where: { clienteId: a.empresa.id } })).toBe(0);
+    } finally {
+      await a.limpar();
+      await b.limpar();
+    }
+  });
+
+  it("não deixa recadastrar como WhatsApp um número marcado 'não contatar' em outro canal", async () => {
+    const c = await cenario();
+    try {
+      const n = numeroUnico();
+      await prisma.contato.create({ data: { clienteId: c.empresa.id, canal: "TELEFONE", valor: n.formatado, fonte: "Site", naoContatar: true } });
+      c.logar();
+      const r = await criarContato({ clienteId: c.empresa.id, canal: "WHATSAPP", valor: n.digitado, fonte: "Site" });
+      expect(r.erros).toEqual([MENSAGEM_NAO_CONTATAR]);
+      expect(await prisma.contato.count({ where: { clienteId: c.empresa.id } })).toBe(1);
+    } finally {
+      await c.limpar();
+    }
+  });
+
   it("conversa sem empresa com esse número passa a ser do contato novo", async () => {
     const c = await cenario();
     try {
@@ -239,6 +269,27 @@ describe("editarContato", () => {
       expect(eventos).toContainEqual(expect.objectContaining({ campo: "origemContato", valorAnterior: "INDICACAO", valorNovo: null }));
     } finally {
       await c.limpar();
+    }
+  });
+
+  it("não deixa trocar para um número que é de outra empresa nem para um marcado 'não contatar'", async () => {
+    const a = await cenario();
+    const b = await cenario();
+    try {
+      const alvo = numeroUnico();
+      const proprio = numeroUnico();
+      const bloqueado = numeroUnico();
+      await prisma.contato.create({ data: { clienteId: b.empresa.id, canal: "TELEFONE", valor: alvo.formatado, fonte: "Site" } });
+      await prisma.contato.create({ data: { clienteId: a.empresa.id, canal: "TELEFONE", valor: bloqueado.formatado, fonte: "Site", naoContatar: true } });
+      const meu = await prisma.contato.create({ data: { clienteId: a.empresa.id, canal: "WHATSAPP", valor: proprio.formatado, fonte: "Site" } });
+      a.logar();
+      const base = { contatoId: meu.id, canal: "WHATSAPP", fonte: "Site" };
+      expect((await editarContato({ ...base, valor: alvo.digitado })).erros).toEqual([MENSAGEM_OUTRA_EMPRESA]);
+      expect((await editarContato({ ...base, valor: bloqueado.digitado })).erros).toEqual([MENSAGEM_NAO_CONTATAR]);
+      expect((await prisma.contato.findUniqueOrThrow({ where: { id: meu.id } })).valor).toBe(proprio.formatado);
+    } finally {
+      await a.limpar();
+      await b.limpar();
     }
   });
 

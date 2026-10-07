@@ -53,6 +53,37 @@ async function cenario(opcoes: { aprovadaEm?: Date; status?: "APROVADA" | "ENVIA
   return { e164, usuario, empresa, conversa, mensagem, limpar };
 }
 
+
+// Transforma a mensagem do cenário em follow-up: a empresa já está em contato e houve um
+// primeiro contato enviado em `ultimoEnvio`.
+async function comoFollowUp(c: Awaited<ReturnType<typeof cenario>>, ultimoEnvio: Date) {
+  await prisma.cliente.update({ where: { id: c.empresa.id }, data: { situacao: "EM_CONTATO" } });
+  await prisma.mensagem.create({
+    data: {
+      conversaId: c.conversa.id, linha: "PROSPECCAO", direcao: "SAIDA", origem: "PLATAFORMA", tipo: "TEXTO", status: "ENVIADA",
+      tipoEnvio: "PRIMEIRO_CONTATO", texto: `Primeira mensagem (${c.e164})`, ocorridoEm: ultimoEnvio, enviadaEm: ultimoEnvio,
+      idExterno: `PRIM-${c.e164}`, criadaPorId: c.usuario.id, aprovadaPorId: c.usuario.id, aprovadaEm: ultimoEnvio,
+    },
+  });
+  await prisma.mensagem.update({ where: { id: c.mensagem.id }, data: { tipoEnvio: "FOLLOW_UP" } });
+}
+
+// Os testes de limite diário usam um dia só deles (2027-03-03): a contagem é por dia, então os
+// outros testes, que enviam em 2026, não entram na conta nem sofrem com ela. O limite padrão
+// (15) é atingido com 15 primeiros contatos já enviados nesse dia; nada mexe em parâmetro global.
+const DIA_LIMITE_ANTES = "2027-03-02";
+const DIA_LIMITE_10H = sp("2027-03-03T10:00:00");
+async function encherODia(c: Awaited<ReturnType<typeof cenario>>) {
+  const quando = sp("2027-03-03T09:00:00");
+  await prisma.mensagem.createMany({
+    data: Array.from({ length: 15 }, (_, i) => ({
+      conversaId: c.conversa.id, linha: "PROSPECCAO" as const, direcao: "SAIDA" as const, origem: "PLATAFORMA" as const, tipo: "TEXTO" as const,
+      status: "ENVIADA" as const, tipoEnvio: "PRIMEIRO_CONTATO" as const, texto: `Enchendo o dia ${i} (${c.e164})`, ocorridoEm: quando, enviadaEm: quando,
+      idExterno: `CHEIO-${c.e164}-${i}`, criadaPorId: c.usuario.id, aprovadaPorId: c.usuario.id, aprovadaEm: quando,
+    })),
+  });
+}
+
 const recarregar = (id: string) => prisma.mensagem.findUniqueOrThrow({ where: { id } });
 
 describe("enviarAprovadas — envio agendado das aprovadas (ADR-015 §4)", () => {
@@ -112,27 +143,59 @@ describe("enviarAprovadas — envio agendado das aprovadas (ADR-015 §4)", () =>
     }
   });
 
-  it("limite diário de primeiros contatos: para antes de insistir", async () => {
-    const a = await cenario({ aprovadaEm: sp("2026-10-05T10:00:00") });
-    const b = await cenario({ aprovadaEm: sp("2026-10-06T10:00:00") });
+  it("limite diário de primeiros contatos: para antes de insistir, só nos primeiros contatos", async () => {
+    const a = await cenario({ aprovadaEm: sp(`${DIA_LIMITE_ANTES}T10:00:00`) });
+    const b = await cenario({ aprovadaEm: sp(`${DIA_LIMITE_ANTES}T11:00:00`) });
     const ja = await cenario();
     try {
-      await prisma.parametro.upsert({ where: { chave: "whatsapp_limite_primeiros_dia" }, update: { valor: "1" }, create: { chave: "whatsapp_limite_primeiros_dia", valor: "1" } });
-      await prisma.mensagem.update({
-        where: { id: ja.mensagem.id },
-        data: { status: "ENVIADA", idExterno: `AGEND-${ja.e164}`, enviadaEm: sp("2026-10-07T09:00:00") },
-      });
+      await encherODia(ja);
       const t = transporte();
-      const r = await enviarAprovadas({ transporte: t, agora: QUARTA_10H, mensagemIds: [a.mensagem.id, b.mensagem.id] });
+      const r = await enviarAprovadas({ transporte: t, agora: DIA_LIMITE_10H, mensagemIds: [a.mensagem.id, b.mensagem.id] });
       expect(r).toMatchObject({ enviadas: 0, aguardando: 2, canceladas: 0 });
       expect(r.paradasPor).toContain("Limite diário");
       expect(t.enviarTexto).not.toHaveBeenCalled();
       expect((await recarregar(b.mensagem.id)).status).toBe("APROVADA");
     } finally {
-      await prisma.parametro.deleteMany({ where: { chave: "whatsapp_limite_primeiros_dia" } });
       await a.limpar();
       await b.limpar();
       await ja.limpar();
+    }
+  });
+
+  it("limite diário de primeiros contatos não segura o follow-up que vem depois", async () => {
+    const primeiro = await cenario({ aprovadaEm: sp(`${DIA_LIMITE_ANTES}T10:00:00`) });
+    const follow = await cenario({ aprovadaEm: sp(`${DIA_LIMITE_ANTES}T11:00:00`) });
+    const ja = await cenario();
+    try {
+      await encherODia(ja);
+      await comoFollowUp(follow, sp("2027-02-20T10:00:00"));
+      const t = transporte();
+      const r = await enviarAprovadas({ transporte: t, agora: DIA_LIMITE_10H, mensagemIds: [primeiro.mensagem.id, follow.mensagem.id] });
+      expect(r).toMatchObject({ enviadas: 1, aguardando: 1 });
+      expect(r.paradasPor).toContain("Limite diário");
+      expect((await recarregar(primeiro.mensagem.id)).status).toBe("APROVADA");
+      expect((await recarregar(follow.mensagem.id)).status).toBe("ENVIADA");
+    } finally {
+      await primeiro.limpar();
+      await follow.limpar();
+      await ja.limpar();
+    }
+  });
+
+  it("mensagem que só espera (intervalo) não ocupa a vaga do lote", async () => {
+    const cedo = await cenario({ aprovadaEm: sp("2026-10-05T10:00:00") });
+    const pronta = await cenario({ aprovadaEm: sp("2026-10-06T10:00:00") });
+    try {
+      await comoFollowUp(cedo, sp("2026-10-06T10:00:00")); // há 1 dia: ainda no intervalo de 3 dias
+      const t = transporte();
+      const r = await enviarAprovadas({ transporte: t, agora: QUARTA_10H, limite: 1, mensagemIds: [cedo.mensagem.id, pronta.mensagem.id] });
+      expect(r).toMatchObject({ enviadas: 1, aguardando: 1 });
+      expect((await recarregar(cedo.mensagem.id)).status).toBe("APROVADA");
+      expect((await recarregar(pronta.mensagem.id)).status).toBe("ENVIADA");
+    } finally {
+      await prisma.mensagem.deleteMany({ where: { idExterno: { startsWith: "PRIM-" }, conversaId: { in: [cedo.conversa.id] } } });
+      await cedo.limpar();
+      await pronta.limpar();
     }
   });
 

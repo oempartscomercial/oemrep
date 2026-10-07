@@ -10,7 +10,9 @@ import { ErroDeEnvio, obterTransporte, type EstadoDaLinha, type TransporteWhatsa
 // Envio de mensagem JÁ aprovada por uma pessoa (ADR-015 §3). Aqui só se aplicam as proteções
 // fixas e se chama o transporte; ninguém aprova nada neste arquivo.
 
-export type ResultadoDoDespacho = { status: "ENVIADA" | "APROVADA" | "CANCELADA" | "FALHOU" | "IGNORADA"; motivo?: string };
+// `codigos` só vem quando a mensagem continua aprovada esperando (códigos de verificarEnvio):
+// quem agenda decide por eles, não pelo texto do motivo.
+export type ResultadoDoDespacho = { status: "ENVIADA" | "APROVADA" | "CANCELADA" | "FALHOU" | "IGNORADA"; motivo?: string; codigos?: string[] };
 
 const JA_SAIU = ["ENVIANDO", "ENVIADA", "ENTREGUE", "LIDA"] as const;
 
@@ -52,7 +54,7 @@ export async function despachar(
   ]);
   const inicioDoDia = new Date(`${diaEmSaoPaulo(agora)}T00:00:00-03:00`);
   const primeirosContatosHoje = await prisma.mensagem.count({
-    where: { linha: mensagem.linha, tipoEnvio: "PRIMEIRO_CONTATO", status: { in: [...JA_SAIU] }, enviadaEm: { gte: inicioDoDia } },
+    where: { linha: mensagem.linha, tipoEnvio: "PRIMEIRO_CONTATO", status: { in: [...JA_SAIU] }, enviadaEm: { gte: inicioDoDia, lt: new Date(inicioDoDia.getTime() + 86_400_000) } },
   });
 
   const verificacao = verificarEnvio({
@@ -73,7 +75,7 @@ export async function despachar(
     // Um bloqueio definitivo vence: a mensagem não deve sair nunca neste estado. Só espera se todos esperam.
     if (verificacao.bloqueios.some((b) => !b.espera)) return cancelar(mensagem.id, motivo);
     await prisma.mensagem.update({ where: { id: mensagem.id }, data: { motivoBloqueio: motivo } });
-    return { status: "APROVADA", motivo };
+    return { status: "APROVADA", motivo, codigos: verificacao.bloqueios.map((b) => b.codigo) };
   }
 
   // Reserva a mensagem antes de chamar o transporte: dois despachos juntos não enviam duas vezes.
