@@ -1,7 +1,7 @@
 import { agruparPorDia, descreverMensagem, formatarHora } from "@/domain/mensagens/exibicao";
 import { formatarDia } from "@/domain/crm/prazo";
 import type { TipoMensagem } from "@/domain/mensagens/evolution";
-import { AcoesDaMensagem } from "@/components/crm/acoes-da-mensagem";
+import { AcoesDaMensagem, type DestinatarioDaMensagem } from "@/components/crm/acoes-da-mensagem";
 import { cn } from "@/lib/utils";
 
 export type MensagemExibida = {
@@ -49,8 +49,9 @@ function situacaoDaSaida(m: MensagemExibida): { rotulo: string; detalhe?: string
 const RODAPE_DO_STATUS: Record<string, string> = { ENTREGUE: "entregue", LIDA: "lida" };
 
 /** A conversa como o WhatsApp mostra: contato à esquerda, a OEM à direita. Rascunhos e pendências aparecem aqui, com os botões. */
-export function ConversaWhatsapp({ mensagens, aviso }: { mensagens: MensagemExibida[]; aviso?: string }) {
+export function ConversaWhatsapp({ mensagens, aviso, destinatario }: { mensagens: MensagemExibida[]; aviso?: string; destinatario?: DestinatarioDaMensagem }) {
   const grupos = agruparPorDia(mensagens);
+  const ultimaRecebida = mensagens.filter((m) => m.direcao === "ENTRADA" && m.texto).sort((a, b) => b.ocorridoEm.getTime() - a.ocorridoEm.getTime())[0]?.texto ?? null;
   return (
     <div className="flex flex-col gap-4">
       {aviso && <p className="text-xs text-muted-foreground">{aviso}</p>}
@@ -86,9 +87,9 @@ export function ConversaWhatsapp({ mensagens, aviso }: { mensagens: MensagemExib
                   {!minha && m.classificacao && CLASSIFICACAO[m.classificacao] && (
                     <p className="mt-1 break-words text-xs font-medium text-destructive">{CLASSIFICACAO[m.classificacao]}</p>
                   )}
-                  <p className="mt-1 text-right text-[11px] text-muted-foreground">{extras}</p>
+                  <p className="mt-1 text-right text-xs text-muted-foreground">{extras}</p>
                   {minha && (m.status === "RASCUNHO" || m.status === "APROVADA") && texto && (
-                    <AcoesDaMensagem id={m.id} status={m.status} texto={texto} />
+                    <AcoesDaMensagem id={m.id} status={m.status} texto={texto} destinatario={destinatario} ultimaRecebida={ultimaRecebida} />
                   )}
                 </div>
               </div>

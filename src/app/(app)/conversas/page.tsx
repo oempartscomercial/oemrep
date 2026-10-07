@@ -61,9 +61,15 @@ export default async function ConversasPage() {
                 </Link>
                 <span className="text-xs text-muted-foreground">{ROTULO_TIPO[m.tipoEnvio ?? ""] ?? ""} · {m.status === "RASCUNHO" ? "rascunho" : "aprovada, esperando"}</span>
               </div>
-              <p className="line-clamp-2 text-muted-foreground">{m.texto}</p>
+              <p className="whitespace-pre-wrap break-words">{m.texto}</p>
               {m.motivoBloqueio && <p className="text-xs text-warning">{m.motivoBloqueio}</p>}
-              {(m.status === "RASCUNHO" || m.status === "APROVADA") && m.texto && <AcoesDaMensagem id={m.id} status={m.status} texto={m.texto} />}
+              {(m.status === "RASCUNHO" || m.status === "APROVADA") && m.texto && <AcoesDaMensagem
+                  id={m.id}
+                  status={m.status}
+                  texto={m.texto}
+                  destinatario={{ nome: m.conversa.contato?.nome ?? m.conversa.cliente?.nomeFantasia ?? "o contato", numero: formatarNumero(m.conversa.numero) }}
+                  ultimaRecebida={m.conversa.mensagens[0]?.texto ?? null}
+                />}
             </li>
           ))}
         </Bloco>

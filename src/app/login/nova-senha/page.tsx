@@ -116,7 +116,7 @@ export default function NovaSenhaPage() {
             onChange={(e) => setConfirmacao(e.target.value)}
           />
           {erro && <p className="text-sm text-destructive" role="alert">{erro}</p>}
-          <Botao type="submit" variante="primario" carregando={enviando} className="w-full h-10 md:h-8">
+          <Botao type="submit" variante="primario" carregando={enviando} className="w-full h-11 md:h-8">
             {convite ? "Criar senha e entrar" : "Salvar senha"}
           </Botao>
         </form>

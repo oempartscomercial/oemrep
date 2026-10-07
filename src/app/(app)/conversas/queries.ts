@@ -34,7 +34,15 @@ export async function listarPendentes() {
   return prisma.mensagem.findMany({
     where: { linha: "PROSPECCAO", direcao: "SAIDA", status: { in: ["RASCUNHO", "APROVADA"] } },
     orderBy: { criadoEm: "asc" },
-    include: { conversa: { include: { cliente: { select: { id: true, nomeFantasia: true } }, contato: { select: { id: true, nome: true } } } } },
+    include: {
+      conversa: {
+        include: {
+          cliente: { select: { id: true, nomeFantasia: true } },
+          contato: { select: { id: true, nome: true } },
+          mensagens: { where: { direcao: "ENTRADA", texto: { not: null } }, orderBy: { ocorridoEm: "desc" }, take: 1, select: { texto: true } },
+        },
+      },
+    },
   });
 }
 

@@ -84,12 +84,12 @@ export function ContatoAcoes({
       )}
       <div className="flex flex-wrap gap-1.5">
         {podeEscrever && !naoContatar && (
-          <Botao size="xs" className="h-10 md:h-6" icone={<MessageCircle />} onClick={() => setEscrevendo(true)}>Escrever no WhatsApp</Botao>
+          <Botao size="xs" className="h-11 md:h-6" icone={<MessageCircle />} onClick={() => setEscrevendo(true)}>Escrever no WhatsApp</Botao>
         )}
         {podeEscrever && !naoContatar && (
-          <Botao size="xs" variante="secundario" className="h-10 md:h-6" onClick={() => setMarcando(true)}>Não contatar</Botao>
+          <Botao size="xs" variante="secundario" className="h-11 md:h-6" onClick={() => setMarcando(true)}>Não contatar</Botao>
         )}
-        {naoContatar && <Botao size="xs" className="h-10 md:h-6" onClick={reativar}>Reativar contato</Botao>}
+        {naoContatar && <Botao size="xs" className="h-11 md:h-6" onClick={reativar}>Reativar contato</Botao>}
       </div>
       {erro && <p className="text-xs text-destructive">{erro}</p>}
       {escrevendo && <ComporMensagem contatoId={contatoId} nome={nome} aoFechar={() => setEscrevendo(false)} />}
@@ -111,8 +111,8 @@ export function ContatoAcoes({
             />
             {erroNaoContatar && <p className="text-sm text-destructive">{erroNaoContatar}</p>}
             <DialogFooter>
-              <Botao variante="ghost" className="h-10 md:h-8" onClick={fecharNaoContatar}>Cancelar</Botao>
-              <Botao variante="primario" className="h-10 md:h-8" carregando={ocupadoNaoContatar} onClick={confirmarNaoContatar}>
+              <Botao variante="ghost" className="h-11 md:h-8" onClick={fecharNaoContatar}>Cancelar</Botao>
+              <Botao variante="primario" className="h-11 md:h-8" carregando={ocupadoNaoContatar} onClick={confirmarNaoContatar}>
                 Confirmar
               </Botao>
             </DialogFooter>
@@ -128,7 +128,7 @@ export function BotaoEscrever({ contatoId, nome, rotulo }: { contatoId: string; 
   const [aberto, setAberto] = useState(false);
   return (
     <>
-      <Botao size="xs" className="h-10 md:h-6" icone={<MessageCircle />} onClick={() => setAberto(true)}>{rotulo}</Botao>
+      <Botao size="xs" className="h-11 md:h-6" icone={<MessageCircle />} onClick={() => setAberto(true)}>{rotulo}</Botao>
       {aberto && <ComporMensagem contatoId={contatoId} nome={nome} aoFechar={() => setAberto(false)} />}
     </>
   );

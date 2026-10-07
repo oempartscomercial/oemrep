@@ -21,6 +21,8 @@ type Props = {
   passoAbertoId: string | null;
   responsaveis: Responsavel[];
   usuarioId: string;
+  /** Falso quando há algo esperando o Rômulo (rascunho, resposta): aí 'Registrar contato' deixa de ser o botão principal. */
+  destaque?: boolean;
 };
 
 const CANAIS = [
@@ -35,7 +37,7 @@ const DESTINOS: Situacao[] = ["CANDIDATA", "APROVADA", "EM_CONTATO", "CONVERSAND
 
 const novoPasso = (usuarioId: string): PassoForm => ({ acao: "", prazo: somarDias(hojeEmSaoPaulo(), 3), responsavelId: usuarioId });
 
-export function FichaAcoes({ clienteId, nome, situacao, passoAbertoId, responsaveis, usuarioId }: Props) {
+export function FichaAcoes({ clienteId, nome, situacao, passoAbertoId, responsaveis, usuarioId, destaque = true }: Props) {
   const router = useRouter();
   const [dialogo, setDialogo] = useState<"contato" | "passo" | null>(null);
   const [movimento, setMovimento] = useState<AlvoMovimento | null>(null);
@@ -49,21 +51,21 @@ export function FichaAcoes({ clienteId, nome, situacao, passoAbertoId, responsav
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Botao className="h-10 md:h-8" variante="primario" icone={<MessageSquarePlus />} onClick={() => setDialogo("contato")}>
+      <Botao className="h-11 md:h-8" variante={destaque ? "primario" : "secundario"} icone={<MessageSquarePlus />} onClick={() => setDialogo("contato")}>
         Registrar contato
       </Botao>
       {passoAbertoId && (
-        <Botao className="h-10 md:h-8" icone={<Check />} onClick={() => setDialogo("passo")}>
+        <Botao className="h-11 md:h-8" icone={<Check />} onClick={() => setDialogo("passo")}>
           Concluir passo
         </Botao>
       )}
       {!passoAbertoId && (
-        <Botao className="h-10 md:h-8" onClick={() => setDialogo("passo")}>Marcar próximo passo</Botao>
+        <Botao className="h-11 md:h-8" onClick={() => setDialogo("passo")}>Marcar próximo passo</Botao>
       )}
       {podeMover && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Botao className="h-10 md:h-8" icone={<ArrowRightLeft />}>Mover etapa</Botao>
+            <Botao className="h-11 md:h-8" icone={<ArrowRightLeft />}>Mover etapa</Botao>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {DESTINOS.filter((d) => d !== situacao).map((d) => (
@@ -150,8 +152,8 @@ export function DialogoContato({
           {erros.length > 0 && <ul className="text-sm text-destructive">{erros.map((e) => <li key={e}>{e}</li>)}</ul>}
         </div>
         <DialogFooter>
-          <Botao className="h-10 md:h-8" onClick={aoFechar} disabled={salvando}>Cancelar</Botao>
-          <Botao className="h-10 md:h-8" variante="primario" onClick={salvar} carregando={salvando}>Anotar</Botao>
+          <Botao className="h-11 md:h-8" onClick={aoFechar} disabled={salvando}>Cancelar</Botao>
+          <Botao className="h-11 md:h-8" variante="primario" onClick={salvar} carregando={salvando}>Anotar</Botao>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -202,8 +204,8 @@ function DialogoPasso({
         {!marcando && !exigeProximo && <p className="text-sm text-muted-foreground">O passo será marcado como feito.</p>}
         {erros.length > 0 && <ul className="text-sm text-destructive">{erros.map((e) => <li key={e}>{e}</li>)}</ul>}
         <DialogFooter>
-          <Botao className="h-10 md:h-8" onClick={aoFechar} disabled={salvando}>Cancelar</Botao>
-          <Botao className="h-10 md:h-8" variante="primario" onClick={salvar} carregando={salvando}>Confirmar</Botao>
+          <Botao className="h-11 md:h-8" onClick={aoFechar} disabled={salvando}>Cancelar</Botao>
+          <Botao className="h-11 md:h-8" variante="primario" onClick={salvar} carregando={salvando}>Confirmar</Botao>
         </DialogFooter>
       </DialogContent>
     </Dialog>

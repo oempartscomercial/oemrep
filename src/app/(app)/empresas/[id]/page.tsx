@@ -19,15 +19,16 @@ import { cn } from "@/lib/utils";
 import { podeVerCrm } from "@/lib/authz";
 import { FichaAcoes } from "./ficha-acoes";
 import { OportunidadesFicha } from "./oportunidades-ficha";
+import { RecolhivelNoCelular } from "@/components/crm/recolhivel-no-celular";
 
 const CANAL: Record<string, string> = { WHATSAPP: "WhatsApp", TELEFONE: "Ligação", EMAIL: "E-mail", VISITA: "Visita", REUNIAO: "Reunião", PESQUISA: "Pesquisa", OUTRO: "Anotação", LINKEDIN: "LinkedIn" };
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-function Bloco({ titulo, acao, children }: { titulo: string; acao?: React.ReactNode; children: React.ReactNode }) {
+function Bloco({ titulo, acao, id, children }: { titulo: string; acao?: React.ReactNode; id?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border bg-card">
+    <section id={id} className="scroll-mt-4 rounded-lg border bg-card">
       <div className="flex items-center justify-between gap-2 border-b px-4 py-2.5">
-        <h2 className="text-xs font-medium text-muted-foreground">{titulo}</h2>
+        <h2 className="text-sm font-medium text-muted-foreground">{titulo}</h2>
         {acao}
       </div>
       <div className="p-4">{children}</div>
@@ -51,6 +52,18 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
   const passo = empresa.proximosPassos.find((p) => !p.oportunidadeId) ?? null;
   const prazo = passo?.prazo.toISOString().slice(0, 10);
   const atrasado = prazo ? situacaoDoPrazo(prazo, hoje) === "atrasado" : false;
+
+  // O que espera uma ação do Rômulo: rascunho ou aprovada parada, e resposta do contato sem retorno.
+  const precisaDeVoce = empresa.conversas.flatMap((c) => {
+    const quem = c.contato?.nome ?? c.nomeNoWhatsapp ?? empresa.nomeFantasia;
+    const itens: { chave: string; texto: string }[] = [];
+    const rascunhos = c.mensagens.filter((m) => m.direcao === "SAIDA" && m.status === "RASCUNHO").length;
+    const paradas = c.mensagens.filter((m) => m.direcao === "SAIDA" && m.status === "APROVADA").length;
+    if (rascunhos > 0) itens.push({ chave: `r-${c.id}`, texto: rascunhos === 1 ? `Um rascunho para ${quem} espera sua aprovação.` : `${rascunhos} rascunhos para ${quem} esperam sua aprovação.` });
+    if (paradas > 0) itens.push({ chave: `p-${c.id}`, texto: `Uma mensagem para ${quem} foi aprovada, mas ainda não saiu.` });
+    if (rascunhos === 0 && c.mensagens[0]?.direcao === "ENTRADA") itens.push({ chave: `e-${c.id}`, texto: `${quem} respondeu e espera o seu retorno.` });
+    return itens.map((i) => ({ ...i, conversaId: c.id }));
+  });
 
   const eventos: (TimelineItem & { quando: number })[] = [
     ...empresa.interacoes.map((i) => ({
@@ -90,12 +103,26 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {usuario.perfil === "ADMIN" && (
-            <Botao variante="ghost" className="h-10 md:h-8" icone={<Pencil />} href={`/cadastros/clientes/${empresa.id}`}>Editar cadastro</Botao>
+            <Botao variante="ghost" className="h-11 md:h-8" icone={<Pencil />} href={`/cadastros/clientes/${empresa.id}`}>Editar cadastro</Botao>
           )}
         </div>
       </div>
 
+      {precisaDeVoce.length > 0 && (
+        <section aria-label="Precisa de você" className="rounded-lg border border-warning/50 bg-warning-soft px-4 py-3">
+          <p className="text-sm font-semibold text-warning">Precisa de você</p>
+          <ul className="mt-1 flex flex-col gap-1 text-sm">
+            {precisaDeVoce.map((i) => (
+              <li key={i.chave}>
+                <a href={`#conversa-${i.conversaId}`} className="flex min-h-11 items-center underline-offset-2 hover:underline md:min-h-0">{i.texto}</a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <FichaAcoes
+        destaque={precisaDeVoce.length === 0}
         clienteId={empresa.id}
         nome={empresa.nomeFantasia}
         situacao={empresa.situacao}
@@ -147,8 +174,9 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
           )}
 
           {empresa.conversas.map((c) => (
-            <Bloco key={c.id} titulo={`WhatsApp · ${c.contato?.nome ?? c.nomeNoWhatsapp ?? "Contato"} · ${formatarNumero(c.numero)}`}>
+            <Bloco key={c.id} id={`conversa-${c.id}`} titulo={`Conversa com ${c.contato?.nome ?? c.nomeNoWhatsapp ?? "Contato"} · ${formatarNumero(c.numero)}`}>
               <ConversaWhatsapp
+                destinatario={{ nome: c.contato?.nome ?? c.nomeNoWhatsapp ?? empresa.nomeFantasia, numero: formatarNumero(c.numero) }}
                 mensagens={c.mensagens}
                 aviso={c._count.mensagens > c.mensagens.length ? `Mostrando as ${c.mensagens.length} mensagens mais recentes de ${c._count.mensagens}.` : undefined}
               />
@@ -160,7 +188,7 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
           </Bloco>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <RecolhivelNoCelular titulo="cadastro completo (dados, contatos e pedidos)">
           <Bloco titulo="Dados">
             <dl className="grid grid-cols-[6rem_minmax(0,1fr)] gap-y-2 text-sm">
               <dt className="text-muted-foreground">CNPJ</dt>
@@ -247,7 +275,7 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
               <p className="mt-3 text-xs text-muted-foreground">Pedidos que chegaram, não faturamento. Linhas suspeitas de duplicidade ficam fora da soma.</p>
             </Bloco>
           )}
-        </div>
+        </RecolhivelNoCelular>
       </div>
     </PageContainer>
   );
