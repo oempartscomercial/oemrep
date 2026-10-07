@@ -198,6 +198,42 @@ reconferir antes de contratar):
      um áudio, uma imagem e uma mensagem digitada pelo celular do Rômulo.
 2. **Rascunho, aprovação e envio** na linha de prospecção, com supressão, classificação e
    fila diária de follow-ups. IA propõe, humano aprova.
+   - **Código pronto (07/10/2026), ainda sem número real.** Envio **desligado por padrão**:
+     `WHATSAPP_TRANSPORTE=evolution` só liga com `WHATSAPP_ENVIO_HABILITADO=true` e as três
+     variáveis `EVOLUTION_*`; `simulado` só fora de produção.
+   - **Fluxo:** a pessoa escreve (modelo do `CLAUDE.md` no primeiro contato), salva como
+     rascunho ou aprova; aprovar grava quem e quando e chama o despacho, que reaplica as
+     proteções fixas. Bloqueio **definitivo** (não contatar, empresa fora do funil ativo, sem
+     origem do número, já houve resposta, tentativas esgotadas, mensagem repetida) cancela;
+     bloqueio de **espera** (horário, linha caída, limite do dia, intervalo) deixa aprovada com o
+     motivo visível e "Tentar enviar agora". Só `APROVADA`, `ENVIANDO` reservado antes da chamada:
+     dois cliques não enviam duas vezes.
+   - **Resposta perdida do transporte** vira `FALHOU` com "não sei se saiu, confira no celular";
+     nunca há reenvio automático.
+   - **Entrada:** "parar/sair/remover/não me envie…" por regra de texto marca contato e empresa
+     como `naoContatar`, cancela rascunhos e deixa rastro na linha do tempo (a regra erra para o
+     lado de suprimir; só uma pessoa reativa). "Não tenho interesse" não suprime: encerra a
+     cadência e cria passo "Ver resposta". Qualquer resposta de quem estava "Em contato" move
+     para "Conversando" com passo "Responder" (movimento automático) e cancela follow-up pendente.
+   - **Envio leva a empresa de "Aprovada" a "Em contato"** com passo "Acompanhar resposta"
+     (3 dias, ajustado para dia útil). Recibos (`entregue`, `lida`) e o eco da mensagem enviada
+     pela plataforma (adotado, não vira duplicata "pelo celular") entram pelo mesmo webhook.
+   - **Decisões que tomei e valem revisão:** (a) só empresa `APROVADA` a `AVANCO` recebe pela
+     linha de prospecção (o ADR dizia só "não descartada"; `CANDIDATA` ainda não foi aprovada
+     pelo Rômulo e `CLIENTE` não se mistura); (b) a primeira mensagem precisa **conter** uma
+     pergunta, não terminar nela (o modelo do `CLAUDE.md` termina em afirmação); (c) afirmar
+     equivalência de peça gera **aviso**, não bloqueio (um bloqueio por palavra barra a
+     pergunta "vou ver se existe equivalente"); (d) limites em `Parametro`:
+     `whatsapp_horario_inicio/fim`, `whatsapp_limite_primeiros_dia`,
+     `whatsapp_dias_entre_mensagens`, `whatsapp_max_tentativas`.
+   - **Não feito, de propósito:** texto escrito por IA no servidor (não há chave de API nem
+     decisão sobre mandar dados de terceiros a um provedor; o validador de rascunho já vale para
+     qualquer autor) e classificação por IA (hoje só por regra: parar e sem interesse; as demais
+     ficam sem classe); cadência sem clique; cron para soltar aprovadas que esperam (hoje é o
+     botão "Tentar enviar agora"); contato novo e edição de contato (só a origem do número).
+   - **A conferir com número real:** rotas `sendText` e `connectionState` da Evolution (v2; o
+     Evolution Go pode diferir), campo do id no recibo (`keyId`), e se o eco da mensagem enviada
+     chega antes da resposta da API (a adoção cobre os dois casos).
 3. **Assistente do Rômulo** na linha oficial: consultas primeiro, depois escritas com
    confirmação, áudio e resumo das 8h.
 4. **Follow-up com autoenvio limitado**, só se o piloto mostrar: histórico completo, nenhum
