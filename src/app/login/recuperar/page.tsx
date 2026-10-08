@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { criarClienteNavegador } from "@/lib/supabase";
-import { traduzirErroAuth } from "@/domain/auth/mensagens";
+import { pedirRecuperacaoDeSenha } from "../actions";
 import { AuthLayout } from "@/components/layouts/auth-layout";
 import { Botao } from "@/components/patterns/botao";
 import { CampoTexto } from "@/components/patterns/campo";
@@ -18,12 +17,10 @@ export default function RecuperarSenhaPage() {
     e.preventDefault();
     setErro(null);
     setEnviando(true);
-    const { error } = await criarClienteNavegador().auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login/nova-senha`,
-    });
+    const r = await pedirRecuperacaoDeSenha(email);
     setEnviando(false);
-    if (error) {
-      setErro(traduzirErroAuth(error));
+    if (!r.ok) {
+      setErro(r.mensagem);
       return;
     }
     setEnviado(true);
