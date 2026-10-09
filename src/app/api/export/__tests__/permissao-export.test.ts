@@ -53,6 +53,6 @@ describe("exportações XLSX (RF33) — sessão e perfil", () => {
   it("rastreio e alertas geram planilha para quem tem sessão", async () => {
     obterUsuarioLogadoMock.mockResolvedValue(OPERADOR);
     expect(await cabecalhos(await getRastreio())).toEqual(["NFe", "Emissão", "Chave de acesso", "Status", "Total da nota"]);
-    expect(await cabecalhos(await getAlertas())).toEqual(["Pedido", "Fábrica", "Cliente", "Dias sem NFe"]);
+    expect(await cabecalhos(await getAlertas())).toEqual(["Tipo", "Alerta", "Detalhe", "O que fazer", "Dias", "Valor"]);
   });
 });

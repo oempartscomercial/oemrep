@@ -18,12 +18,11 @@ export interface PedidoLinha {
   notas: { id: string; numero: string }[];
   /** Só para pedido sem nota. */
   diasSemNota: number | null;
+  /** Prazo da fábrica para emitir a nota; passou dele, o pedido é alerta. */
+  prazoDias: number;
   rapidoSemItens: boolean;
   estado: string;
 }
-
-/** A partir de quantos dias sem nota o pedido chama atenção na lista. */
-export const DIAS_ALERTA_SEM_NOTA = 15;
 
 export function PedidosTabela({
   pedidos,
@@ -92,7 +91,7 @@ export function PedidosTabela({
             p.diasSemNota === null ? (
               <span className="text-muted-foreground">—</span>
             ) : (
-              <span className={cn("tabular-nums", p.diasSemNota >= DIAS_ALERTA_SEM_NOTA && "font-medium text-warning")}>
+              <span className={cn("tabular-nums", p.diasSemNota >= p.prazoDias && "font-medium text-warning")}>
                 {p.diasSemNota} {p.diasSemNota === 1 ? "dia" : "dias"}
               </span>
             ),

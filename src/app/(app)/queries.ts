@@ -2,10 +2,12 @@ import { prisma } from "@/lib/prisma";
 import type { UsuarioSessao } from "@/lib/sessao";
 import { filtroFabricasPermitidas, podeVerCrm } from "@/lib/authz";
 import { hojeEmSaoPaulo } from "@/domain/crm/prazo";
-import { obterParametroNumero } from "@/lib/parametros";
-import { buscarPedidosParaAlerta } from "./alertas/queries";
-import { pedidosSemNfeVencidos } from "@/domain/alerta/semNfe";
+import { buscarAlertas } from "./alertas/queries";
+import { contarAlertas, type Alerta } from "@/domain/alerta/fila";
 import { buscarChamadosPermitidos } from "./divergencias/queries";
+import { saldoAFaturar, valorDoPedido } from "@/domain/pedido/valor";
+import { resumirPorFabrica, type ResumoFabrica } from "@/domain/analise/painel";
+import { emTransito } from "@/domain/rastreio/parada";
 import {
   calcularTotaisMensaisAoVivo,
   combinarSeries,
@@ -13,60 +15,80 @@ import {
   type PontoMensal,
 } from "@/domain/analise/totaisMensais";
 
-export type ItemFila = {
-  tipo: "SEM_NFE" | "CRITICO";
-  titulo: string;
-  detalhe: string;
-  href: string;
-  ordem: number; // dias de atraso — maior = mais urgente
-};
-
 export type ResumoDashboard = {
-  kpis: { pedidosAtivos: number; nfesTransito: number; divergenciasAbertas: number; alertas: number };
-  fila: ItemFila[];
+  kpis: {
+    pedidosAtivos: number;
+    semNota: { quantidade: number; valor: number };
+    nfesTransito: number;
+    notasSemNoticia: number;
+    divergenciasAbertas: number;
+    alertas: number;
+  };
+  fabricas: ResumoFabrica[];
+  fila: Alerta[];
 };
 
-export async function buscarResumoDashboard(usuario: UsuarioSessao): Promise<ResumoDashboard> {
+export async function buscarResumoDashboard(usuario: UsuarioSessao, agora: Date = new Date()): Promise<ResumoDashboard> {
   const fabricasPermitidas = filtroFabricasPermitidas(usuario);
   const wherePedidoFabrica = fabricasPermitidas ? { fabricaId: { in: fabricasPermitidas } } : {};
   const whereNotaFabrica = fabricasPermitidas
     ? { pedidos: { some: { pedido: { fabricaId: { in: fabricasPermitidas } } } } }
     : {};
+  // Folga de um dia antes do mês para não perder nota emitida na virada (fuso de São Paulo).
+  const inicioMes = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1) - 24 * 60 * 60 * 1000);
 
-  const pedidosAtivos = await prisma.pedido.count({
-    where: { ...wherePedidoFabrica, estado: { in: ["SEM_NFE", "PARCIAL"] } },
+  const [fabricas, pedidos, notasMes, notasTransito, chamados, { alertas }] = await Promise.all([
+    prisma.fabrica.findMany({
+      where: { ativo: true, ...(fabricasPermitidas ? { id: { in: fabricasPermitidas } } : {}) },
+      select: { id: true, nome: true },
+    }),
+    prisma.pedido.findMany({
+      where: wherePedidoFabrica,
+      select: {
+        fabricaId: true,
+        estado: true,
+        dataPedido: true,
+        criadoEm: true,
+        valorTotalDeclarado: true,
+        itens: { select: { quantidadePedida: true, quantidadeFaturada: true, valorUnitario: true, status: true } },
+      },
+    }),
+    prisma.notaFiscal.findMany({
+      where: { ...whereNotaFabrica, dataEmissao: { gte: inicioMes } },
+      select: { dataEmissao: true, totalNota: true, pedidos: { select: { pedido: { select: { fabricaId: true } } }, take: 1 } },
+    }),
+    prisma.notaFiscal.findMany({ where: whereNotaFabrica, select: { status: true } }),
+    buscarChamadosPermitidos(usuario),
+    buscarAlertas(usuario),
+  ]);
+
+  const pedidosPainel = pedidos.map((p) => {
+    const valores = {
+      estado: p.estado,
+      valorTotalDeclarado: p.valorTotalDeclarado,
+      itens: p.itens.map((i) => ({ ...i, valorUnitario: Number(i.valorUnitario) })),
+    };
+    return { fabricaId: p.fabricaId, estado: p.estado, dataRef: p.dataPedido ?? p.criadoEm, valor: valorDoPedido(valores), saldo: saldoAFaturar(valores) };
   });
-  const nfesTransito = await prisma.notaFiscal.count({
-    where: { status: "TRANSITO", ...whereNotaFabrica },
-  });
-
-  const prazoDias = await obterParametroNumero("prazo_alerta_sem_nfe_dias", 7);
-  const vencidos = pedidosSemNfeVencidos(await buscarPedidosParaAlerta(usuario), new Date(), prazoDias);
-
-  const chamados = await buscarChamadosPermitidos(usuario);
-  const abertos = chamados.filter((c) => c.estado !== "RESOLVIDO");
-  const criticos = abertos.filter((c) => c.critico);
-
-  const fila: ItemFila[] = [
-    ...vencidos.map((a) => ({
-      tipo: "SEM_NFE" as const,
-      titulo: `Pedido ${a.numero} sem NFe`,
-      detalhe: `${a.fabrica} · ${a.cliente} · ${a.diasSemNfe} dias`,
-      href: `/pedidos/${a.pedidoId}`,
-      ordem: a.diasSemNfe,
-    })),
-    ...criticos.map((c) => ({
-      tipo: "CRITICO" as const,
-      titulo: `Chamado crítico — NFe ${c.notaFiscal.numero}`,
-      detalhe: `${c.motivo.nome} · ${c.estado}`,
-      href: `/divergencias/${c.id}`,
-      ordem: 30, // críticos são urgentes; ficam próximos do topo
-    })),
-  ].sort((a, b) => b.ordem - a.ordem);
+  const semNota = pedidosPainel.filter((p) => p.estado === "SEM_NFE");
+  const contagem = contarAlertas(alertas);
 
   return {
-    kpis: { pedidosAtivos, nfesTransito, divergenciasAbertas: abertos.length, alertas: vencidos.length },
-    fila,
+    kpis: {
+      pedidosAtivos: pedidos.filter((p) => p.estado === "SEM_NFE" || p.estado === "PARCIAL").length,
+      semNota: { quantidade: semNota.length, valor: Math.round(semNota.reduce((s, p) => s + p.saldo, 0) * 100) / 100 },
+      nfesTransito: notasTransito.filter((n) => emTransito(n.status)).length,
+      notasSemNoticia: contagem.NOTA_PARADA + contagem.SEM_RASTREIO,
+      divergenciasAbertas: chamados.filter((c) => c.estado !== "RESOLVIDO").length,
+      alertas: alertas.length,
+    },
+    fabricas: resumirPorFabrica(
+      fabricas,
+      pedidosPainel,
+      notasMes.map((n) => ({ fabricaId: n.pedidos[0]?.pedido.fabricaId ?? null, dataEmissao: n.dataEmissao, totalNota: Number(n.totalNota) })),
+      agora,
+    ),
+    fila: alertas,
   };
 }
 
@@ -96,11 +118,12 @@ export async function buscarSerieMensal(usuario: UsuarioSessao): Promise<PontoMe
 
   const aoVivo = calcularTotaisMensaisAoVivo(
     pedidos.map((p) => ({
-      criadoEm: p.criadoEm,
-      itens: p.itens.map((i) => ({
-        quantidadePedida: i.quantidadePedida,
-        valorUnitario: Number(i.valorUnitario),
-      })),
+      // O mês do pedido é o da data informada; um pedido rápido (sem itens) vale o total declarado.
+      criadoEm: p.dataPedido ?? p.criadoEm,
+      itens:
+        p.itens.length > 0
+          ? p.itens.map((i) => ({ quantidadePedida: i.quantidadePedida, valorUnitario: Number(i.valorUnitario) }))
+          : [{ quantidadePedida: 1, valorUnitario: Number(p.valorTotalDeclarado ?? 0) }],
     })),
     notas.map((n) => ({ dataEmissao: n.dataEmissao, totalNota: Number(n.totalNota) })),
   );
