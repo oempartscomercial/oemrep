@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CircleCheck } from "lucide-react";
+import { toast } from "sonner";
+import { CircleCheck, Link2, Truck } from "lucide-react";
+import { CampoCheckbox } from "@/components/patterns/campo";
 import { analisarXmlNFe, confirmarBaixaNFe, type AnaliseNFe, type VinculosManuais } from "./actions";
 import { executarConfirmacaoBaixa } from "./confirmar";
 import { PageContainer } from "@/components/layouts/page-container";
@@ -27,6 +29,8 @@ export default function ConferenciaNFePage() {
   const [enviando, setEnviando] = useState(false);
   // Vínculos trocados à mão (RF16). O servidor recalcula as divergências a cada troca.
   const [vinculos, setVinculos] = useState<VinculosManuais>({});
+  // Completar o pedido rápido com os itens da nota que não têm pedido. Ligado por padrão quando o sistema achou um.
+  const [completarRapido, setCompletarRapido] = useState(true);
 
   async function handleAnalisar(clienteId?: string, novosVinculos: VinculosManuais = {}) {
     if (!arquivo) return;
@@ -45,6 +49,7 @@ export default function ConferenciaNFePage() {
     }
     setVinculos(novosVinculos);
     setAnalise(resultado.analise ?? null);
+    if (!clienteId) setCompletarRapido(true);
   }
 
   function trocarVinculo(indice: number, chave: string) {
@@ -56,16 +61,28 @@ export default function ConferenciaNFePage() {
   async function handleConfirmar() {
     if (!analise) return;
     setEnviando(true);
-    const mensagem = await executarConfirmacaoBaixa(() => confirmarBaixaNFe({ xml: analise.xml, clienteId: analise.clienteId, vinculos }));
+    const rapidoId = usarRapido ? analise.pedidoRapido!.id : null;
+    const mensagem = await executarConfirmacaoBaixa(() =>
+      confirmarBaixaNFe({ xml: analise.xml, clienteId: analise.clienteId, vinculos, completarPedidoRapidoId: rapidoId }),
+    );
     setEnviando(false);
     if (mensagem) {
       setErro(mensagem);
       return;
     }
-    router.push("/pedidos");
+    const transp = analise.nfe.transportadora;
+    toast.success(`NF ${analise.nfe.numero} conferida e baixada.`, {
+      description: transp ? `Transportadora ${transp.nome}: consultando o rastreio.` : "A nota não informa transportadora.",
+    });
+    router.push("/rastreio");
   }
 
   const cadastroIncompleto = analise ? !analise.clienteId || !analise.fabricaId : false;
+  const semPedido = (analise?.conferencia ?? []).filter((r) => r.pendencia === null).length;
+  const usarRapido = !!analise?.pedidoRapido && completarRapido && semPedido > 0;
+  const totalSemPedido = (analise?.conferencia ?? [])
+    .filter((r) => r.pendencia === null)
+    .reduce((s, r) => s + r.itemNFe.quantidade * r.itemNFe.valorUnitario, 0);
   const linhas: ConferenciaLinha[] = (analise?.conferencia ?? []).map((r, i) => ({ ...r, _id: `${r.itemNFe.referencia}-${i}`, indice: i }));
   const opcoesVinculo = [
     ...(analise?.opcoes ?? []).map((o) => ({ id: o.itemPedidoId, label: o.rotulo })),
@@ -131,6 +148,34 @@ export default function ConferenciaNFePage() {
                 />
               </div>
             )}
+            <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+              <div className="flex gap-2">
+                <dt className="text-muted-foreground">Total da nota</dt>
+                <dd className="tabular-nums">{formatarReais(analise.nfe.totalNota)}</dd>
+              </div>
+              <div className="flex items-center gap-2">
+                <dt className="text-muted-foreground"><Truck className="inline size-4" aria-label="Transportadora" /></dt>
+                <dd>
+                  {analise.nfe.transportadora
+                    ? `${analise.nfe.transportadora.nome || analise.nfe.transportadora.cnpj}${analise.nfe.volumes ? ` · ${analise.nfe.volumes} vol.` : ""}`
+                    : "Nota sem transportadora"}
+                </dd>
+              </div>
+              {analise.pedidosCitados.length > 0 && (
+                <div className="flex gap-2 sm:col-span-2">
+                  <dt className="text-muted-foreground">A nota cita o pedido</dt>
+                  <dd>
+                    {analise.pedidosCitados.map((c, i) => (
+                      <span key={c.numero}>
+                        {i > 0 && ", "}
+                        {c.numero}
+                        {c.pedido ? <span className="text-success"> (achado)</span> : <span className="text-muted-foreground"> (não está no sistema)</span>}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              )}
+            </dl>
             {analise.gravarCnpj && (
               <p className="mt-2 text-sm text-foreground/80">
                 Ao confirmar, o CNPJ {analise.nfe.destinatarioCnpj} será gravado no cadastro da empresa.
@@ -183,6 +228,28 @@ export default function ConferenciaNFePage() {
               },
             ]}
           />
+
+          {analise.pedidoRapido && semPedido > 0 && (
+            <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-card px-4 py-3 text-sm">
+              <p className="flex items-start gap-2">
+                <Link2 className="mt-0.5 size-4 shrink-0" />
+                <span>
+                  {semPedido} {semPedido === 1 ? "item da nota não tem pedido" : "itens da nota não têm pedido"} ({formatarReais(totalSemPedido)}). Há o pedido
+                  rápido {analise.pedidoRapido.numero} de {formatarReais(analise.pedidoRapido.valor)} deste cliente — {analise.pedidoRapido.motivo}.
+                </span>
+              </p>
+              <CampoCheckbox
+                rotulo={`Completar o pedido ${analise.pedidoRapido.numero} com estes itens (já faturados por esta nota)`}
+                marcado={completarRapido}
+                aoMudar={setCompletarRapido}
+              />
+              {completarRapido && Math.abs(totalSemPedido - analise.pedidoRapido.valor) > 0.01 && (
+                <p className="text-xs text-warning">
+                  Diferença de {formatarReais(Math.abs(totalSemPedido - analise.pedidoRapido.valor))} entre o valor registrado e o da nota. O pedido fica com o valor da nota.
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-end">
             <Botao variante="primario" icone={<CircleCheck />} carregando={enviando} disabled={cadastroIncompleto} onClick={handleConfirmar}>

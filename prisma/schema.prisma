@@ -25,13 +25,13 @@ enum TipoConfirmacaoEstoque {
 }
 
 model Fabrica {
-  id               String            @id @default(cuid())
+  id               String             @id @default(cuid())
   nome             String
-  cnpj             String            @unique
-  flagConciliacao  Boolean           @default(false)
+  cnpj             String             @unique
+  flagConciliacao  Boolean            @default(false)
   // Fábrica desativada some dos formulários; histórico e pedidos continuam.
-  ativo            Boolean           @default(true)
-  criadoEm         DateTime          @default(now())
+  ativo            Boolean            @default(true)
+  criadoEm         DateTime           @default(now())
   clientes         ClienteFabrica[]
   usuarios         UsuarioFabrica[]
   pedidos          Pedido[]
@@ -55,18 +55,18 @@ enum SituacaoEmpresa {
 }
 
 model Cliente {
-  id               String            @id @default(cuid())
-  cnpj             String?           @unique
+  id               String             @id @default(cuid())
+  cnpj             String?            @unique
   nomeFantasia     String
-  situacao         SituacaoEmpresa   @default(CLIENTE)
+  situacao         SituacaoEmpresa    @default(CLIENTE)
   cidade           String?
   uf               String?
   site             String?
   grupo            String?
   origem           String?
   observacoes      String?
-  naoContatar      Boolean           @default(false)
-  criadoEm         DateTime          @default(now())
+  naoContatar      Boolean            @default(false)
+  criadoEm         DateTime           @default(now())
   fabricas         ClienteFabrica[]
   pedidos          Pedido[]
   contatos         Contato[]
@@ -91,24 +91,24 @@ model ClienteFabrica {
 }
 
 model Usuario {
-  id                   String            @id @default(cuid())
-  supabaseUserId       String?           @unique // vínculo ao login Supabase no 1º acesso (ADR-010)
+  id                   String             @id @default(cuid())
+  supabaseUserId       String?            @unique // vínculo ao login Supabase no 1º acesso (ADR-010)
   nome                 String
-  email                String            @unique
-  perfil               PerfilUsuario     @default(OPERADOR)
+  email                String             @unique
+  perfil               PerfilUsuario      @default(OPERADOR)
   // Usuário desativado não entra mais (obterUsuarioLogado devolve null).
-  ativo                Boolean           @default(true)
-  criadoEm             DateTime          @default(now())
+  ativo                Boolean            @default(true)
+  criadoEm             DateTime           @default(now())
   fabricas             UsuarioFabrica[]
   eventos              EventoAuditoria[]
   eventosRastreio      EventoRastreio[]
-  chamadosAbertos      Chamado[]         @relation("ChamadoAbertoPor")
+  chamadosAbertos      Chamado[]          @relation("ChamadoAbertoPor")
   eventosChamado       EventoChamado[]
   interacoes           Interacao[]
   proximosPassos       ProximoPasso[]
   oportunidadesCriadas Oportunidade[]
-  mensagensCriadas     Mensagem[]        @relation("MensagemCriadaPor")
-  mensagensAprovadas   Mensagem[]        @relation("MensagemAprovadaPor")
+  mensagensCriadas     Mensagem[]         @relation("MensagemCriadaPor")
+  mensagensAprovadas   Mensagem[]         @relation("MensagemAprovadaPor")
   arquivosEnviados     ArquivoImportado[]
   importacoesPedido    ImportacaoPedido[]
 }
@@ -148,6 +148,9 @@ enum OrigemPedido {
   EXCEL
   MANUAL
   PDF
+  // Registro rápido sem itens: o pedido chegou como print de WhatsApp ou recado de
+  // vendedor, só com cliente e valor. Os itens entram depois (PDF ou nota) ou nunca.
+  RAPIDO
 }
 
 enum EstadoImportacao {
@@ -182,6 +185,20 @@ model Pedido {
   importacao      ImportacaoPedido?
   criadoEm        DateTime           @default(now())
 
+  // Número que o CLIENTE dá ao pedido (ordem de compra). Diferente do número da fábrica:
+  // a NFe cita este no xPed/infCpl, e é por ele que a nota acha o pedido sozinha.
+  numeroCliente         String?
+  // Data em que o pedido foi feito; criadoEm é quando entrou no sistema.
+  dataPedido            DateTime?
+  // Valor total informado no registro (pedido rápido) ou impresso no PDF. Para pedido com
+  // itens, o valor de referência continua sendo a soma dos itens.
+  valorTotalDeclarado   Decimal?  @db.Decimal(12, 2)
+  observacao            String?
+  // Do PDF do pedido (Bling): quem vai levar e em que modalidade. Texto como impresso.
+  transportadorPrevisto String?
+  modalidadeFrete       String?
+  vendedor              String?
+
   // Reimportar o mesmo arquivo por engano criava um segundo pedido idêntico, que ficava
   // SEM_NFE para sempre inflando os alertas e dobrando o valor no painel de gap. Número
   // nulo (S/N) não colide: o Postgres trata NULLs como distintos.
@@ -191,6 +208,7 @@ model Pedido {
   @@index([estado])
   @@index([criadoEm])
   @@index([arquivoOrigemId])
+  @@index([numeroCliente])
 }
 
 model ItemPedido {
@@ -221,26 +239,83 @@ model ItemPedido {
 
 enum StatusRastreio {
   TRANSITO
+  // A transportadora marcou data de entrega com o cliente (a planilha do Zé usa).
+  AGENDADO
   RECEBIDA
   ARMAZENADA
   EXTRAVIADO
 }
 
+// Como o sistema consulta o rastreio de uma transportadora.
+enum MetodoRastreio {
+  // API pública do SSW por chave da NFe (POST ssw.inf.br/api/trackingdanfe).
+  SSW
+  // Sem rastreio público: o operador pergunta e atualiza à mão.
+  MANUAL
+  // Apareceu numa nota e ainda ninguém descobriu como rastrear.
+  NAO_MAPEADA
+}
+
+enum OrigemEventoRastreio {
+  MANUAL
+  AUTOMATICO
+}
+
+/**
+ * Transportadora que leva as notas. Nasce sozinha na conferência, pelo <transporta> do XML
+ * da NFe, como NAO_MAPEADA; a primeira consulta SSW que responder promove para SSW.
+ */
+model Transportadora {
+  id                    String         @id @default(cuid())
+  cnpj                  String         @unique
+  nome                  String
+  metodo                MetodoRastreio @default(NAO_MAPEADA)
+  urlPublica            String?
+  contato               String?
+  observacao            String?
+  criadaAutomaticamente Boolean        @default(true)
+  ultimaConsultaEm      DateTime?
+  ultimaConsultaOk      DateTime?
+  falhasSeguidas        Int            @default(0)
+  // Issue aberta no GitHub pedindo a integração (uma por transportadora).
+  issueUrl              String?
+  criadoEm              DateTime       @default(now())
+  notasFiscais          NotaFiscal[]
+}
+
 model NotaFiscal {
-  id               String             @id @default(cuid())
+  id               String         @id @default(cuid())
   numero           String
-  chaveAcesso      String             @unique
+  chaveAcesso      String         @unique
   emitenteCnpj     String
   destinatarioCnpj String
   dataEmissao      DateTime
-  totalProdutos    Decimal            @db.Decimal(12, 2)
-  totalNota        Decimal            @db.Decimal(12, 2)
-  status           StatusRastreio     @default(TRANSITO)
-  criadoEm         DateTime           @default(now())
-  pedidos          NotaFiscalPedido[]
-  itensFaturados   ItemFaturado[]
-  eventosRastreio  EventoRastreio[]
-  chamados         Chamado[]
+  totalProdutos    Decimal        @db.Decimal(12, 2)
+  totalNota        Decimal        @db.Decimal(12, 2)
+  status           StatusRastreio @default(TRANSITO)
+  criadoEm         DateTime       @default(now())
+
+  // Transporte, lido do <transp> do XML.
+  transportadoraId String?
+  transportadora   Transportadora? @relation(fields: [transportadoraId], references: [id])
+  modalidadeFrete  String?
+  volumes          Int?
+  pesoBruto        Decimal?        @db.Decimal(12, 3)
+
+  // Rastreio automático: o resumo do que a transportadora disse por último.
+  previsaoEntrega      DateTime?
+  ultimaOcorrencia     String?
+  ultimaOcorrenciaEm   DateTime?
+  rastreioAtualizadoEm DateTime?
+  rastreioFalhas       Int       @default(0)
+
+  pedidos         NotaFiscalPedido[]
+  itensFaturados  ItemFaturado[]
+  eventosRastreio EventoRastreio[]
+  chamados        Chamado[]
+
+  @@index([transportadoraId])
+  @@index([status])
 }
 
 model NotaFiscalPedido {
@@ -277,7 +352,6 @@ model ItemFaturado {
 
 /**
  * O documento que originou uma importação, guardado para conferência.
- *
  * Separado de Pedido porque o arquivo existe ANTES do pedido — durante a extração e a
  * revisão, quando pedido ainda não há — e porque um PDF pode gerar mais de um pedido.
  */
@@ -299,11 +373,9 @@ model ArquivoImportado {
 
 /**
  * Rascunho durável de uma importação por PDF.
- *
  * Antes as linhas extraídas viviam só em estado React: um F5 no meio da revisão perdia
  * tudo. Com Excel isso custava um reupload de dois segundos; com PDF custa uma extração
  * já paga, e a revisão é mais longa porque há mais campo para conferir.
- *
  * As duas colunas Json são de propósito: `extracaoBruta` é o que a leitura devolveu,
  * imutável — é a evidência de auditoria e a base para medir a acurácia real ao longo do
  * tempo; `revisaoAtual` é o que o operador está editando. Guardar as duas responde
@@ -315,20 +387,20 @@ model ImportacaoPedido {
   // e cria o pedido sem reter o PDF — o documento-fonte é guardado só quando dá.
   arquivoId     String?
   arquivo       ArquivoImportado? @relation(fields: [arquivoId], references: [id])
-  estado        EstadoImportacao @default(EXTRAINDO)
+  estado        EstadoImportacao  @default(EXTRAINDO)
   extracaoBruta Json?
   revisaoAtual  Json?
   erro          String?
   fabricaId     String?
-  fabrica       Fabrica?         @relation(fields: [fabricaId], references: [id])
+  fabrica       Fabrica?          @relation(fields: [fabricaId], references: [id])
   clienteId     String?
-  cliente       Cliente?         @relation(fields: [clienteId], references: [id])
-  pedidoId      String?          @unique
-  pedido        Pedido?          @relation(fields: [pedidoId], references: [id])
+  cliente       Cliente?          @relation(fields: [clienteId], references: [id])
+  pedidoId      String?           @unique
+  pedido        Pedido?           @relation(fields: [pedidoId], references: [id])
   criadoPorId   String
-  criadoPor     Usuario          @relation(fields: [criadoPorId], references: [id])
-  criadoEm      DateTime         @default(now())
-  atualizadoEm  DateTime         @updatedAt
+  criadoPor     Usuario           @relation(fields: [criadoPorId], references: [id])
+  criadoEm      DateTime          @default(now())
+  atualizadoEm  DateTime          @updatedAt
 
   @@index([arquivoId])
   @@index([estado])
@@ -336,16 +408,19 @@ model ImportacaoPedido {
 }
 
 model EventoRastreio {
-  id             String         @id @default(cuid())
+  id             String               @id @default(cuid())
   notaFiscalId   String
-  notaFiscal     NotaFiscal     @relation(fields: [notaFiscalId], references: [id])
+  notaFiscal     NotaFiscal           @relation(fields: [notaFiscalId], references: [id])
   statusAnterior StatusRastreio
   status         StatusRastreio
   observacao     String?
   dataEvento     DateTime
-  usuarioId      String
-  usuario        Usuario        @relation(fields: [usuarioId], references: [id])
-  criadoEm       DateTime       @default(now())
+  // Nulo quando o evento veio da consulta automática à transportadora.
+  usuarioId      String?
+  usuario        Usuario?             @relation(fields: [usuarioId], references: [id])
+  origem         OrigemEventoRastreio @default(MANUAL)
+  local          String?
+  criadoEm       DateTime             @default(now())
 
   @@index([notaFiscalId])
 }

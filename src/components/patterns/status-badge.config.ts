@@ -19,6 +19,7 @@ const MAPA: Record<StatusTipo, Record<string, { label: string; color: StatusBadg
   },
   nfe: {
     TRANSITO: { label: "Em trânsito", color: "blue" },
+    AGENDADO: { label: "Agendada", color: "blue" },
     RECEBIDA: { label: "Recebida", color: "warning" },
     ARMAZENADA: { label: "Armazenada", color: "success" },
     EXTRAVIADO: { label: "Extraviado", color: "error" },

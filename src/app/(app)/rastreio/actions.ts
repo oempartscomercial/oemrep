@@ -8,6 +8,7 @@ import { obterFabricaIdDaNotaFiscal } from "@/lib/nota-fiscal-fabrica";
 import { transicaoRastreioValida, type StatusRastreio } from "@/domain/nfe/rastreio";
 import { compararCampos } from "@/domain/auditoria/evento";
 import { registrarAlteracoes } from "@/lib/auditoria";
+import { atualizarRastreioDaNota, atualizarRastreiosEmAberto } from "@/lib/rastreio/atualizar";
 
 export async function avancarRastreio(
   notaFiscalId: string,
@@ -56,4 +57,32 @@ export async function avancarRastreio(
   revalidatePath(`/rastreio/${nota.id}`);
   revalidatePath("/rastreio");
   return { erros: [] };
+}
+
+/** "Atualizar agora" de uma nota: consulta a transportadora na hora. */
+export async function atualizarRastreioAgora(notaFiscalId: string): Promise<{ erros: string[]; mensagem?: string }> {
+  const usuario = await obterUsuarioLogado();
+  if (!usuario) return { erros: ["Sessão expirada. Faça login novamente."] };
+  const fabricaId = await obterFabricaIdDaNotaFiscal(notaFiscalId);
+  if (!fabricaId || !podeAcessarFabrica(usuario, fabricaId)) return { erros: ["Você não tem permissão para esta NFe."] };
+
+  const r = await atualizarRastreioDaNota(notaFiscalId);
+  revalidatePath(`/rastreio/${notaFiscalId}`);
+  revalidatePath("/rastreio");
+  if (r.situacao === "atualizada") {
+    return { erros: [], mensagem: r.mudouStatus ? `Status atualizado: ${r.ocorrencia ?? r.status}.` : `Sem mudança. Última ocorrência: ${r.ocorrencia ?? "nenhuma"}.` };
+  }
+  return { erros: [], mensagem: r.motivo };
+}
+
+/** "Atualizar todas": o mesmo que o cron diário faz, sob demanda. */
+export async function atualizarTodosRastreiosAgora(): Promise<{ erros: string[]; mensagem?: string }> {
+  const usuario = await obterUsuarioLogado();
+  if (!usuario) return { erros: ["Sessão expirada. Faça login novamente."] };
+  const r = await atualizarRastreiosEmAberto(undefined, 100);
+  revalidatePath("/rastreio");
+  return {
+    erros: [],
+    mensagem: `${r.consultadas} notas consultadas · ${r.mudaramStatus} mudaram de status${r.naoEncontradas ? ` · ${r.naoEncontradas} sem resposta da transportadora` : ""}${r.falharam ? ` · ${r.falharam} com erro` : ""}.`,
+  };
 }

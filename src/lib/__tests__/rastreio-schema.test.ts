@@ -54,7 +54,7 @@ describe("schema de EventoRastreio", () => {
     expect(timeline[0].status).toBe("RECEBIDA");
     expect(timeline[0].statusAnterior).toBe("TRANSITO");
     expect(timeline[0].observacao).toBe("Recebida na doca 3");
-    expect(timeline[0].usuario.nome).toBe("Op Rastreio");
+    expect(timeline[0].usuario?.nome).toBe("Op Rastreio");
     expect(timeline[1].status).toBe("ARMAZENADA");
     expect(timeline[1].observacao).toBeNull();
 

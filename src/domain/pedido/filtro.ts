@@ -1,6 +1,8 @@
 import type { EstadoPedido } from "./estado";
 
-export type FiltroPedido = "EM_ANDAMENTO" | "CONCLUIDOS" | "ARQUIVADOS" | "TODOS";
+export type FiltroPedido = "EM_ANDAMENTO" | "SEM_NOTA" | "CONCLUIDOS" | "ARQUIVADOS" | "TODOS";
+
+export const FILTROS_PEDIDO: FiltroPedido[] = ["EM_ANDAMENTO", "SEM_NOTA", "CONCLUIDOS", "ARQUIVADOS", "TODOS"];
 
 export function filtrarPedidos<T extends { estado: EstadoPedido }>(
   pedidos: T[],
@@ -9,6 +11,8 @@ export function filtrarPedidos<T extends { estado: EstadoPedido }>(
   switch (filtro) {
     case "EM_ANDAMENTO":
       return pedidos.filter((p) => p.estado === "SEM_NFE" || p.estado === "PARCIAL");
+    case "SEM_NOTA":
+      return pedidos.filter((p) => p.estado === "SEM_NFE");
     case "CONCLUIDOS":
       return pedidos.filter((p) => p.estado === "COMPLETO");
     case "ARQUIVADOS":

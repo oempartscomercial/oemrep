@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, Plus, Trash2 } from "lucide-react";
-import { iniciarExtracaoPdf, confirmarImportacaoPdf, descartarRascunhoPdf, type RascunhoPdf } from "./actions";
+import { toast } from "sonner";
+import { AlertTriangle, CheckCircle2, Link2, Plus, Trash2 } from "lucide-react";
+import { iniciarExtracaoPdf, confirmarImportacaoPdf, descartarRascunhoPdf, cadastrarClienteDoPdf, type RascunhoPdf } from "./actions";
 import { numeroBr } from "@/domain/importacao/pdf";
 import { formatarReais } from "@/domain/formato/moeda";
 import { PageContainer } from "@/components/layouts/page-container";
@@ -49,6 +50,12 @@ export default function ImportarPdfPage() {
   const [clienteId, setClienteId] = useState("");
   const [numero, setNumero] = useState("");
   const [semNumero, setSemNumero] = useState(false);
+  const [numeroCliente, setNumeroCliente] = useState("");
+  const [dataPedido, setDataPedido] = useState("");
+  const [transportador, setTransportador] = useState("");
+  const [completarId, setCompletarId] = useState<string | null>(null);
+  const [nomeClienteNovo, setNomeClienteNovo] = useState("");
+  const [cadastrandoCliente, setCadastrandoCliente] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
 
   useEffect(() => {
@@ -83,6 +90,24 @@ export default function ImportarPdfPage() {
     setFabricaId(r.fabrica?.id ?? "");
     setClienteId(r.cliente?.id ?? "");
     setNumero(r.cabecalho.numeroPedido);
+    setNumeroCliente(r.cabecalho.numeroPedidoCliente);
+    setDataPedido(r.cabecalho.data ?? "");
+    setTransportador(r.cabecalho.transportador);
+    setCompletarId(r.parecido?.id ?? null);
+  }
+
+  async function handleCadastrarCliente() {
+    if (!rascunho) return;
+    setCadastrandoCliente(true);
+    const r = await cadastrarClienteDoPdf({ nome: nomeClienteNovo, cnpj: rascunho.clienteCnpj, fabricaId });
+    setCadastrandoCliente(false);
+    if (r.erros.length > 0 || !r.cliente) return setErro(r.erros[0] ?? "Não foi possível cadastrar o cliente.");
+    const novo = r.cliente;
+    setErro(null);
+    setClientes((atual) => (atual.some((c) => c.id === novo.id) ? atual : [...atual, novo].sort((a, b) => a.nomeFantasia.localeCompare(b.nomeFantasia))));
+    setClienteId(novo.id);
+    setRascunho({ ...rascunho, cliente: novo });
+    toast.success(`${novo.nomeFantasia} cadastrado e ligado à fábrica.`);
   }
 
   function atualizarLinha(i: number, campo: keyof LinhaEdicao, valor: string) {
@@ -114,13 +139,22 @@ export default function ImportarPdfPage() {
       numero,
       semNumero,
       itens,
+      numeroCliente,
+      dataPedido: dataPedido || null,
+      transportadorPrevisto: transportador,
+      modalidadeFrete: rascunho.cabecalho.modalidadeFrete,
+      vendedor: rascunho.cabecalho.vendedor,
+      completarPedidoId: completarId,
     });
     setConfirmando(false);
-    if (resultado.erros.length > 0) {
-      setErro(resultado.erros.join(" "));
+    if (resultado.erros.length > 0 || !resultado.pedidoId) {
+      setErro(resultado.erros.join(" ") || "Nada foi salvo — tente novamente.");
       return;
     }
-    router.push("/pedidos");
+    toast.success(
+      `${completarId ? "Pedido completado" : "Pedido criado"}: ${semNumero ? "S/N" : numero} · ${linhas.length} itens · ${formatarReais(totalCalculado)}`,
+    );
+    router.push(`/pedidos/${resultado.pedidoId}`);
   }
 
   async function handleDescartar() {
@@ -202,6 +236,26 @@ export default function ImportarPdfPage() {
             </div>
           )}
 
+          {rascunho.parecido && clienteId === rascunho.cliente?.id && (
+            <div className="flex max-w-2xl flex-col gap-3 rounded-lg border border-primary/30 bg-card px-4 py-3 text-sm">
+              <div className="flex items-start gap-2">
+                <Link2 className="mt-0.5 size-4 shrink-0" />
+                <p>
+                  Parece ser o pedido que você registrou em {new Date(`${rascunho.parecido.data}T12:00:00`).toLocaleDateString("pt-BR")}
+                  {rascunho.parecido.numero ? ` (nº ${rascunho.parecido.numero})` : ""} por {formatarReais(rascunho.parecido.valor)}, ainda sem itens.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Botao size="sm" className="h-11 md:h-7" variante={completarId ? "primario" : "secundario"} onClick={() => setCompletarId(rascunho.parecido!.id)}>
+                  Completar aquele pedido
+                </Botao>
+                <Botao size="sm" className="h-11 md:h-7" variante={completarId ? "secundario" : "primario"} onClick={() => setCompletarId(null)}>
+                  Criar outro pedido
+                </Botao>
+              </div>
+            </div>
+          )}
+
           {/* Cabeçalho pré-preenchido pelo CNPJ do PDF, sempre editável. */}
           <div className="flex max-w-2xl flex-col gap-5 rounded-lg border bg-card p-6">
             <div className="grid gap-5 sm:grid-cols-2">
@@ -227,7 +281,17 @@ export default function ImportarPdfPage() {
                   opcoes={clientes.map((c) => ({ id: c.id, label: c.nomeFantasia }))}
                 />
                 {!rascunho.cliente && (
-                  <p className="mt-1 text-xs text-warning">CNPJ {rascunho.clienteCnpj || "não lido"} não bateu com nenhum cliente cadastrado.</p>
+                  <div className="mt-1 flex flex-col gap-2">
+                    <p className="text-xs text-warning">CNPJ {rascunho.clienteCnpj || "não lido"} não bateu com nenhum cliente cadastrado.</p>
+                    {rascunho.clienteCnpj && fabricaId && (
+                      <div className="flex flex-col gap-2 rounded-md border border-dashed p-2 sm:flex-row sm:items-end">
+                        <CampoTexto rotulo="Nome do cliente" value={nomeClienteNovo} onChange={(e) => setNomeClienteNovo(e.target.value)} className="sm:flex-1" />
+                        <Botao size="sm" className="h-11 md:h-8" carregando={cadastrandoCliente} disabled={!nomeClienteNovo.trim()} onClick={handleCadastrarCliente}>
+                          Cadastrar com este CNPJ
+                        </Botao>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -237,6 +301,17 @@ export default function ImportarPdfPage() {
                 <CampoCheckbox rotulo="S/N (sem número)" marcado={semNumero} aoMudar={setSemNumero} />
               </div>
             </div>
+            <div className="grid gap-5 sm:grid-cols-3">
+              <CampoTexto rotulo="Nº do pedido do cliente" dica="Ordem de compra." value={numeroCliente} onChange={(e) => setNumeroCliente(e.target.value)} />
+              <CampoTexto rotulo="Data do pedido" type="date" value={dataPedido} onChange={(e) => setDataPedido(e.target.value)} />
+              <CampoTexto
+                rotulo="Transportadora"
+                dica={rascunho.cabecalho.modalidadeFrete ? `Frete: ${rascunho.cabecalho.modalidadeFrete}` : "Se o PDF disser."}
+                value={transportador}
+                onChange={(e) => setTransportador(e.target.value)}
+              />
+            </div>
+            {rascunho.cabecalho.vendedor && <p className="text-xs text-muted-foreground">Vendedor no PDF: {rascunho.cabecalho.vendedor}</p>}
           </div>
 
           {/* Grade editável — o coração do fluxo: nada é gravado sem passar por aqui. */}
@@ -288,7 +363,7 @@ export default function ImportarPdfPage() {
           <div className="flex justify-end gap-3">
             <Botao variante="secundario" onClick={handleDescartar} disabled={confirmando}>Descartar e enviar outro</Botao>
             <Botao variante="primario" onClick={handleConfirmar} carregando={confirmando}>
-              {confirmando ? "Criando pedido…" : "Confirmar importação"}
+              {confirmando ? "Gravando…" : completarId ? "Completar pedido" : "Criar pedido"}
             </Botao>
           </div>
         </div>

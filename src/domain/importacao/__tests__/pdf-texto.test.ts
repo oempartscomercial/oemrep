@@ -47,6 +47,13 @@ describe("interpretarTextoPdf — cabeçalho", () => {
   });
 });
 
+describe("interpretarTextoPdf — número do pedido sem a linha \"Número do pedido\"", () => {
+  it("usa o título \"Pedido N\" do topo", () => {
+    const semLinha = TEXTO.replace(/^Número do pedido 4103$/m, "");
+    expect(interpretarTextoPdf(semLinha).cabecalho.numeroPedido).toBe("4103");
+  });
+});
+
 describe("interpretarTextoPdf — itens", () => {
   it("lê exatamente as três linhas de dados, ignorando descrição e cabeçalho", () => {
     expect(interpretarTextoPdf(TEXTO).itens).toHaveLength(3);
@@ -87,6 +94,75 @@ describe("interpretarTextoPdf — totais", () => {
     expect(totais.numeroItens).toBe("3,00");
     expect(totais.somaQuantidades).toBe("55,00");
     expect(totais.totalProdutos).toBe("8.588,09");
+  });
+});
+
+// Pedido sintético com o mesmo layout do Bling no cabeçalho e no fim (rótulo "Ordem de
+// compra" logo após "Cliente", "Vendedor" com o valor na linha de baixo, bloco
+// "Transportador / Nome / Modalidade de frete" depois dos totais). Nomes e CNPJs são fictícios.
+const PEDIDO_SINTETICO = `FABRICA EXEMPLO LTDA - (11) 0000-0000
+CNPJ: 11.111.111/0001-11, IE: 000.000.000.001
+Pedido 9001
+Cliente
+Número do pedido 9001
+Ordem de compra 0.9999
+CLIENTE EXEMPLO LTDA
+CNPJ: 22.222.222/0001-22,
+Data 07/10/2026
+IE: 000000001
+Data prevista
+Vendedor
+Vendedor Exemplo - Região Teste
+Itens do pedido de venda
+Valor
+Descrição do produto/serviço Código Un. Qtd. Valor total
+unitário
+PECA EXEMPLO PARA TESTE BW-40000001 40000001 PÇ 2,0000 500,0000 1.000,00
+N° de itens 1,00
+Soma das Qtdes 2,00
+Total de produtos 1.000,00
+Total do pedido 1.050,00
+Transportador
+Nome TRANSPORTE EXEMPLO
+Modalidade de frete Contratação do Frete por conta do Destinatário (FOB)
+Observações`;
+
+describe("interpretarTextoPdf — campos extras do cabeçalho (Bling)", () => {
+  it("lê pedido de compra do cliente, transportador, modalidade, vendedor e total do pedido", () => {
+    const { cabecalho } = interpretarTextoPdf(PEDIDO_SINTETICO);
+
+    expect(cabecalho.numeroPedidoCliente).toBe("0.9999");
+    expect(cabecalho.transportador).toBe("TRANSPORTE EXEMPLO");
+    expect(cabecalho.modalidadeFrete).toBe("Contratação do Frete por conta do Destinatário (FOB)");
+    expect(cabecalho.vendedor).toBe("Vendedor Exemplo - Região Teste");
+    expect(cabecalho.totalPedido).toBe("1.050,00");
+  });
+
+  it("não confunde o total do pedido com o total de produtos", () => {
+    const { cabecalho, totais } = interpretarTextoPdf(PEDIDO_SINTETICO);
+
+    expect(totais.totalProdutos).toBe("1.000,00");
+    expect(cabecalho.totalPedido).toBe("1.050,00");
+  });
+
+  it("deixa transportador e modalidade vazios quando o pedido não tem bloco de transporte", () => {
+    const semTransporte = PEDIDO_SINTETICO.replace(/Transportador\n[^\n]*\n[^\n]*\n/, "");
+    expect(semTransporte).not.toContain("Transportador");
+
+    const { cabecalho } = interpretarTextoPdf(semTransporte);
+
+    expect(cabecalho.transportador).toBe("");
+    expect(cabecalho.modalidadeFrete).toBe("");
+  });
+
+  it("deixa o pedido de compra vazio quando o rótulo não está impresso, sem mexer no número do pedido", () => {
+    const semOrdemDeCompra = PEDIDO_SINTETICO.replace("Ordem de compra 0.9999\n", "");
+    expect(semOrdemDeCompra).not.toContain("Ordem de compra");
+
+    const { cabecalho } = interpretarTextoPdf(semOrdemDeCompra);
+
+    expect(cabecalho.numeroPedidoCliente).toBe("");
+    expect(cabecalho.numeroPedido).toBe("9001");
   });
 });
 

@@ -31,6 +31,16 @@ export type ExtracaoBrutaPdf = {
     data: string;
     fabricaCnpj: string;
     clienteCnpj: string;
+    /** Pedido de compra do cliente ("Ordem de compra"). Vazio quando não está impresso. */
+    numeroPedidoCliente: string;
+    /** Nome do transportador ("Transportador › Nome"). Vazio quando não há. */
+    transportador: string;
+    /** Modalidade de frete como impressa, ex.: "... (FOB)". Vazia quando não há. */
+    modalidadeFrete: string;
+    /** Vendedor como impresso. Vazio quando não há. */
+    vendedor: string;
+    /** Total do pedido ("Total do pedido"), cru. Pode ser igual ao total de produtos. */
+    totalPedido: string;
   };
   itens: ItemBrutoPdf[];
   totais: {
@@ -69,6 +79,11 @@ export type ExtracaoNormalizada = {
     data: Date | null;
     fabricaCnpj: string;
     clienteCnpj: string;
+    numeroPedidoCliente: string;
+    transportador: string;
+    modalidadeFrete: string;
+    vendedor: string;
+    totalPedido: number | null;
   };
   itens: ItemRevisao[];
   conferencia: ConferenciaExtracao;
@@ -209,6 +224,11 @@ export function normalizarExtracao(bruta: ExtracaoBrutaPdf): ExtracaoNormalizada
       data: dataBr(bruta.cabecalho.data),
       fabricaCnpj: normalizarCnpj(bruta.cabecalho.fabricaCnpj),
       clienteCnpj: normalizarCnpj(bruta.cabecalho.clienteCnpj),
+      numeroPedidoCliente: (bruta.cabecalho.numeroPedidoCliente ?? "").trim(),
+      transportador: (bruta.cabecalho.transportador ?? "").trim(),
+      modalidadeFrete: (bruta.cabecalho.modalidadeFrete ?? "").trim(),
+      vendedor: (bruta.cabecalho.vendedor ?? "").trim(),
+      totalPedido: numeroBr(bruta.cabecalho.totalPedido ?? ""),
     },
     itens,
     conferencia: conferir(itens, bruta.totais),
