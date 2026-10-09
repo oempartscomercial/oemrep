@@ -64,10 +64,23 @@ export function interpretarTextoPdf(texto: string): ExtracaoBrutaPdf {
 
   return {
     cabecalho: {
-      numeroPedido: capturar(texto, /N[úu]mero do pedido\s+(\S+)/i),
+      // O Bling às vezes não imprime "Número do pedido" (pedido da Samaúma): aí vale o
+      // título "Pedido 4286" no topo.
+      numeroPedido: capturar(texto, /N[úu]mero do pedido\s+(\S+)/i) || capturar(texto, /^Pedido\s+(\d+)\s*$/m),
       data: capturar(texto, /\bData\s+(\d{2}\/\d{2}\/\d{4})/),
       fabricaCnpj: primeiroCnpj(texto, 0),
       clienteCnpj: primeiroCnpj(texto, 1),
+      // "Ordem de compra" é o rótulo do Bling; os outros são nomes que outros layouts usam.
+      numeroPedidoCliente: capturar(
+        texto,
+        /(?:Ordem de compra|Pedido de compra|N[º°o]\s*do pedido do cliente)[ \t]+(\S+)/i,
+      ),
+      // Bloco "Transportador" / "Nome ..." que o Bling imprime depois dos totais.
+      transportador: capturar(texto, /^Transportador[ \t]*\n[ \t]*Nome[ \t]+([^\n]+)/im),
+      modalidadeFrete: capturar(texto, /^Modalidade de frete[ \t]+([^\n]+)/im),
+      // O vendedor vem numa linha própria, logo abaixo do rótulo "Vendedor".
+      vendedor: capturar(texto, /^Vendedor[ \t]*\n[ \t]*([^\n]+)/im),
+      totalPedido: capturar(texto, /Total do pedido\s+(\S+)/i),
     },
     itens,
     totais: {

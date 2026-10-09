@@ -14,6 +14,10 @@ describe("filtrarPedidos", () => {
     expect(resultado.map((p) => p.id)).toEqual(["1", "2"]);
   });
 
+  it("SEM_NOTA traz apenas SEM_NFE", () => {
+    expect(filtrarPedidos(PEDIDOS, "SEM_NOTA").map((p) => p.id)).toEqual(["1"]);
+  });
+
   it("CONCLUIDOS traz apenas COMPLETO", () => {
     const resultado = filtrarPedidos(PEDIDOS, "CONCLUIDOS");
     expect(resultado.map((p) => p.id)).toEqual(["3"]);

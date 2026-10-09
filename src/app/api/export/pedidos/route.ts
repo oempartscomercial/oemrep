@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarPedidosPermitidos } from "@/app/(app)/pedidos/queries";
-import { filtrarPedidos, type FiltroPedido } from "@/domain/pedido/filtro";
+import { filtrarPedidos, FILTROS_PEDIDO, type FiltroPedido } from "@/domain/pedido/filtro";
 import { gerarXlsx } from "@/domain/export/xlsx";
 
 const CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-const FILTROS_VALIDOS: FiltroPedido[] = ["EM_ANDAMENTO", "CONCLUIDOS", "ARQUIVADOS", "TODOS"];
+const FILTROS_VALIDOS: FiltroPedido[] = FILTROS_PEDIDO;
 
 export async function GET(request: NextRequest) {
   const usuario = await obterUsuarioLogado();

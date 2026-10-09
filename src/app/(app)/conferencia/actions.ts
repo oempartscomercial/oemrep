@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { atualizarRastreioDaNota } from "@/lib/rastreio/atualizar";
 import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado, type UsuarioSessao } from "@/lib/sessao";
 import { podeAcessarFabrica } from "@/lib/authz";
@@ -32,6 +34,11 @@ export type AnaliseNFe = {
   // Itens pendentes do cliente nesta fábrica: as opções para trocar um vínculo.
   opcoes: OpcaoVinculo[];
   conferencia: ResultadoConferenciaItem[];
+  // Números de pedido que a própria nota cita (xPed/infCpl) e qual pedido do sistema bate.
+  pedidosCitados: { numero: string; pedido: string | null }[];
+  // Pedido rápido (sem itens) deste cliente que a nota parece atender: os itens da nota
+  // sem pedido podem completá-lo.
+  pedidoRapido: { id: string; numero: string; valor: number; motivo: string } | null;
 };
 
 const SEM_SESSAO = "Sessão expirada. Faça login novamente.";
@@ -65,7 +72,18 @@ async function montarAnalise(
   if ("erro" in resolucao) return { erro: resolucao.erro };
   const { clienteId, gravarCnpj } = resolucao;
 
-  const base = { xml, nfe, clienteId, fabricaId: fabrica?.id ?? null, gravarCnpj, candidatos: [], opcoes: [], conferencia: [] };
+  const base = {
+    xml,
+    nfe,
+    clienteId,
+    fabricaId: fabrica?.id ?? null,
+    gravarCnpj,
+    candidatos: [],
+    opcoes: [],
+    conferencia: [],
+    pedidosCitados: nfe.pedidosReferidos.map((numero) => ({ numero, pedido: null })),
+    pedidoRapido: null,
+  };
   if (!fabrica) return { analise: base };
 
   if (!clienteId) {
@@ -79,10 +97,41 @@ async function montarAnalise(
     };
   }
 
-  const pedidos = await prisma.pedido.findMany({
+  const abertos = await prisma.pedido.findMany({
     where: { clienteId, fabricaId: fabrica.id, estado: { in: ["SEM_NFE", "PARCIAL"] } },
-    include: { itens: { where: { status: "PENDENTE" } } },
+    include: { itens: { where: { status: "PENDENTE" } }, _count: { select: { itens: true } } },
+    orderBy: { criadoEm: "asc" },
   });
+
+  // A nota cita o pedido (xPed / "PEDIDO DO CLIENTE" no infCpl): esses vêm primeiro, então
+  // uma referência que existe em dois pedidos baixa no pedido que a nota diz atender.
+  const citados = new Set(nfe.pedidosReferidos);
+  const citaPedido = (p: { numero: string | null; numeroCliente: string | null }) =>
+    (!!p.numero && citados.has(p.numero)) || (!!p.numeroCliente && citados.has(p.numeroCliente));
+  const pedidos = [...abertos.filter(citaPedido), ...abertos.filter((p) => !citaPedido(p))];
+  const pedidosCitados = nfe.pedidosReferidos.map((numero) => {
+    const p = abertos.find((x) => x.numero === numero || x.numeroCliente === numero);
+    return { numero, pedido: p ? (p.semNumero ? "S/N" : (p.numero ?? "S/N")) : null };
+  });
+
+  // Pedido rápido: registrado só com valor, sem itens. Bate pelo número citado ou pelo valor.
+  const rapidos = abertos.filter((p) => p.origem === "RAPIDO" && p._count.itens === 0 && p.estado === "SEM_NFE");
+  const valorPerto = (p: (typeof rapidos)[number]) => {
+    const v = Number(p.valorTotalDeclarado ?? 0);
+    if (v <= 0) return false;
+    return [nfe.totalProdutos, nfe.totalNota].some((total) => total > 0 && Math.abs(v - total) / total <= 0.02);
+  };
+  const rapidoCitado = rapidos.find(citaPedido);
+  const rapidoPorValor = rapidoCitado ? undefined : rapidos.find(valorPerto);
+  const rapidoEscolhido = rapidoCitado ?? rapidoPorValor ?? (rapidos.length === 1 ? rapidos[0] : undefined);
+  const pedidoRapido = rapidoEscolhido
+    ? {
+        id: rapidoEscolhido.id,
+        numero: rapidoEscolhido.semNumero ? "S/N" : (rapidoEscolhido.numero ?? "S/N"),
+        valor: Number(rapidoEscolhido.valorTotalDeclarado ?? 0),
+        motivo: rapidoCitado ? "a nota cita este pedido" : rapidoPorValor ? "o valor bate" : "é o único pedido rápido aberto deste cliente",
+      }
+    : null;
 
   const pendencias: PendenciaItem[] = pedidos.flatMap((pedido) =>
     pedido.itens.map((item) => ({
@@ -106,7 +155,7 @@ async function montarAnalise(
     itemPedidoId: p.itemPedidoId,
     rotulo: `${p.referencia} · pedido ${numeroDoPedido.get(p.pedidoId)} · pendente ${p.quantidadePendente}`,
   }));
-  return { analise: { ...base, opcoes, conferencia: resultado.conferencia! } };
+  return { analise: { ...base, opcoes, conferencia: resultado.conferencia!, pedidosCitados, pedidoRapido } };
 }
 
 export async function analisarXmlNFe(formData: FormData): Promise<{ erro?: string; analise?: AnaliseNFe }> {
@@ -130,7 +179,9 @@ export async function confirmarBaixaNFe(entrada: {
   xml: string;
   clienteId: string | null;
   vinculos?: VinculosManuais;
-}): Promise<{ erros: string[] }> {
+  /** Itens da nota sem pedido entram neste pedido rápido (já faturados). */
+  completarPedidoRapidoId?: string | null;
+}): Promise<{ erros: string[]; notaFiscalId?: string }> {
   const usuario = await obterUsuarioLogado();
   if (!usuario) return { erros: [SEM_SESSAO] };
 
@@ -143,12 +194,23 @@ export async function confirmarBaixaNFe(entrada: {
   const clienteId = analise.clienteId;
 
   const vinculados = analise.conferencia.filter((r) => r.pendencia !== null);
-  if (vinculados.length === 0) return { erros: ["Nenhum item da NFe corresponde a um pedido pendente."] };
+  const rapidoId = entrada.completarPedidoRapidoId && analise.pedidoRapido?.id === entrada.completarPedidoRapidoId ? entrada.completarPedidoRapidoId : null;
+  if (entrada.completarPedidoRapidoId && !rapidoId) return { erros: ["O pedido rápido escolhido não serve para esta nota. Recarregue e confira."] };
+  // Sem pendência casada, os itens da nota vêm de analise.nfe.itens (montarAnalise devolve conferencia vazia sem pendências).
+  const itensSemPedido = rapidoId
+    ? analise.conferencia.length > 0
+      ? analise.conferencia.filter((r) => r.pendencia === null).map((r) => r.itemNFe)
+      : analise.nfe.itens
+    : [];
+  if (vinculados.length === 0 && itensSemPedido.length === 0) {
+    return { erros: ["Nenhum item da NFe corresponde a um pedido pendente."] };
+  }
 
-  const pedidosIds = [...new Set(vinculados.map((r) => r.pendencia!.pedidoId))];
+  const pedidosIds = [...new Set([...vinculados.map((r) => r.pendencia!.pedidoId), ...(rapidoId ? [rapidoId] : [])])];
   const erros = validarVinculoPedidos(pedidosIds.map((id) => ({ id, clienteId })));
   if (erros.length > 0) return { erros };
 
+  let notaFiscalId = "";
   // Nota fiscal, CNPJ do cliente, baixa de itens, recálculo de estado do pedido e
   // auditoria formam uma única unidade de trabalho: uma falha no meio não pode deixar
   // uma baixa parcial gravada sem o pedido saber (regra 4 do CLAUDE.md).
@@ -161,8 +223,22 @@ export async function confirmarBaixaNFe(entrada: {
         });
       }
 
+      // Transportadora do <transp>: nasce sozinha na primeira nota, como não mapeada.
+      const transp = analise.nfe.transportadora;
+      const transportadora = transp?.cnpj
+        ? await tx.transportadora.upsert({
+            where: { cnpj: transp.cnpj },
+            update: {},
+            create: { cnpj: transp.cnpj, nome: transp.nome || `Transportadora ${transp.cnpj}` },
+          })
+        : null;
+
       const notaFiscal = await tx.notaFiscal.create({
         data: {
+          transportadoraId: transportadora?.id ?? null,
+          modalidadeFrete: analise.nfe.modalidadeFrete,
+          volumes: analise.nfe.volumes === null ? null : Math.round(analise.nfe.volumes),
+          pesoBruto: analise.nfe.pesoBruto,
           numero: analise.nfe.numero,
           chaveAcesso: analise.nfe.chaveAcesso,
           emitenteCnpj: analise.nfe.emitenteCnpj,
@@ -202,6 +278,30 @@ export async function confirmarBaixaNFe(entrada: {
         if (eventosItem.length > 0) await tx.eventoAuditoria.createMany({ data: eventosItem });
       }
 
+      // Pedido rápido completado pela nota: os itens nascem já faturados por ela.
+      if (rapidoId) {
+        for (const itemNFe of itensSemPedido) {
+          const criado = await tx.itemPedido.create({
+            data: {
+              pedidoId: rapidoId,
+              referencia: itemNFe.referencia,
+              descricao: itemNFe.descricao,
+              quantidadePedida: itemNFe.quantidade,
+              quantidadeFaturada: itemNFe.quantidade,
+              valorUnitario: itemNFe.valorUnitario,
+              status: "OK",
+              observacao: "Item criado a partir da NFe (pedido rápido).",
+            },
+          });
+          await tx.itemFaturado.create({
+            data: { itemPedidoId: criado.id, notaFiscalId: notaFiscal.id, quantidadeFaturada: itemNFe.quantidade, valorUnitario: itemNFe.valorUnitario },
+          });
+        }
+        await tx.eventoAuditoria.createMany({
+          data: compararCampos("Pedido", rapidoId, usuario.id, {}, { itensDaNota: `${itensSemPedido.length} itens da NF ${analise.nfe.numero}` }),
+        });
+      }
+
       for (const pedidoId of pedidosIds) {
         const pedido = await tx.pedido.findUnique({ where: { id: pedidoId }, include: { itens: true } });
         if (!pedido) continue;
@@ -233,6 +333,7 @@ export async function confirmarBaixaNFe(entrada: {
         { chaveAcesso: notaFiscal.chaveAcesso, numero: notaFiscal.numero },
       );
       if (eventosNota.length > 0) await tx.eventoAuditoria.createMany({ data: eventosNota });
+      notaFiscalId = notaFiscal.id;
     });
   } catch {
     return { erros: ["Falha ao gravar a baixa da NFe. Nada foi salvo — tente novamente."] };
@@ -240,5 +341,18 @@ export async function confirmarBaixaNFe(entrada: {
 
   for (const pedidoId of pedidosIds) revalidatePath(`/pedidos/${pedidoId}`);
   revalidatePath("/pedidos");
-  return { erros: [] };
+  revalidatePath("/rastreio");
+  // Primeira consulta de rastreio já, sem segurar a tela: roda depois da resposta.
+  try {
+    after(async () => {
+      try {
+        await atualizarRastreioDaNota(notaFiscalId);
+      } catch (erro) {
+        console.error("[rastreio] primeira consulta falhou", erro);
+      }
+    });
+  } catch {
+    // Fora de uma requisição (testes): o cron diário faz a consulta.
+  }
+  return { erros: [], notaFiscalId };
 }

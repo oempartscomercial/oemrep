@@ -56,6 +56,11 @@ const extracaoReal = (): ExtracaoBrutaPdf => ({
     data: "28/07/2026",
     fabricaCnpj: "42.642.806/0001-23",
     clienteCnpj: "09.114.091/0001-60",
+    numeroPedidoCliente: "",
+    transportador: "",
+    modalidadeFrete: "",
+    vendedor: "",
+    totalPedido: "",
   },
   itens: [
     { codigo: "40150270", descricao: "CABO DE SELEÇÃO E ENGATE (DO TRAMBULADOR)", unidade: "CJ", quantidade: "40,0000", valorUnitario: "205,5690", valorTotal: "8.222,76" },
@@ -77,6 +82,57 @@ describe("normalizarExtracao — cabeçalho", () => {
     const { cabecalho } = normalizarExtracao(extracaoReal());
     expect(cabecalho.numeroPedido).toBe("4103");
     expect(cabecalho.data?.toISOString().slice(0, 10)).toBe("2026-07-28");
+  });
+});
+
+describe("normalizarExtracao — campos extras do cabeçalho", () => {
+  const comCabecalho = (extra: Partial<ExtracaoBrutaPdf["cabecalho"]>): ExtracaoBrutaPdf => ({
+    ...extracaoReal(),
+    cabecalho: { ...extracaoReal().cabecalho, ...extra },
+  });
+
+  it("leva pedido de compra, transportador, modalidade, vendedor e total do pedido", () => {
+    const { cabecalho } = normalizarExtracao(
+      comCabecalho({
+        numeroPedidoCliente: "0.9999",
+        transportador: "TRANSPORTE EXEMPLO",
+        modalidadeFrete: "Contratação do Frete por conta do Destinatário (FOB)",
+        vendedor: "Vendedor Exemplo - Região Teste",
+        totalPedido: "1.050,00",
+      }),
+    );
+
+    expect(cabecalho.numeroPedidoCliente).toBe("0.9999");
+    expect(cabecalho.transportador).toBe("TRANSPORTE EXEMPLO");
+    expect(cabecalho.modalidadeFrete).toBe("Contratação do Frete por conta do Destinatário (FOB)");
+    expect(cabecalho.vendedor).toBe("Vendedor Exemplo - Região Teste");
+    expect(cabecalho.totalPedido).toBe(1050);
+  });
+
+  it("apara espaços nos campos de texto", () => {
+    const { cabecalho } = normalizarExtracao(
+      comCabecalho({ numeroPedidoCliente: "  0.9999 ", transportador: " TRANSPORTE EXEMPLO  ", vendedor: " Vendedor " }),
+    );
+
+    expect(cabecalho.numeroPedidoCliente).toBe("0.9999");
+    expect(cabecalho.transportador).toBe("TRANSPORTE EXEMPLO");
+    expect(cabecalho.vendedor).toBe("Vendedor");
+  });
+
+  it("mantém vazios os campos que o pedido não imprime, sem inventar valor", () => {
+    const { cabecalho } = normalizarExtracao(extracaoReal());
+
+    expect(cabecalho.numeroPedidoCliente).toBe("");
+    expect(cabecalho.transportador).toBe("");
+    expect(cabecalho.modalidadeFrete).toBe("");
+    expect(cabecalho.vendedor).toBe("");
+    expect(cabecalho.totalPedido).toBeNull();
+  });
+
+  it("devolve null para total do pedido ilegível, nunca NaN nem zero", () => {
+    const { cabecalho } = normalizarExtracao(comCabecalho({ totalPedido: "—" }));
+
+    expect(cabecalho.totalPedido).toBeNull();
   });
 });
 
@@ -200,6 +256,11 @@ const PEDIDO_4103: ExtracaoBrutaPdf = {
     data: "28/07/2026",
     fabricaCnpj: "42.642.806/0001-23",
     clienteCnpj: "09.114.091/0001-60",
+    numeroPedidoCliente: "",
+    transportador: "",
+    modalidadeFrete: "",
+    vendedor: "",
+    totalPedido: "22.006,07",
   },
   itens: [
     { codigo: "40150270", descricao: "CABO DE SELEÇÃO E ENGATE (DO TRAMBULADOR) CELTA/CLASSIC/PRISMA", unidade: "CJ", quantidade: "40,0000", valorUnitario: "205,5690", valorTotal: "8.222,76" },

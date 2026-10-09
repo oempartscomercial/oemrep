@@ -10,10 +10,25 @@ import { compararCampos } from "@/domain/auditoria/evento";
 import { registrarAlteracoes } from "@/lib/auditoria";
 import { guardarPdf } from "@/lib/storage";
 import { extrairPedidoDoTextoPdf, ExtracaoPdfSemTexto } from "@/lib/extracao-pdf-texto";
+import { Prisma } from "@prisma/client";
+import { registrarEfeitosDoPedido } from "@/lib/pedido-lancado";
+import { cnpjValido, normalizarCnpj } from "@/domain/cadastro/cnpj";
+
+export type PedidoRapidoParecido = { id: string; numero: string | null; data: string; valor: number };
 
 export type RascunhoPdf = {
   importacaoId: string;
-  cabecalho: { numeroPedido: string; data: string | null };
+  cabecalho: {
+    numeroPedido: string;
+    data: string | null;
+    numeroPedidoCliente: string;
+    transportador: string;
+    modalidadeFrete: string;
+    vendedor: string;
+    totalPedido: number | null;
+  };
+  /** Pedido rápido (sem itens) do mesmo cliente que parece ser este: o operador pode completá-lo. */
+  parecido: PedidoRapidoParecido | null;
   fabrica: { id: string; nome: string } | null;
   cliente: { id: string; nomeFantasia: string } | null;
   fabricaCnpj: string;
@@ -43,10 +58,8 @@ export async function iniciarExtracaoPdf(formData: FormData): Promise<{ erro?: s
     bruta = await extrairPedidoDoTextoPdf(buffer);
   } catch (erro) {
     if (erro instanceof ExtracaoPdfSemTexto) return { erro: erro.message };
-    // TEMPORÁRIO (diagnóstico): expõe o erro real da lambda enquanto não há acesso aos
-    // logs da Vercel. Voltar à mensagem genérica depois.
-    const detalhe = erro instanceof Error ? `${erro.name}: ${erro.message}` : String(erro);
-    return { erro: `Não foi possível ler o PDF. [debug: ${detalhe}]` };
+    console.error("Falha ao ler PDF de pedido", erro);
+    return { erro: "Não foi possível ler este PDF. Confira se é o PDF original do pedido ou registre como pedido rápido." };
   }
 
   // Guardar o arquivo é o passo bônus: se o armazenamento não está configurado, a
@@ -93,13 +106,29 @@ export async function iniciarExtracaoPdf(formData: FormData): Promise<{ erro?: s
     },
   });
 
+  const parecido =
+    fabricaPermitida && cliente
+      ? await acharPedidoRapidoParecido(
+          fabricaPermitida.id,
+          cliente.id,
+          normalizada.cabecalho.totalPedido ?? normalizada.conferencia.totalCalculado,
+          normalizada.cabecalho.numeroPedido,
+        )
+      : null;
+
   return {
     rascunho: {
       importacaoId: importacao.id,
       cabecalho: {
         numeroPedido: normalizada.cabecalho.numeroPedido,
         data: normalizada.cabecalho.data ? normalizada.cabecalho.data.toISOString().slice(0, 10) : null,
+        numeroPedidoCliente: normalizada.cabecalho.numeroPedidoCliente,
+        transportador: normalizada.cabecalho.transportador,
+        modalidadeFrete: normalizada.cabecalho.modalidadeFrete,
+        vendedor: normalizada.cabecalho.vendedor,
+        totalPedido: normalizada.cabecalho.totalPedido,
       },
+      parecido,
       fabrica: fabricaPermitida,
       cliente,
       fabricaCnpj: normalizada.cabecalho.fabricaCnpj,
@@ -107,6 +136,37 @@ export async function iniciarExtracaoPdf(formData: FormData): Promise<{ erro?: s
       itens: normalizada.itens,
       conferencia: normalizada.conferencia,
     },
+  };
+}
+
+/**
+ * Pedido rápido registrado antes do PDF chegar: mesmo cliente e fábrica, ainda sem itens nem
+ * nota, e com o mesmo número ou valor até 1% de diferença. É o "print do WhatsApp" que agora
+ * chegou em PDF — completar em vez de duplicar.
+ */
+export async function acharPedidoRapidoParecido(
+  fabricaId: string,
+  clienteId: string,
+  valor: number,
+  numero: string,
+): Promise<PedidoRapidoParecido | null> {
+  const candidatos = await prisma.pedido.findMany({
+    where: { fabricaId, clienteId, origem: "RAPIDO", estado: "SEM_NFE", itens: { none: {} }, notasFiscais: { none: {} } },
+    orderBy: { criadoEm: "desc" },
+    take: 20,
+  });
+  const achado =
+    candidatos.find((p) => numero && p.numero === numero) ??
+    candidatos.find((p) => {
+      const declarado = Number(p.valorTotalDeclarado ?? 0);
+      return declarado > 0 && valor > 0 && Math.abs(declarado - valor) / valor <= 0.01;
+    });
+  if (!achado) return null;
+  return {
+    id: achado.id,
+    numero: achado.numero,
+    data: (achado.dataPedido ?? achado.criadoEm).toISOString().slice(0, 10),
+    valor: Number(achado.valorTotalDeclarado ?? 0),
   };
 }
 
@@ -119,6 +179,14 @@ export type DadosConfirmacaoPdf = {
   numero: string;
   semNumero: boolean;
   itens: ItemRevisado[];
+  numeroCliente?: string;
+  /** AAAA-MM-DD */
+  dataPedido?: string | null;
+  transportadorPrevisto?: string;
+  modalidadeFrete?: string;
+  vendedor?: string;
+  /** Completa este pedido rápido em vez de criar outro. */
+  completarPedidoId?: string | null;
 };
 
 /**
@@ -126,7 +194,7 @@ export type DadosConfirmacaoPdf = {
  * arquivo-fonte, transição do rascunho e auditoria (cabeçalho E itens) numa única
  * transação — se qualquer parte falhar, nada é salvo.
  */
-export async function confirmarImportacaoPdf(dados: DadosConfirmacaoPdf): Promise<{ erros: string[] }> {
+export async function confirmarImportacaoPdf(dados: DadosConfirmacaoPdf): Promise<{ erros: string[]; pedidoId?: string }> {
   const erros = validarDadosPedido({
     numero: dados.numero,
     semNumero: dados.semNumero,
@@ -147,27 +215,52 @@ export async function confirmarImportacaoPdf(dados: DadosConfirmacaoPdf): Promis
   if (!importacao) return { erros: ["Rascunho de importação não encontrado. Recarregue e tente de novo."] };
   if (importacao.estado === "CONFIRMADA") return { erros: ["Esta importação já foi confirmada."] };
 
+  const texto = (v?: string | null) => v?.trim() || null;
+  const dataPedido = dados.dataPedido && /^\d{4}-\d{2}-\d{2}$/.test(dados.dataPedido) ? new Date(`${dados.dataPedido}T12:00:00-03:00`) : null;
+  const cabecalho = {
+    numero: dados.semNumero ? null : dados.numero,
+    semNumero: dados.semNumero,
+    origem: "PDF" as const,
+    fabricaId: dados.fabricaId,
+    clienteId: dados.clienteId,
+    arquivoOrigemId: importacao.arquivoId,
+    numeroCliente: texto(dados.numeroCliente),
+    dataPedido,
+    transportadorPrevisto: texto(dados.transportadorPrevisto),
+    modalidadeFrete: texto(dados.modalidadeFrete),
+    vendedor: texto(dados.vendedor),
+  };
+  const itensCriar = dados.itens.map((item) => ({
+    referencia: item.referencia,
+    descricao: item.descricao,
+    quantidadePedida: item.quantidade,
+    valorUnitario: item.valorUnitario,
+  }));
+
+  if (dados.completarPedidoId) {
+    const alvo = await prisma.pedido.findUnique({
+      where: { id: dados.completarPedidoId },
+      include: { _count: { select: { itens: true, notasFiscais: true } } },
+    });
+    if (!alvo || alvo.fabricaId !== dados.fabricaId || alvo.clienteId !== dados.clienteId) {
+      return { erros: ["O pedido rápido a completar não é desta fábrica e cliente. Recarregue a página."] };
+    }
+    if (alvo._count.itens > 0 || alvo._count.notasFiscais > 0) {
+      return { erros: ["Esse pedido rápido já recebeu itens ou nota. Crie um pedido novo."] };
+    }
+  }
+
+  let pedidoId = "";
   try {
     await prisma.$transaction(async (tx) => {
-      const pedido = await tx.pedido.create({
-        data: {
-          numero: dados.semNumero ? null : dados.numero,
-          semNumero: dados.semNumero,
-          origem: "PDF",
-          fabricaId: dados.fabricaId,
-          clienteId: dados.clienteId,
-          arquivoOrigemId: importacao.arquivoId,
-          itens: {
-            create: dados.itens.map((item) => ({
-              referencia: item.referencia,
-              descricao: item.descricao,
-              quantidadePedida: item.quantidade,
-              valorUnitario: item.valorUnitario,
-            })),
-          },
-        },
-        include: { itens: true },
-      });
+      const pedido = dados.completarPedidoId
+        ? await tx.pedido.update({
+            where: { id: dados.completarPedidoId },
+            data: { ...cabecalho, dataPedido: cabecalho.dataPedido ?? undefined, itens: { create: itensCriar } },
+            include: { itens: true },
+          })
+        : await tx.pedido.create({ data: { ...cabecalho, itens: { create: itensCriar } }, include: { itens: true } });
+      pedidoId = pedido.id;
 
       await tx.importacaoPedido.update({
         where: { id: importacao.id },
@@ -179,7 +272,7 @@ export async function confirmarImportacaoPdf(dados: DadosConfirmacaoPdf): Promis
         pedido.id,
         usuario.id,
         {},
-        { numero: pedido.numero, semNumero: pedido.semNumero, origem: "PDF" },
+        { numero: pedido.numero, semNumero: pedido.semNumero, origem: "PDF", numeroCliente: pedido.numeroCliente, ...(dados.completarPedidoId ? { completouPedidoRapido: "sim" } : {}) },
       );
       // Auditoria item a item: com PDF, os valores vieram de leitura falível e foram
       // corrigidos à mão, então é aqui que a auditoria passa a valer de verdade.
@@ -199,13 +292,48 @@ export async function confirmarImportacaoPdf(dados: DadosConfirmacaoPdf): Promis
         );
       }
       await registrarAlteracoes(eventos, tx);
+      // Mesmos efeitos de qualquer pedido lançado: vínculo cliente×fábrica e carteira (ADR-013).
+      if (!dados.completarPedidoId) await registrarEfeitosDoPedido(tx, pedido);
     });
-  } catch {
+  } catch (erro) {
+    if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2002") {
+      return { erros: ["Já existe um pedido com este número para este cliente nesta fábrica."] };
+    }
     return { erros: ["Nada foi salvo — tente novamente."] };
   }
 
   revalidatePath("/pedidos");
-  return { erros: [] };
+  return { erros: [], pedidoId };
+}
+
+/**
+ * O CNPJ do cliente do PDF não está cadastrado: cria a empresa ali mesmo, já ligada à fábrica,
+ * para o operador não ter de sair da revisão.
+ */
+export async function cadastrarClienteDoPdf(dados: { nome: string; cnpj: string; fabricaId: string }): Promise<{ erros: string[]; cliente?: { id: string; nomeFantasia: string } }> {
+  const usuario = await obterUsuarioLogado();
+  if (!usuario) return { erros: ["Sessão expirada. Faça login novamente."] };
+  const nome = dados.nome.trim();
+  const cnpj = normalizarCnpj(dados.cnpj);
+  if (!nome) return { erros: ["Escreva o nome do cliente."] };
+  if (!cnpjValido(cnpj)) return { erros: ["O CNPJ lido do PDF não é válido. Confira no PDF."] };
+  if (!dados.fabricaId || !podeAcessarFabrica(usuario, dados.fabricaId)) return { erros: ["Escolha a fábrica primeiro."] };
+
+  const cliente = await prisma.$transaction(async (tx) => {
+    const existente = await tx.cliente.findUnique({ where: { cnpj } });
+    const c = existente ?? (await tx.cliente.create({ data: { nomeFantasia: nome, cnpj, origem: "Importação de PDF" } }));
+    await tx.clienteFabrica.upsert({
+      where: { clienteId_fabricaId: { clienteId: c.id, fabricaId: dados.fabricaId } },
+      update: {},
+      create: { clienteId: c.id, fabricaId: dados.fabricaId },
+    });
+    if (!existente) {
+      await tx.eventoAuditoria.createMany({ data: compararCampos("Cliente", c.id, usuario.id, {}, { nomeFantasia: c.nomeFantasia, cnpj: c.cnpj }) });
+    }
+    return c;
+  });
+  revalidatePath("/cadastros/clientes");
+  return { erros: [], cliente: { id: cliente.id, nomeFantasia: cliente.nomeFantasia } };
 }
 
 /** Descarta um rascunho que o operador decidiu não confirmar. */

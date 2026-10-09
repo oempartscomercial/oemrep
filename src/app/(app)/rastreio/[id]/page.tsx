@@ -8,6 +8,20 @@ import { StatusBadge } from "@/components/patterns/status-badge";
 import { statusBadgeConfig } from "@/components/patterns/status-badge.config";
 import { Timeline, type TimelineItem } from "@/components/patterns/timeline";
 import { RastreioForm } from "./rastreio-form";
+import { BotaoAtualizarRastreio } from "../botao-atualizar";
+
+export const maxDuration = 60;
+
+const fmt = (d: Date | null, comHora = false) =>
+  d
+    ? d.toLocaleString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        ...(comHora ? { hour: "2-digit", minute: "2-digit" } : {}),
+      })
+    : "—";
 
 export default async function DetalheRastreioPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,8 +44,8 @@ export default async function DetalheRastreioPage({ params }: { params: Promise<
     id: evento.id,
     titulo: `${statusBadgeConfig("nfe", evento.statusAnterior ?? "").label} → ${statusBadgeConfig("nfe", evento.status).label}`,
     data: new Date(evento.dataEvento).toLocaleDateString("pt-BR"),
-    autor: evento.usuario.nome,
-    descricao: evento.observacao || undefined,
+    autor: evento.usuario?.nome ?? `${nota.transportadora?.nome ?? "Transportadora"} (automático)`,
+    descricao: [evento.observacao, evento.local].filter(Boolean).join(" · ") || undefined,
     destaque: evento.status === "EXTRAVIADO",
   }));
 
@@ -43,6 +57,40 @@ export default async function DetalheRastreioPage({ params }: { params: Promise<
           <StatusBadge tipo="nfe" valor={nota.status} />
         </div>
         <p className="text-sm text-muted-foreground">{nota.chaveAcesso}</p>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-lg border bg-card p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <dl className="grid flex-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-muted-foreground">Transportadora</dt>
+              <dd>
+                {nota.transportadora?.nome ?? "Não informada na nota"}
+                {nota.transportadora?.metodo === "NAO_MAPEADA" && <span className="ml-2 text-xs text-warning">ainda sem rastreio automático</span>}
+                {nota.transportadora?.metodo === "MANUAL" && <span className="ml-2 text-xs text-muted-foreground">rastreio manual{nota.transportadora.contato ? ` · ${nota.transportadora.contato}` : ""}</span>}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Previsão de entrega</dt>
+              <dd>{fmt(nota.previsaoEntrega)}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-xs text-muted-foreground">Última ocorrência</dt>
+              <dd>{nota.ultimaOcorrencia ? `${nota.ultimaOcorrencia} · ${fmt(nota.ultimaOcorrenciaEm, true)}` : "Nenhuma ainda"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Consultado em</dt>
+              <dd>{fmt(nota.rastreioAtualizadoEm, true)}</dd>
+            </div>
+            {(nota.volumes || nota.pesoBruto) && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Carga</dt>
+                <dd>{[nota.volumes ? `${nota.volumes} vol.` : null, nota.pesoBruto ? `${Number(nota.pesoBruto).toLocaleString("pt-BR")} kg` : null].filter(Boolean).join(" · ")}</dd>
+              </div>
+            )}
+          </dl>
+          {nota.transportadora?.metodo !== "MANUAL" && (nota.status === "TRANSITO" || nota.status === "AGENDADO") && <BotaoAtualizarRastreio notaFiscalId={nota.id} />}
+        </div>
       </div>
 
       {proximos.length > 0 ? (

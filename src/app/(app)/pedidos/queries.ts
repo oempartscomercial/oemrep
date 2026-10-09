@@ -2,7 +2,12 @@ import { prisma } from "@/lib/prisma";
 import type { UsuarioSessao } from "@/lib/sessao";
 import { filtroFabricasPermitidas, podeAcessarFabrica } from "@/lib/authz";
 
-const INCLUDE_PEDIDO = { fabrica: true, cliente: true, itens: true } as const;
+const INCLUDE_PEDIDO = {
+  fabrica: true,
+  cliente: true,
+  itens: true,
+  notasFiscais: { include: { notaFiscal: { select: { id: true, numero: true } } } },
+} as const;
 
 export async function buscarPedidosPermitidos(usuario: UsuarioSessao) {
   const fabricasPermitidas = filtroFabricasPermitidas(usuario);

@@ -9,12 +9,16 @@ export async function buscarNotasFiscaisPermitidas(usuario: UsuarioSessao) {
     where: fabricasPermitidas
       ? { pedidos: { some: { pedido: { fabricaId: { in: fabricasPermitidas } } } } }
       : {},
+    include: {
+      transportadora: { select: { id: true, nome: true, metodo: true } },
+      pedidos: { include: { pedido: { select: { id: true, numero: true, semNumero: true, cliente: { select: { nomeFantasia: true } } } } } },
+    },
     orderBy: { criadoEm: "desc" },
   });
 }
 
 export async function buscarNotaFiscalComPermissao(id: string, usuario: UsuarioSessao) {
-  const nota = await prisma.notaFiscal.findUnique({ where: { id } });
+  const nota = await prisma.notaFiscal.findUnique({ where: { id }, include: { transportadora: true } });
   if (!nota) return null;
 
   const fabricaId = await obterFabricaIdDaNotaFiscal(id);

@@ -41,6 +41,8 @@ async function limpar(ids: { importacaoId: string; arquivoId: string; usuarioId:
   await prisma.pedido.deleteMany({ where: { id: { in: pedidoIds } } });
   await prisma.arquivoImportado.deleteMany({ where: { id: ids.arquivoId } });
   await prisma.usuario.deleteMany({ where: { id: ids.usuarioId } });
+  // O pedido lançado liga cliente × fábrica (registrarEfeitosDoPedido).
+  await prisma.clienteFabrica.deleteMany({ where: { clienteId: ids.clienteId } });
   await prisma.cliente.deleteMany({ where: { id: ids.clienteId } });
   await prisma.fabrica.deleteMany({ where: { id: ids.fabricaId } });
 }
