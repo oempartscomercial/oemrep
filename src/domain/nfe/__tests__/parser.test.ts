@@ -263,6 +263,11 @@ describe("extrairNFeDoXml", () => {
       expect(nfe.pedidosReferidos).toEqual(["00123"]);
     });
 
+    it("descarta texto sem número depois de PEDIDO DO CLIENTE", () => {
+      const nfe = extrairNFeDoXml(montarNFe({ infCpl: "PEDIDO DO CLIENTE: CONFORME ANEXO" }));
+      expect(nfe.pedidosReferidos).toEqual([]);
+    });
+
     it("extrai o pedido do Autoflex a partir do infCpl", () => {
       const nfe = extrairNFeDoXml(
         montarNFe({ infCpl: "PEDIDO DO CLIENTE - 4504364932" }),

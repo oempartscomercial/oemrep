@@ -47,6 +47,13 @@ describe("interpretarTextoPdf — cabeçalho", () => {
   });
 });
 
+describe("interpretarTextoPdf — número do pedido sem a linha \"Número do pedido\"", () => {
+  it("usa o título \"Pedido N\" do topo", () => {
+    const semLinha = TEXTO.replace(/^Número do pedido 4103$/m, "");
+    expect(interpretarTextoPdf(semLinha).cabecalho.numeroPedido).toBe("4103");
+  });
+});
+
 describe("interpretarTextoPdf — itens", () => {
   it("lê exatamente as três linhas de dados, ignorando descrição e cabeçalho", () => {
     expect(interpretarTextoPdf(TEXTO).itens).toHaveLength(3);

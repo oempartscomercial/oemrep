@@ -48,11 +48,12 @@ export function PedidosTabela({
           isRowHeader: true,
           render: (p) => (
             <div className="flex flex-col">
-              <span className="font-medium text-foreground">
-                {p.numero}
-                {p.rapidoSemItens && <span className="ml-1.5 rounded bg-muted px-1 py-0.5 text-[11px] font-normal text-muted-foreground">sem itens</span>}
-              </span>
-              {p.numeroCliente && <span className="text-xs text-muted-foreground">OC {p.numeroCliente}</span>}
+              <span className="font-medium text-foreground">{p.numero}</span>
+              {(p.numeroCliente || p.rapidoSemItens) && (
+                <span className="text-xs whitespace-normal text-muted-foreground">
+                  {[p.numeroCliente && `OC ${p.numeroCliente}`, p.rapidoSemItens && "sem itens"].filter(Boolean).join(" · ")}
+                </span>
+              )}
             </div>
           ),
         },

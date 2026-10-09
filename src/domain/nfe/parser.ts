@@ -110,21 +110,22 @@ function extrairVolumes(infNFe: unknown): { volumes: number | null; pesoBruto: n
 function extrairPedidosReferidos(infNFe: unknown, det: unknown[]): string[] {
   const pedidos = new Set<string>();
 
-  const adicionar = (valor: string | null) => {
+  const adicionar = (valor: string | null, exigirDigito: boolean) => {
     if (valor === null) return;
     const limpo = valor.trim().replace(/[.,;-]+$/, "");
-    // Número de pedido tem dígito; "CONFORME ANEXO" depois de "PEDIDO DO CLIENTE:" não é.
-    if (/\d/.test(limpo)) pedidos.add(limpo);
+    // No texto livre, número de pedido tem dígito: "CONFORME ANEXO" depois de "PEDIDO DO
+    // CLIENTE:" não é. O xPed é campo próprio do pedido e vale como vier (pode ser só letras).
+    if (limpo && (!exigirDigito || /\d/.test(limpo))) pedidos.add(limpo);
   };
 
   for (const item of det) {
-    adicionar(textoOuNulo(campo(item, "prod", "xPed")));
+    adicionar(textoOuNulo(campo(item, "prod", "xPed")), false);
   }
 
   const infCpl = texto(campo(infNFe, "infAdic", "infCpl"));
   for (const padrao of PADROES_PEDIDO_INFCPL) {
     for (const casamento of infCpl.matchAll(padrao)) {
-      adicionar(casamento[1] ?? null);
+      adicionar(casamento[1] ?? null, true);
     }
   }
 
