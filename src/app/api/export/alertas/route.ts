@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { obterUsuarioLogado } from "@/lib/sessao";
-import { buscarPedidosParaAlerta } from "@/app/(app)/alertas/queries";
-import { pedidosSemNfeVencidos } from "@/domain/alerta/semNfe";
-import { obterParametroNumero } from "@/lib/parametros";
+import { buscarAlertas } from "@/app/(app)/alertas/queries";
+import { ROTULO_ALERTA } from "@/domain/alerta/fila";
 import { gerarXlsx } from "@/domain/export/xlsx";
 import { respostaXlsx } from "@/lib/resposta-xlsx";
 
@@ -10,12 +9,11 @@ export async function GET() {
   const usuario = await obterUsuarioLogado();
   if (!usuario) return NextResponse.json({ erro: "não autenticado" }, { status: 401 });
 
-  const prazoDias = await obterParametroNumero("prazo_alerta_sem_nfe_dias", 7);
-  const vencidos = pedidosSemNfeVencidos(await buscarPedidosParaAlerta(usuario), new Date(), prazoDias);
+  const { alertas } = await buscarAlertas(usuario);
   const buffer = await gerarXlsx(
     "Alertas",
-    ["Pedido", "Fábrica", "Cliente", "Dias sem NFe"],
-    vencidos.map((a) => [a.numero, a.fabrica, a.cliente, a.diasSemNfe]),
+    ["Tipo", "Alerta", "Detalhe", "O que fazer", "Dias", "Valor"],
+    alertas.map((a) => [ROTULO_ALERTA[a.tipo].titulo, a.titulo, a.detalhe, ROTULO_ALERTA[a.tipo].acao, a.dias, a.valor ?? ""]),
   );
   return respostaXlsx(buffer, "alertas.xlsx");
 }

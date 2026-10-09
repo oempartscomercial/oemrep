@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validarDadosFabrica } from "../fabrica";
+import { lerSlaDiasSemNota, validarDadosFabrica } from "../fabrica";
 
 describe("validarDadosFabrica", () => {
   it("aceita dados válidos", () => {
@@ -16,5 +16,17 @@ describe("validarDadosFabrica", () => {
     expect(validarDadosFabrica({ nome: "Bowden", cnpj: "123" })).toContain(
       "CNPJ inválido.",
     );
+  });
+});
+
+describe("lerSlaDiasSemNota", () => {
+  it("vazio usa o padrão do sistema", () => {
+    expect(lerSlaDiasSemNota("  ")).toEqual({ valor: null });
+  });
+  it("aceita dias inteiros de 1 a 365", () => {
+    expect(lerSlaDiasSemNota("15")).toEqual({ valor: 15 });
+  });
+  it("recusa zero, fração e texto", () => {
+    for (const bruto of ["0", "2.5", "abc", "400"]) expect(lerSlaDiasSemNota(bruto)).toHaveProperty("erro");
   });
 });

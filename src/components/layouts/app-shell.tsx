@@ -93,7 +93,7 @@ export function AppShell({
           </SidebarFooter>
         )}
       </Sidebar>
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <header className="flex h-12 items-center gap-2 border-b px-3 md:hidden">
           <SidebarTrigger className="size-11 md:size-7" />
           <OemLogo />

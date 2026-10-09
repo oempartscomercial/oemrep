@@ -1,0 +1,1 @@
+ALTER TABLE "Fabrica" ADD COLUMN "slaDiasSemNota" INTEGER;

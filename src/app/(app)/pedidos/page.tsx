@@ -4,6 +4,7 @@ import { obterUsuarioLogado } from "@/lib/sessao";
 import { buscarPedidosPermitidos } from "./queries";
 import { filtrarPedidos, FILTROS_PEDIDO, type FiltroPedido } from "@/domain/pedido/filtro";
 import { diasDesde, saldoAFaturar, valorDoPedido } from "@/domain/pedido/valor";
+import { buscarPrazoPadraoSemNota } from "../alertas/queries";
 import { formatarReais } from "@/domain/formato/moeda";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
@@ -49,7 +50,7 @@ export default async function PedidosPage({
     );
   }
 
-  const todos = await buscarPedidosPermitidos(usuario);
+  const [todos, prazoPadrao] = await Promise.all([buscarPedidosPermitidos(usuario), buscarPrazoPadraoSemNota()]);
   const filtrados = filtrarPedidos(todos, filtro).filter((p) => !fabricaFiltro || p.fabricaId === fabricaFiltro);
   const agora = new Date();
   const operacional = AGRUPADAS.includes(filtro);
@@ -71,6 +72,7 @@ export default async function PedidosPage({
       valor: operacional ? saldoAFaturar(valores) : valorDoPedido(valores),
       notas: pedido.notasFiscais.map((n) => n.notaFiscal),
       diasSemNota: pedido.estado === "SEM_NFE" ? diasDesde(dataRef, agora) : null,
+      prazoDias: pedido.fabrica.slaDiasSemNota ?? prazoPadrao,
       rapidoSemItens: pedido.origem === "RAPIDO" && pedido.itens.length === 0,
       estado: pedido.estado,
     };

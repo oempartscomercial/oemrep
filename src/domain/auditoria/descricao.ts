@@ -47,6 +47,7 @@ const CAMPOS: Record<string, string> = {
   valor: "Valor",
   situacao: "Etapa",
   naoContatar: "Não contatar",
+  slaDiasSemNota: "Prazo para emitir a nota (dias)",
 };
 
 const VALORES: Record<string, string> = {

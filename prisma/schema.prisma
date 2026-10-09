@@ -31,6 +31,9 @@ model Fabrica {
   flagConciliacao  Boolean            @default(false)
   // Fábrica desativada some dos formulários; histórico e pedidos continuam.
   ativo            Boolean            @default(true)
+  // Dias que a fábrica tem para emitir a nota antes de o pedido virar alerta. Vazio usa o
+  // padrão global (Parametro "prazo_alerta_sem_nfe_dias", ADR-006).
+  slaDiasSemNota   Int?
   criadoEm         DateTime           @default(now())
   clientes         ClienteFabrica[]
   usuarios         UsuarioFabrica[]

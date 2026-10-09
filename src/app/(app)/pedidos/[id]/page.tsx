@@ -13,7 +13,7 @@ import { PedidoDetalheTabs, type EventoLinha, type ItemLinha, type NotaLinha } f
 import { saldoAFaturar, valorDoPedido } from "@/domain/pedido/valor";
 import { formatarReais } from "@/domain/formato/moeda";
 import { Botao } from "@/components/patterns/botao";
-import { FilePlus2 } from "lucide-react";
+import { FilePlus2, FileText } from "lucide-react";
 
 export default async function DetalhePedidoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -138,6 +138,19 @@ export default async function DetalhePedidoPage({ params }: { params: Promise<{ 
           <dt className="text-xs text-muted-foreground">Nº do pedido do cliente</dt>
           <dd>{pedido.numeroCliente ?? "—"}</dd>
         </div>
+        {pedido.arquivoOrigemId && (
+          <div className="col-span-2 sm:col-span-4">
+            <a
+              href={`/api/pedidos/${pedido.id}/pdf`}
+              target="_blank"
+              rel="noopener"
+              className="inline-flex items-center gap-1.5 text-sm underline-offset-4 hover:underline"
+            >
+              <FileText className="size-4" aria-hidden />
+              Ver o PDF original do pedido
+            </a>
+          </div>
+        )}
         {(pedido.transportadorPrevisto || pedido.vendedor || pedido.observacao) && (
           <div className="col-span-2 sm:col-span-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
             {pedido.transportadorPrevisto && <span>Transportadora prevista: {pedido.transportadorPrevisto}{pedido.modalidadeFrete ? ` (${pedido.modalidadeFrete})` : ""}</span>}

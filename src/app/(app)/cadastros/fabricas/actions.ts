@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { obterUsuarioLogado } from "@/lib/sessao";
-import { validarDadosFabrica } from "@/domain/cadastro/fabrica";
+import { lerSlaDiasSemNota, validarDadosFabrica } from "@/domain/cadastro/fabrica";
 import { normalizarCnpj } from "@/domain/cadastro/cnpj";
 import { compararCampos } from "@/domain/auditoria/evento";
 
@@ -15,8 +15,10 @@ export async function criarFabrica(formData: FormData): Promise<{ erros: string[
   const nome = String(formData.get("nome") ?? "");
   const cnpj = String(formData.get("cnpj") ?? "");
 
+  const sla = lerSlaDiasSemNota(String(formData.get("slaDiasSemNota") ?? ""));
   const erros = validarDadosFabrica({ nome, cnpj });
-  if (erros.length > 0) return { erros };
+  if ("erro" in sla) erros.push(sla.erro);
+  if (erros.length > 0 || "erro" in sla) return { erros };
 
   const cnpjNormalizado = normalizarCnpj(cnpj);
   if (await prisma.fabrica.findUnique({ where: { cnpj: cnpjNormalizado } })) {
@@ -24,9 +26,9 @@ export async function criarFabrica(formData: FormData): Promise<{ erros: string[
   }
 
   await prisma.$transaction(async (tx) => {
-    const fabrica = await tx.fabrica.create({ data: { nome, cnpj: cnpjNormalizado } });
+    const fabrica = await tx.fabrica.create({ data: { nome, cnpj: cnpjNormalizado, slaDiasSemNota: sla.valor } });
     await tx.eventoAuditoria.createMany({
-      data: compararCampos("Fabrica", fabrica.id, usuario.id, {}, { nome: fabrica.nome, cnpj: fabrica.cnpj }),
+      data: compararCampos("Fabrica", fabrica.id, usuario.id, {}, { nome: fabrica.nome, cnpj: fabrica.cnpj, ...(fabrica.slaDiasSemNota !== null ? { slaDiasSemNota: fabrica.slaDiasSemNota } : {}) }),
     });
   });
 
@@ -43,8 +45,10 @@ export async function editarFabrica(id: string, formData: FormData): Promise<{ e
 
   const nome = String(formData.get("nome") ?? "");
   const cnpj = String(formData.get("cnpj") ?? "");
+  const sla = lerSlaDiasSemNota(String(formData.get("slaDiasSemNota") ?? ""));
   const erros = validarDadosFabrica({ nome, cnpj });
-  if (erros.length > 0) return { erros };
+  if ("erro" in sla) erros.push(sla.erro);
+  if (erros.length > 0 || "erro" in sla) return { erros };
 
   const atual = await prisma.fabrica.findUnique({ where: { id } });
   if (!atual) return { erros: ["Fábrica não encontrada."] };
@@ -53,9 +57,15 @@ export async function editarFabrica(id: string, formData: FormData): Promise<{ e
   if (dono && dono.id !== id) return { erros: ["Já existe uma fábrica com este CNPJ."] };
 
   await prisma.$transaction(async (tx) => {
-    await tx.fabrica.update({ where: { id }, data: { nome, cnpj: cnpjNormalizado } });
+    await tx.fabrica.update({ where: { id }, data: { nome, cnpj: cnpjNormalizado, slaDiasSemNota: sla.valor } });
     await tx.eventoAuditoria.createMany({
-      data: compararCampos("Fabrica", id, usuario.id, { nome: atual.nome, cnpj: atual.cnpj }, { nome, cnpj: cnpjNormalizado }),
+      data: compararCampos(
+        "Fabrica",
+        id,
+        usuario.id,
+        { nome: atual.nome, cnpj: atual.cnpj, slaDiasSemNota: atual.slaDiasSemNota },
+        { nome, cnpj: cnpjNormalizado, slaDiasSemNota: sla.valor },
+      ),
     });
   });
 
