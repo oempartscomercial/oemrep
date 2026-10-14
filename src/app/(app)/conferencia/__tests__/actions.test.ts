@@ -32,7 +32,7 @@ async function cenario(sufixo: string, opcoes: { clienteSemCnpj?: boolean } = {}
   const chaveAcesso = `3526078100000000${sufixo}550010000094011123456789`.slice(0, 44);
   const xml = (quantidade = 4) =>
     montarXmlNFe({
-      chaveAcesso, numero: `94${sufixo}`, emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cnpjCliente,
+      chaveAcesso, numero: `94${sufixo}`, emitenteCnpj: fabrica.cnpj!, destinatarioCnpj: cnpjCliente,
       itens: [{ referencia: "REF-1", quantidade, valorUnitario: 25 }],
     });
   const limpar = async () => {

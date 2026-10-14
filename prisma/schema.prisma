@@ -27,7 +27,9 @@ enum TipoConfirmacaoEstoque {
 model Fabrica {
   id               String             @id @default(cuid())
   nome             String
-  cnpj             String             @unique
+  // Opcional: a fábrica entra pelo histórico de pedidos antes de alguém informar o CNPJ.
+  // Sem CNPJ, o PDF do pedido e a nota dela não são reconhecidos sozinhos.
+  cnpj             String?            @unique
   flagConciliacao  Boolean            @default(false)
   // Fábrica desativada some dos formulários; histórico e pedidos continuam.
   ativo            Boolean            @default(true)

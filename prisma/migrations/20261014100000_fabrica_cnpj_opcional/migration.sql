@@ -1,0 +1,1 @@
+ALTER TABLE "Fabrica" ALTER COLUMN "cnpj" DROP NOT NULL;

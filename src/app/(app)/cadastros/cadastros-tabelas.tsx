@@ -6,7 +6,7 @@ import { Selo } from "@/components/patterns/status-badge";
 export interface FabricaLinha {
   id: string;
   nome: string;
-  cnpj: string;
+  cnpj: string | null;
   ativo: boolean;
 }
 export interface ClienteLinha {
@@ -49,7 +49,7 @@ export function FabricasTabela({ fabricas }: { fabricas: FabricaLinha[] }) {
       vazio="Nenhuma fábrica cadastrada."
       columns={[
         { id: "nome", header: "Nome", isRowHeader: true, render: (f) => <span className="font-medium">{f.nome}</span> },
-        { id: "cnpj", header: "CNPJ", render: (f) => f.cnpj },
+        { id: "cnpj", header: "CNPJ", render: (f) => f.cnpj ?? <span className="text-warning">Falta o CNPJ</span> },
         { id: "situacao", header: "Situação", render: (f) => <Situacao ativo={f.ativo} /> },
       ]}
     />

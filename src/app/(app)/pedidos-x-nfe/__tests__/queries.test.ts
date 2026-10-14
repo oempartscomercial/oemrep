@@ -45,7 +45,7 @@ describe("buscarPedidosParaGap", () => {
     const nota = await prisma.notaFiscal.create({
       data: {
         numero: "9001", chaveAcesso: "35260791000001000191550010000090011000000001",
-        emitenteCnpj: fabrica.cnpj, destinatarioCnpj: cliente.cnpj!, dataEmissao: new Date("2026-07-01"),
+        emitenteCnpj: fabrica.cnpj!, destinatarioCnpj: cliente.cnpj!, dataEmissao: new Date("2026-07-01"),
         totalProdutos: 1200, totalNota: 1200,
       },
     });

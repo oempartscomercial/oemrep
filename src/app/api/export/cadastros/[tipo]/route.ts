@@ -10,7 +10,7 @@ const simNao = (v: boolean) => (v ? "Sim" : "Não");
 async function planilha(tipo: string): Promise<[string, string[], CelulaXlsx[][]] | null> {
   if (tipo === "fabricas") {
     const fabricas = await prisma.fabrica.findMany({ orderBy: { nome: "asc" } });
-    return ["Fábricas", ["Nome", "CNPJ", "Ativa"], fabricas.map((f) => [f.nome, f.cnpj, simNao(f.ativo)])];
+    return ["Fábricas", ["Nome", "CNPJ", "Ativa"], fabricas.map((f) => [f.nome, f.cnpj ?? "", simNao(f.ativo)])];
   }
   if (tipo === "clientes") {
     const clientes = await prisma.cliente.findMany({

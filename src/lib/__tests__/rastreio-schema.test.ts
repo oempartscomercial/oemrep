@@ -16,7 +16,7 @@ describe("schema de EventoRastreio", () => {
       data: {
         numero: "5678",
         chaveAcesso: "35260744555666000188550010000056781123456789",
-        emitenteCnpj: fabrica.cnpj,
+        emitenteCnpj: fabrica.cnpj!,
         destinatarioCnpj: cliente.cnpj!,
         dataEmissao: new Date("2026-07-01T10:00:00-03:00"),
         totalProdutos: 100,
