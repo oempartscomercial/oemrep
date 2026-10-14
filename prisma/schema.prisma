@@ -117,6 +117,25 @@ model Usuario {
   mensagensEnviadas    Mensagem[]         @relation("MensagemEnviadaPor")
   arquivosEnviados     ArquivoImportado[]
   importacoesPedido    ImportacaoPedido[]
+  tokensApi            TokenApi[]
+}
+
+// Acesso do Claude ao CRM pelo servidor MCP (/api/mcp). O segredo aparece uma única vez,
+// na criação; aqui fica só o hash SHA-256. Tudo o que o Claude grava sai em nome do usuário
+// dono do token. Token revogado deixa de valer na hora e não volta.
+model TokenApi {
+  id          String    @id @default(cuid())
+  usuarioId   String
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id])
+  nome        String
+  // Começo do token, para a pessoa reconhecer qual é qual na lista (ex.: "oem_k3Zp9Q").
+  prefixo     String
+  hash        String    @unique
+  criadoEm    DateTime  @default(now())
+  ultimoUsoEm DateTime?
+  revogadoEm  DateTime?
+
+  @@index([usuarioId])
 }
 
 model UsuarioFabrica {
@@ -551,6 +570,8 @@ enum OrigemInteracao {
   USUARIO
   AUTOMACAO
   IMPORTACAO
+  // Gravada por um usuário conversando com o Claude, pelo servidor MCP (/api/mcp).
+  CLAUDE
 }
 
 // Linha do tempo da empresa: o que aconteceu, com quem e por qual canal.

@@ -6,8 +6,17 @@ import { obterUsuarioLogado, type UsuarioSessao } from "@/lib/sessao";
 import { podeVerCrm } from "@/lib/authz";
 import { compararCampos } from "@/domain/auditoria/evento";
 import type { CanalContato } from "@prisma/client";
-import { mesmoTelefone, normalizarTelefone } from "@/domain/mensagens/telefone";
+import { normalizarTelefone } from "@/domain/mensagens/telefone";
 import { chaveDuplicidade, numeroDoContato, validarContato } from "@/domain/crm/contato";
+import {
+  conflitoDoNumero,
+  criarContato as criarContatoCrm,
+  MENSAGEM_DUPLICADO,
+  MENSAGEM_OUTRA_EMPRESA,
+  ORIGENS_CONTATO as ORIGENS,
+  textoOuNulo,
+  type EntradaContato,
+} from "@/lib/crm/contatos";
 import { tipoDeEnvioSugerido, validarRascunho, rascunhoDeFollowUp, rascunhoDePrimeiroContato, type TipoEnvio } from "@/domain/mensagens/rascunho";
 import { verificarEnvio, type Bloqueio } from "@/domain/mensagens/envio";
 import { despachar, lerLimites, type ResultadoDoDespacho } from "@/lib/whatsapp/despachar";
@@ -19,7 +28,6 @@ import { envioAutomaticoLigado } from "@/lib/whatsapp/transporte";
 
 const SEM_SESSAO = "Sessão expirada. Faça login novamente.";
 const SEM_PERMISSAO = "Você não tem permissão para acessar o CRM.";
-const ORIGENS = ["PUBLICADO_PELA_EMPRESA", "INDICACAO", "BASE_PROFISSIONAL", "RELACIONAMENTO"] as const;
 
 export type Resultado = { erros: string[] };
 export type ResultadoDoRascunho = Resultado & { avisos?: string[]; id?: string };
@@ -259,15 +267,7 @@ export async function reativarContato(entrada: { contatoId: string }): Promise<R
   return { erros: [] };
 }
 
-export type EntradaContato = {
-  clienteId: string;
-  nome?: string;
-  funcao?: string;
-  canal: string;
-  valor: string;
-  fonte: string;
-  observacoes?: string;
-};
+export type { EntradaContato } from "@/lib/crm/contatos";
 
 export type EntradaEdicaoContato = {
   contatoId: string;
@@ -281,73 +281,15 @@ export type EntradaEdicaoContato = {
   servePara?: string;
 };
 
-const textoOuNulo = (v?: string) => (v?.trim() ? v.trim() : null);
-const semValores = (campos: Record<string, unknown>) => Object.fromEntries(Object.keys(campos).map((c) => [c, null]));
 const MENSAGEM_CONVERSA = "Este número já tem conversa. Cadastre um contato novo em vez de trocar o número.";
-const MENSAGEM_OUTRA_EMPRESA = "Este número já está ligado a outra empresa.";
-const MENSAGEM_NAO_CONTATAR = "Este número está marcado como 'não contatar'. Reative o contato antes de cadastrá-lo de novo.";
-
-/**
- * Antes de gravar um número: ele não pode estar em outra empresa (a conversa ficaria sem dono)
- * nem em contato desta empresa marcado "não contatar" (cadastrar de novo por outro canal
- * contornaria a supressão). Compara pelo número normalizado, em qualquer canal de telefone.
- */
-async function conflitoDoNumero(numero: string, clienteId: string, ignorarContatoId?: string): Promise<string | null> {
-  const todos = await prisma.contato.findMany({
-    where: { canal: { in: ["WHATSAPP", "TELEFONE"] }, ...(ignorarContatoId ? { id: { not: ignorarContatoId } } : {}) },
-    select: { clienteId: true, valor: true, naoContatar: true },
-  });
-  const iguais = todos.filter((c) => {
-    const n = normalizarTelefone(c.valor);
-    return n !== null && mesmoTelefone(n, numero);
-  });
-  if (iguais.some((c) => c.clienteId !== clienteId)) return MENSAGEM_OUTRA_EMPRESA;
-  if (iguais.some((c) => c.naoContatar)) return MENSAGEM_NAO_CONTATAR;
-  return null;
-}
-const MENSAGEM_DUPLICADO = "Esta empresa já tem esse contato cadastrado.";
 
 /** Cadastra um contato na empresa. Se o número já aparece numa conversa sem empresa, a conversa passa a ser dele. */
 export async function criarContato(entrada: EntradaContato): Promise<Resultado & { id?: string }> {
   const sessao = await sessaoCrm();
   if ("erro" in sessao) return { erros: [sessao.erro] };
-  const cliente = await prisma.cliente.findUnique({ where: { id: entrada.clienteId }, select: { id: true } });
-  if (!cliente) return { erros: ["Empresa não encontrada."] };
-
-  const validacao = validarContato(entrada);
-  const valor = validacao.valorNormalizado;
-  if (validacao.erros.length > 0 || valor === undefined) return { erros: validacao.erros };
-  const canal = entrada.canal as CanalContato;
-  const numero = numeroDoContato(canal, valor);
-
-  const outros = await prisma.contato.findMany({ where: { clienteId: cliente.id, canal }, select: { valor: true } });
-  const chave = chaveDuplicidade(canal, valor);
-  if (outros.some((o) => chaveDuplicidade(canal, o.valor) === chave)) return { erros: [MENSAGEM_DUPLICADO] };
-
-  const conversa = numero ? await prisma.conversa.findUnique({ where: { linha_numero: { linha: "PROSPECCAO", numero } } }) : null;
-  if (conversa?.clienteId && conversa.clienteId !== cliente.id) return { erros: [MENSAGEM_OUTRA_EMPRESA] };
-  const conflito = numero ? await conflitoDoNumero(numero, cliente.id) : null;
-  if (conflito) return { erros: [conflito] };
-
-  const dados = {
-    nome: textoOuNulo(entrada.nome),
-    funcao: textoOuNulo(entrada.funcao),
-    canal,
-    valor,
-    fonte: entrada.fonte.trim(),
-    observacoes: textoOuNulo(entrada.observacoes),
-  };
-  const { usuario } = sessao;
-  const contato = await prisma.$transaction(async (tx) => {
-    const novo = await tx.contato.create({ data: { ...dados, clienteId: cliente.id } });
-    if (conversa && !conversa.clienteId) {
-      await tx.conversa.update({ where: { id: conversa.id }, data: { clienteId: cliente.id, contatoId: novo.id, motivoSemVinculo: null } });
-    }
-    await tx.eventoAuditoria.createMany({ data: compararCampos("Contato", novo.id, usuario.id, semValores(dados), dados) });
-    return novo;
-  });
-  revalidar(cliente.id);
-  return { erros: [], id: contato.id };
+  const r = await criarContatoCrm(sessao.usuario.id, entrada);
+  if (r.erros.length === 0) revalidar(entrada.clienteId);
+  return r;
 }
 
 /**

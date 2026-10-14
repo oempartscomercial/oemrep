@@ -48,4 +48,15 @@ describe("descreverEvento", () => {
       para: "B",
     });
   });
+
+  it("descreve o acesso do Claude (token) sem mostrar o segredo", () => {
+    const n = { registros: { t1: "Claude do Rômulo" }, valores: {} };
+    expect(descreverEvento(evento("revogadoEm", null, "14/10/2026", "TokenApi", "t1"), n)).toEqual({
+      registro: "Acesso do Claude Claude do Rômulo",
+      campo: "Revogado em",
+      de: "—",
+      para: "14/10/2026",
+    });
+    expect(descreverEvento(evento("prefixo", null, "oem_abc123", "TokenApi", "t1"), n).campo).toBe("Começo do token");
+  });
 });

@@ -25,6 +25,7 @@ const ENTIDADES: Record<string, string> = {
   Fabrica: "Fábrica",
   Usuario: "Usuário",
   HistoricoMensal: "Histórico mensal",
+  TokenApi: "Acesso do Claude",
 };
 
 const CAMPOS: Record<string, string> = {
@@ -48,6 +49,8 @@ const CAMPOS: Record<string, string> = {
   situacao: "Etapa",
   naoContatar: "Não contatar",
   slaDiasSemNota: "Prazo para emitir a nota (dias)",
+  prefixo: "Começo do token",
+  revogadoEm: "Revogado em",
 };
 
 const VALORES: Record<string, string> = {

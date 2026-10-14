@@ -83,7 +83,7 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
       titulo: `${CANAL[i.canal] ?? i.canal}${i.comQuem ? ` · ${i.comQuem}` : ""}${i.oportunidade ? ` · ${i.oportunidade.fabrica.nome}` : ""}`,
       descricao: [i.resumo, i.resultado && `Resultado: ${i.resultado}`].filter(Boolean).join(" — "),
       data: i.data.toLocaleDateString("pt-BR"),
-      autor: i.origem === "USUARIO" ? i.usuario?.nome : i.origem === "AUTOMACAO" ? "automação" : "importação",
+      autor: i.origem === "USUARIO" ? i.usuario?.nome : i.origem === "CLAUDE" ? `${i.usuario?.nome ?? "—"}, pelo Claude` : i.origem === "AUTOMACAO" ? "automação" : "importação",
     })),
     ...empresa.pedidos.map((p) => ({
       id: `p-${p.id}`,

@@ -16,6 +16,11 @@ describe("proteção de rotas", () => {
     expect(rotaProtegida("/api/cron/whatsapp")).toBe(false);
     expect(rotaProtegida("/api/cronista")).toBe(true);
   });
+  it("não protege o servidor MCP do Claude (quem o protege é o token, não a sessão)", () => {
+    expect(rotaProtegida("/api/mcp")).toBe(false);
+    expect(rotaProtegida("/api/mcp/oem_abc")).toBe(false);
+    expect(rotaProtegida("/api/mcpx")).toBe(true);
+  });
   it("o resto de /api continua protegido", () => {
     expect(rotaProtegida("/api/clientes")).toBe(true);
     expect(rotaProtegida("/api/whatsapp-outra-coisa")).toBe(true);

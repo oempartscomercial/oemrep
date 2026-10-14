@@ -79,6 +79,11 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   como destaque). Nas telas use os wrappers de `src/components/patterns` (`Botao`,
   `CampoTexto`/`CampoSelect`/`CampoCheckbox`, `DataTable`, `StatusBadge`/`Selo`, `PageHeader`),
   não os primitivos direto. Catálogo em `/design-system`. **O CRM nasce neste padrão.**
+- **Claude no CRM (MCP)** (`docs/adr/ADR-016-mcp-claude.md`): servidor MCP em `/api/mcp`
+  (token no cabeçalho Bearer ou em `/api/mcp/<token>` para o conector do claude.ai), tela
+  "Conectar o Claude" para gerar e revogar tokens (`TokenApi`, só o hash no banco). As regras de
+  gravação do CRM moram em `src/lib/crm` e servem às telas e ao MCP; o que o Claude grava tem
+  `Interacao.origem = CLAUDE`.
 
 Próximo passo: **MVP completo (Épicos 1–7).** Os 7 épicos do roteiro estão concluídos.
 Evoluções futuras (V2+) — conciliação Autoflex, OCR de DANFE, CCe, parâmetros por

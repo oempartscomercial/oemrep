@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, Bell, Building2, FileCheck2, FileSearch, House, Kanban, ListChecks, MessageCircle, Package, Settings, Truck, type LucideIcon } from "lucide-react";
+import { AlertTriangle, BarChart3, Bell, Bot, Building2, FileCheck2, FileSearch, House, Kanban, ListChecks, MessageCircle, Package, Settings, Truck, type LucideIcon } from "lucide-react";
 import type { PerfilUsuario } from "@/lib/authz";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; grupo: string };
@@ -17,6 +17,7 @@ const ITENS: NavItem[] = [
   { href: "/pedidos-x-nfe", label: "Pedidos × NFe", icon: BarChart3, grupo: "Análise" },
   { href: "/alertas", label: "Alertas", icon: Bell, grupo: "Análise" },
   { href: "/auditoria", label: "Auditoria", icon: FileSearch, grupo: "Administração" },
+  { href: "/conectar-claude", label: "Conectar o Claude", icon: Bot, grupo: "Administração" },
   { href: "/cadastros", label: "Cadastros", icon: Settings, grupo: "Administração" },
 ];
 
@@ -26,6 +27,7 @@ const PERFIS_DA_ROTA: Record<string, PerfilUsuario[]> = {
   "/empresas": ["ADMIN", "ANALISTA"],
   "/conversas": ["ADMIN", "ANALISTA"],
   "/auditoria": ["ADMIN", "ANALISTA"],
+  "/conectar-claude": ["ADMIN", "ANALISTA"],
   "/cadastros": ["ADMIN"],
 };
 
