@@ -8,7 +8,6 @@ import { Botao } from "@/components/patterns/botao";
 import { marcarComoEnviada } from "@/app/(app)/conversas/actions";
 
 export const AVISO_SEM_ENVIO_AUTOMATICO = "O envio automático não está ligado. Abra no WhatsApp do celular de prospecção, envie e toque em Já enviei.";
-const AVISO_COM_ENVIO_AUTOMATICO = "Se enviar pelo celular, toque em Já enviei logo depois, para ela não sair duas vezes.";
 
 type Props = {
   id: string;
@@ -21,8 +20,17 @@ type Props = {
   aoMarcar?: () => void;
 };
 
-/** Envio manual assistido: abre a conversa no WhatsApp do celular e, depois, "Já enviei". */
-export function EnvioPeloCelular({ id, link, nome, envioAutomatico, aoMarcar }: Props) {
+/**
+ * Envio manual assistido: abre a conversa no WhatsApp do celular e, depois, "Já enviei".
+ * Com o envio automático ligado não aparece: a aprovada sai sozinha e enviar também pelo
+ * celular faria a mensagem chegar duas vezes.
+ */
+export function EnvioPeloCelular(props: Props) {
+  if (props.envioAutomatico) return null;
+  return <EnvioManual {...props} />;
+}
+
+function EnvioManual({ id, link, nome, aoMarcar }: Props) {
   const router = useRouter();
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -41,9 +49,9 @@ export function EnvioPeloCelular({ id, link, nome, envioAutomatico, aoMarcar }: 
 
   return (
     <div className="flex w-full flex-col items-end gap-1.5">
-      <p className="max-w-sm text-right text-xs text-muted-foreground">{envioAutomatico ? AVISO_COM_ENVIO_AUTOMATICO : AVISO_SEM_ENVIO_AUTOMATICO}</p>
+      <p className="max-w-sm text-right text-xs text-muted-foreground">{AVISO_SEM_ENVIO_AUTOMATICO}</p>
       <div className="flex flex-wrap justify-end gap-1.5">
-        <Botao size="xs" className="h-11 md:h-6" variante={envioAutomatico ? "secundario" : "primario"} icone={<MessageCircle />} href={link} novaAba>
+        <Botao size="xs" className="h-11 md:h-6" variante="primario" icone={<MessageCircle />} href={link} novaAba>
           Abrir no WhatsApp
         </Botao>
         <Botao size="xs" className="h-11 md:h-6" icone={<Check />} carregando={ocupado} onClick={() => setConfirmando(true)}>
