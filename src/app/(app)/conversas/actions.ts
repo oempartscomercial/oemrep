@@ -11,6 +11,8 @@ import { chaveDuplicidade, numeroDoContato, validarContato } from "@/domain/crm/
 import { tipoDeEnvioSugerido, validarRascunho, rascunhoDeFollowUp, rascunhoDePrimeiroContato, type TipoEnvio } from "@/domain/mensagens/rascunho";
 import { verificarEnvio, type Bloqueio } from "@/domain/mensagens/envio";
 import { despachar, lerLimites, type ResultadoDoDespacho } from "@/lib/whatsapp/despachar";
+import { registrarEnvioManual } from "@/lib/whatsapp/envio-manual";
+import { envioAutomaticoLigado } from "@/lib/whatsapp/transporte";
 
 // Todo envio passa por aqui em quatro passos: preparar (rascunho), aprovar (uma pessoa),
 // despachar (proteções fixas) e, se não saiu, tentar de novo ou cancelar. A IA não aprova.
@@ -131,6 +133,19 @@ export async function tentarEnviar(entrada: { id: string }): Promise<ResultadoDa
   const resultado = await despachar(m.id);
   revalidar(m.conversa.clienteId);
   return { erros: [], status: resultado.status, motivo: resultado.motivo };
+}
+
+/**
+ * "Já enviei": sem o envio automático, a pessoa envia a mensagem aprovada pelo WhatsApp do
+ * celular de prospecção e confirma aqui. Mesma permissão de aprovar; tocar duas vezes não repete nada.
+ */
+export async function marcarComoEnviada(entrada: { id: string }): Promise<Resultado> {
+  const sessao = await sessaoCrm();
+  if ("erro" in sessao) return { erros: [sessao.erro] };
+  const r = await registrarEnvioManual(entrada.id, { usuarioId: sessao.usuario.id, nome: sessao.usuario.nome });
+  if (!r.ok) return { erros: [r.motivo] };
+  revalidar(r.clienteId);
+  return { erros: [] };
 }
 
 export async function cancelarMensagem(entrada: { id: string }): Promise<Resultado> {
@@ -419,6 +434,8 @@ export type ConsultaDeEnvio = {
   /** O que a pessoa disse por último, para quem escreve saber a quem e o que está respondendo. */
   ultimaRecebida?: string;
   numero?: string;
+  /** Falso = a aprovada não sai sozinha: a pessoa envia pelo celular e toca em "Já enviei". */
+  envioAutomatico?: boolean;
 };
 
 /** Abre o compositor: o tipo da mensagem, um texto-base e o que impediria (ou seguraria) o envio agora. */
@@ -471,5 +488,6 @@ export async function consultarEnvio(entrada: { contatoId: string }): Promise<Co
     pendente: pendente?.texto ? { texto: pendente.texto, status: pendente.status as "RASCUNHO" | "APROVADA" } : undefined,
     ultimaRecebida: recebida?.texto ?? undefined,
     numero: numero ?? undefined,
+    envioAutomatico: envioAutomaticoLigado(),
   };
 }

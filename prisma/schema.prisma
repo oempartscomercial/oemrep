@@ -112,6 +112,7 @@ model Usuario {
   oportunidadesCriadas Oportunidade[]
   mensagensCriadas     Mensagem[]         @relation("MensagemCriadaPor")
   mensagensAprovadas   Mensagem[]         @relation("MensagemAprovadaPor")
+  mensagensEnviadas    Mensagem[]         @relation("MensagemEnviadaPor")
   arquivosEnviados     ArquivoImportado[]
   importacoesPedido    ImportacaoPedido[]
 }
@@ -783,6 +784,11 @@ model Mensagem {
   aprovadaPor         Usuario?               @relation("MensagemAprovadaPor", fields: [aprovadaPorId], references: [id])
   aprovadaEm          DateTime?
   enviadaEm           DateTime?
+  // Enviada à mão pelo celular de prospecção (envio automático desligado): quem tocou em
+  // "Já enviei". Mensagem enviada pelo transporte fica com envioManual falso.
+  envioManual         Boolean                @default(false)
+  enviadaPorId        String?
+  enviadaPor          Usuario?               @relation("MensagemEnviadaPor", fields: [enviadaPorId], references: [id])
   erro                String?
   // Por que a mensagem aprovada ainda não saiu (fora do horário, linha caída...).
   motivoBloqueio      String?

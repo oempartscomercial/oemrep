@@ -7,6 +7,9 @@ import { AcoesDaMensagem } from "@/components/crm/acoes-da-mensagem";
 import { BotaoEscrever } from "@/components/crm/contato-acoes";
 import { listarConversas, listarFollowUpsDeHoje, listarPendentes } from "./queries";
 import { ConversasTabela, type ConversaLinha } from "./conversas-tabela";
+import { envioPeloCelularDaConversa } from "@/domain/mensagens/envio-manual";
+import { lerLimites } from "@/lib/whatsapp/despachar";
+import { envioAutomaticoLigado } from "@/lib/whatsapp/transporte";
 
 const ROTULO_TIPO: Record<string, string> = { PRIMEIRO_CONTATO: "Primeiro contato", FOLLOW_UP: "Follow-up", RESPOSTA: "Resposta" };
 
@@ -25,7 +28,9 @@ function Bloco({ titulo, dica, children }: { titulo: string; dica?: string; chil
 const quando = (d: Date) => `${formatarDia(diaEmSaoPaulo(d))} ${formatarHora(d)}`;
 
 export default async function ConversasPage() {
-  const [{ conversas, semTelefone, limite }, pendentes, followUps] = await Promise.all([listarConversas(), listarPendentes(), listarFollowUpsDeHoje()]);
+  const [{ conversas, semTelefone, limite }, pendentes, followUps, limites] = await Promise.all([listarConversas(), listarPendentes(), listarFollowUpsDeHoje(), lerLimites()]);
+  const envioAutomatico = envioAutomaticoLigado();
+  const agora = new Date();
 
   const linhas: ConversaLinha[] = conversas.map((c) => {
     const ultima = c.mensagens[0];
@@ -52,23 +57,38 @@ export default async function ConversasPage() {
       <PageHeader titulo="Conversas" descricao="Mensagens da linha de prospecção no WhatsApp. Você escreve e aprova; nada sai sozinho." />
 
       {pendentes.length > 0 && (
-        <Bloco titulo={`Para aprovar (${pendentes.length})`} dica="Nada sai sem o seu OK. Aprovada que não saiu está esperando horário, limite ou a linha.">
+        <Bloco
+          titulo={`Para aprovar (${pendentes.length})`}
+          dica={
+            envioAutomatico
+              ? "Nada sai sem o seu OK. Aprovada que não saiu está esperando horário, limite ou a linha."
+              : "Nada sai sem o seu OK. O envio automático não está ligado: depois de aprovar, você envia pelo celular de prospecção."
+          }
+        >
           {pendentes.map((m) => (
             <li key={m.id} className="flex flex-col gap-1 py-2 text-sm">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                 <Link href={`/empresas/${m.conversa.cliente?.id}`} className="font-medium hover:underline">
                   {m.conversa.cliente?.nomeFantasia ?? "Sem empresa"}
                 </Link>
-                <span className="text-xs text-muted-foreground">{ROTULO_TIPO[m.tipoEnvio ?? ""] ?? ""} · {m.status === "RASCUNHO" ? "rascunho" : "aprovada, esperando"}</span>
+                <span className="text-xs text-muted-foreground">{ROTULO_TIPO[m.tipoEnvio ?? ""] ?? ""} · {m.status === "RASCUNHO" ? "rascunho" : envioAutomatico ? "aprovada, esperando" : "aprovada, envie pelo celular"}</span>
               </div>
               <p className="whitespace-pre-wrap break-words">{m.texto}</p>
-              {m.motivoBloqueio && <p className="text-xs text-warning">{m.motivoBloqueio}</p>}
+              {m.motivoBloqueio && envioAutomatico && <p className="text-xs text-warning">{m.motivoBloqueio}</p>}
               {(m.status === "RASCUNHO" || m.status === "APROVADA") && m.texto && <AcoesDaMensagem
                   id={m.id}
                   status={m.status}
                   texto={m.texto}
                   destinatario={{ nome: m.conversa.contato?.nome ?? m.conversa.cliente?.nomeFantasia ?? "o contato", numero: formatarNumero(m.conversa.numero) }}
-                  ultimaRecebida={m.conversa.mensagens[0]?.texto ?? null}
+                  ultimaRecebida={m.conversa.mensagens.find((x) => x.direcao === "ENTRADA" && x.texto)?.texto ?? null}
+                  envioAutomatico={envioAutomatico}
+                  envioPeloCelular={
+                    envioPeloCelularDaConversa(
+                      { numero: m.conversa.numero, empresa: m.conversa.cliente, contato: m.conversa.contato, mensagens: m.conversa.mensagens },
+                      limites,
+                      agora,
+                    )[m.id]
+                  }
                 />}
             </li>
           ))}

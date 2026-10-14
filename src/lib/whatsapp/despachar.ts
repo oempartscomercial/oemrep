@@ -3,9 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { obterParametroNumero } from "@/lib/parametros";
 import { verificarEnvio, type Limites } from "@/domain/mensagens/envio";
 import { diaEmSaoPaulo } from "@/domain/mensagens/exibicao";
-import { resumoDoMovimento } from "@/domain/crm/funil";
-import { proximoDiaUtil, somarDias } from "@/domain/crm/prazo";
 import { ErroDeEnvio, obterTransporte, type EstadoDaLinha, type TransporteWhatsapp } from "./transporte";
+import { aplicarEfeitosDoEnvio } from "./efeitos";
 
 // Envio de mensagem JÁ aprovada por uma pessoa (ADR-015 §3). Aqui só se aplicam as proteções
 // fixas e se chama o transporte; ninguém aprova nada neste arquivo.
@@ -14,7 +13,7 @@ import { ErroDeEnvio, obterTransporte, type EstadoDaLinha, type TransporteWhatsa
 // quem agenda decide por eles, não pelo texto do motivo.
 export type ResultadoDoDespacho = { status: "ENVIADA" | "APROVADA" | "CANCELADA" | "FALHOU" | "IGNORADA"; motivo?: string; codigos?: string[] };
 
-const JA_SAIU = ["ENVIANDO", "ENVIADA", "ENTREGUE", "LIDA"] as const;
+export const JA_SAIU = ["ENVIANDO", "ENVIADA", "ENTREGUE", "LIDA"] as const;
 
 export async function lerLimites(): Promise<Limites> {
   const [horarioInicio, horarioFim, maxPrimeirosPorDia, diasEntreMensagens, maxTentativas] = await Promise.all([
@@ -107,7 +106,7 @@ export async function despachar(
   }
 
   // A mensagem já saiu; falha nos efeitos no CRM não a desfaz.
-  await aplicarEfeitosDoEnvio(mensagem.id, agora, limites.diasEntreMensagens).catch((erro) => {
+  await prisma.$transaction((tx) => aplicarEfeitosDoEnvio(tx, mensagem.id, agora, limites.diasEntreMensagens)).catch((erro) => {
     console.error("[whatsapp] mensagem enviada, mas os efeitos no CRM falharam", erro);
   });
   return { status: "ENVIADA" };
@@ -116,40 +115,4 @@ export async function despachar(
 async function cancelar(id: string, motivo: string): Promise<ResultadoDoDespacho> {
   await prisma.mensagem.updateMany({ where: { id, status: "APROVADA" }, data: { status: "CANCELADA", motivoBloqueio: motivo } });
   return { status: "CANCELADA", motivo };
-}
-
-// Primeiro contato leva a empresa de "aprovada" para "em contato"; follow-up renova o passo de
-// acompanhar. Resposta não mexe em nada: o Rômulo cuida do passo dele. Movimento automático,
-// com passo e linha do tempo, como nas demais automações do CRM.
-async function aplicarEfeitosDoEnvio(mensagemId: string, agora: Date, diasEntre: number) {
-  const m = await prisma.mensagem.findUniqueOrThrow({ where: { id: mensagemId }, include: { conversa: { include: { cliente: true, contato: true } } } });
-  const empresa = m.conversa.cliente;
-  const responsavelId = m.aprovadaPorId;
-  if (!empresa || !responsavelId || m.tipoEnvio === "RESPOSTA") return;
-
-  const primeiro = m.tipoEnvio === "PRIMEIRO_CONTATO" && empresa.situacao === "APROVADA";
-  const renova = m.tipoEnvio === "FOLLOW_UP" && empresa.situacao === "EM_CONTATO";
-  if (!primeiro && !renova) return;
-
-  const quem = m.conversa.contato?.nome ?? m.conversa.nomeNoWhatsapp ?? "o contato";
-  const prazo = proximoDiaUtil(somarDias(diaEmSaoPaulo(agora), diasEntre));
-  await prisma.$transaction(async (tx) => {
-    await tx.proximoPasso.updateMany({ where: { clienteId: empresa.id, oportunidadeId: null, concluidoEm: null }, data: { concluidoEm: agora } });
-    await tx.proximoPasso.create({
-      data: { clienteId: empresa.id, acao: `Acompanhar resposta de ${quem}`, prazo: new Date(`${prazo}T00:00:00Z`), responsavelId },
-    });
-    if (primeiro) await tx.cliente.update({ where: { id: empresa.id }, data: { situacao: "EM_CONTATO" } });
-    await tx.interacao.create({
-      data: {
-        clienteId: empresa.id,
-        data: agora,
-        canal: "WHATSAPP",
-        comQuem: quem,
-        origem: "AUTOMACAO",
-        resumo: primeiro
-          ? `${resumoDoMovimento("APROVADA", "EM_CONTATO", {}, true)} Primeira mensagem enviada pelo WhatsApp.`
-          : "Follow-up enviado pelo WhatsApp.",
-      },
-    });
-  });
 }

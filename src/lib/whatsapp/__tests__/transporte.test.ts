@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { criarTransporteEvolution, criarTransporteSimulado, ErroDeEnvio, obterTransporte } from "../transporte";
+import { criarTransporteEvolution, criarTransporteSimulado, envioAutomaticoLigado, ErroDeEnvio, obterTransporte } from "../transporte";
 
 const cfg = { url: "https://evo.exemplo.com/", apikey: "chave-secreta", instancia: "oem" };
 const resposta = (corpo: unknown, status = 200) => new Response(JSON.stringify(corpo), { status, headers: { "content-type": "application/json" } });
@@ -67,5 +67,12 @@ describe("obterTransporte — nada sai sem estar ligado de propósito", () => {
     const t = criarTransporteSimulado();
     expect(await t.estado()).toBe("conectada");
     expect((await t.enviarTexto("+5547999998888", "x")).idExterno).toMatch(/^SIM-/);
+  });
+
+  it("envioAutomaticoLigado diz à tela se a mensagem aprovada sai sozinha ou pelo celular", () => {
+    expect(envioAutomaticoLigado({})).toBe(false);
+    expect(envioAutomaticoLigado(evolution)).toBe(false);
+    expect(envioAutomaticoLigado({ ...evolution, WHATSAPP_ENVIO_HABILITADO: "true" })).toBe(true);
+    expect(envioAutomaticoLigado({ WHATSAPP_TRANSPORTE: "simulado", NODE_ENV: "development" })).toBe(true);
   });
 });

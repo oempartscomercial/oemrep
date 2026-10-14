@@ -95,3 +95,8 @@ export function obterTransporte(env: Ambiente = process.env): TransporteWhatsapp
   }
   return criarTransporteDesligado();
 }
+
+/** Falso = a mensagem aprovada não sai sozinha: a pessoa envia pelo celular e confirma. */
+export function envioAutomaticoLigado(env: Ambiente = process.env): boolean {
+  return obterTransporte(env).nome !== "desligado";
+}
