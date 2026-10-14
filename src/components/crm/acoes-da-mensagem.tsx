@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Botao } from "@/components/patterns/botao";
 import { CampoTextarea } from "@/components/patterns/campo";
 import { aprovarMensagem, cancelarMensagem, editarRascunho, tentarEnviar } from "@/app/(app)/conversas/actions";
+import type { EnvioPeloCelular as Preparo } from "@/domain/mensagens/envio-manual";
+import { AVISO_SEM_ENVIO_AUTOMATICO, EnvioPeloCelular } from "@/components/crm/envio-pelo-celular";
 
 /** Segundos entre confirmar e a mensagem sair de verdade: dá tempo de desfazer. */
 const SEGUNDOS_PARA_DESFAZER = 10;
@@ -20,10 +22,14 @@ type Props = {
   destinatario?: DestinatarioDaMensagem;
   /** O que a pessoa disse por último, para quem aprova lembrar do que está respondendo. */
   ultimaRecebida?: string | null;
+  /** Falso = a aprovada não sai sozinha: a pessoa envia pelo celular e toca em "Já enviei". */
+  envioAutomatico: boolean;
+  /** Para aprovada: o link do WhatsApp com o texto, ou por que não enviar. */
+  envioPeloCelular?: Preparo;
 };
 
 /** Botões de uma mensagem nossa que ainda não saiu: rascunho (editar, aprovar, descartar) ou aprovada esperando. */
-export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebida }: Props) {
+export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebida, envioAutomatico, envioPeloCelular }: Props) {
   const router = useRouter();
   const [ocupado, setOcupado] = useState(false);
   const [retorno, setRetorno] = useState<string | null>(null);
@@ -40,7 +46,8 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
     const r = await fn();
     setOcupado(false);
     if (r.erros.length) return setRetorno(r.erros[0]);
-    if (r.status && r.status !== "ENVIADA") setRetorno(r.motivo ?? null);
+    // Sem envio automático, aprovada é o esperado (sai pelo celular): o motivo da espera só confundiria.
+    if (r.status && r.status !== "ENVIADA" && !(r.status === "APROVADA" && !envioAutomatico)) setRetorno(r.motivo ?? null);
     router.refresh();
   }
 
@@ -76,6 +83,12 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
 
   return (
     <div className="mt-2 flex flex-col items-end gap-1.5">
+      {status === "APROVADA" && envioPeloCelular?.link && (
+        <EnvioPeloCelular id={id} link={envioPeloCelular.link} nome={nome} envioAutomatico={envioAutomatico} />
+      )}
+      {status === "APROVADA" && envioPeloCelular?.bloqueio && (
+        <p role="alert" className="max-w-sm text-right text-xs font-medium text-destructive">Não envie: {envioPeloCelular.bloqueio}</p>
+      )}
       {emContagem ? (
         <div className="flex flex-wrap items-center justify-end gap-2" role="status">
           <p className="text-sm font-medium">Enviando para {nome} em {contagem}s…</p>
@@ -91,10 +104,10 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
             {status === "RASCUNHO" && (
               <>
                 <Botao size="xs" className="h-11 md:h-6" onClick={() => setEditando(true)} disabled={ocupado}>Editar</Botao>
-                <Botao size="xs" className="h-11 md:h-6" variante="primario" carregando={ocupado} onClick={() => setConfirmando(true)}>Aprovar e enviar</Botao>
+                <Botao size="xs" className="h-11 md:h-6" variante="primario" carregando={ocupado} onClick={() => setConfirmando(true)}>{envioAutomatico ? "Aprovar e enviar" : "Aprovar"}</Botao>
               </>
             )}
-            {status === "APROVADA" && (
+            {status === "APROVADA" && envioAutomatico && (
               <Botao size="xs" className="h-11 md:h-6" variante="primario" carregando={ocupado} onClick={() => rodar(() => tentarEnviar({ id }))}>Tentar enviar agora</Botao>
             )}
           </div>
@@ -106,8 +119,11 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
         <Dialog open onOpenChange={(aberto) => !aberto && setConfirmando(false)}>
           <DialogContent className="sm:max-w-xl max-md:max-h-[calc(100dvh-2rem)] max-md:overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Enviar para {nome}?</DialogTitle>
-              <DialogDescription>{destinatario ? `WhatsApp ${destinatario.numero}. ` : ""}Você ainda poderá desfazer por {SEGUNDOS_PARA_DESFAZER} segundos.</DialogDescription>
+              <DialogTitle>{envioAutomatico ? `Enviar para ${nome}?` : `Aprovar a mensagem para ${nome}?`}</DialogTitle>
+              <DialogDescription>
+                {destinatario ? `WhatsApp ${destinatario.numero}. ` : ""}
+                {envioAutomatico ? `Você ainda poderá desfazer por ${SEGUNDOS_PARA_DESFAZER} segundos.` : AVISO_SEM_ENVIO_AUTOMATICO}
+              </DialogDescription>
             </DialogHeader>
             {ultimaRecebida && (
               <div className="rounded-md border bg-card px-3 py-2 text-sm">
@@ -126,10 +142,12 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
                 className="h-11 md:h-8"
                 onClick={() => {
                   setConfirmando(false);
-                  setContagem(SEGUNDOS_PARA_DESFAZER);
+                  // Sem envio automático nada sai ao aprovar: não há o que desfazer, aprova direto.
+                  if (envioAutomatico) setContagem(SEGUNDOS_PARA_DESFAZER);
+                  else void rodar(() => aprovarMensagem({ id }));
                 }}
               >
-                Enviar para {nome}
+                {envioAutomatico ? `Enviar para ${nome}` : "Aprovar"}
               </Botao>
             </DialogFooter>
           </DialogContent>

@@ -78,7 +78,7 @@ export async function buscarFicha(id: string, usuario: UsuarioSessao) {
       conversas: {
         orderBy: { ultimaMensagemEm: "desc" },
         include: {
-          contato: { select: { nome: true } },
+          contato: { select: { nome: true, naoContatar: true, origemContato: true } },
           mensagens: { orderBy: { ocorridoEm: "desc" }, take: 50 },
           _count: { select: { mensagens: true } },
         },

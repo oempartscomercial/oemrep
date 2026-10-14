@@ -37,9 +37,11 @@ export async function listarPendentes() {
     include: {
       conversa: {
         include: {
-          cliente: { select: { id: true, nomeFantasia: true } },
-          contato: { select: { id: true, nome: true } },
-          mensagens: { where: { direcao: "ENTRADA", texto: { not: null } }, orderBy: { ocorridoEm: "desc" }, take: 1, select: { texto: true } },
+          cliente: { select: { id: true, nomeFantasia: true, situacao: true, naoContatar: true } },
+          contato: { select: { id: true, nome: true, naoContatar: true, origemContato: true } },
+          // A conversa inteira: as proteções do envio pelo celular olham o histórico, e daqui sai
+          // também a última mensagem do contato.
+          mensagens: { orderBy: { ocorridoEm: "desc" }, select: { id: true, direcao: true, status: true, texto: true, ocorridoEm: true, tipoEnvio: true } },
         },
       },
     },

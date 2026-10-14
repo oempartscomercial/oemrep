@@ -12,6 +12,9 @@ import { SeloSituacao } from "@/components/crm/selo-situacao";
 import { ConversaWhatsapp } from "@/components/crm/conversa-whatsapp";
 import { formatarNumero } from "@/domain/mensagens/exibicao";
 import { normalizarTelefone } from "@/domain/mensagens/telefone";
+import { envioPeloCelularDaConversa } from "@/domain/mensagens/envio-manual";
+import { lerLimites } from "@/lib/whatsapp/despachar";
+import { envioAutomaticoLigado } from "@/lib/whatsapp/transporte";
 import { ContatoAcoes } from "@/components/crm/contato-acoes";
 import { BotaoEditarContato, BotaoNovoContato } from "@/components/crm/formulario-contato";
 import { descreverPrazo, formatarDia, hojeEmSaoPaulo, situacaoDoPrazo } from "@/domain/crm/prazo";
@@ -40,10 +43,11 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   const usuario = await obterUsuarioLogado();
   if (!usuario) return null; // o layout do CRM já mostra a sessão expirada
-  const [ficha, responsaveis, fabricasAtivas] = await Promise.all([
+  const [ficha, responsaveis, fabricasAtivas, limites] = await Promise.all([
     buscarFicha(id, usuario),
     listarResponsaveis(),
     prisma.fabrica.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
+    lerLimites(),
   ]);
   if (!ficha) notFound();
   const { empresa, historico, contatosComConversa } = ficha;
@@ -52,6 +56,8 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
   const passo = empresa.proximosPassos.find((p) => !p.oportunidadeId) ?? null;
   const prazo = passo?.prazo.toISOString().slice(0, 10);
   const atrasado = prazo ? situacaoDoPrazo(prazo, hoje) === "atrasado" : false;
+  const envioAutomatico = envioAutomaticoLigado();
+  const agora = new Date();
 
   // O que espera uma ação do Rômulo: rascunho ou aprovada parada, e resposta do contato sem retorno.
   const precisaDeVoce = empresa.conversas.flatMap((c) => {
@@ -60,7 +66,12 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
     const rascunhos = c.mensagens.filter((m) => m.direcao === "SAIDA" && m.status === "RASCUNHO").length;
     const paradas = c.mensagens.filter((m) => m.direcao === "SAIDA" && m.status === "APROVADA").length;
     if (rascunhos > 0) itens.push({ chave: `r-${c.id}`, texto: rascunhos === 1 ? `Um rascunho para ${quem} espera sua aprovação.` : `${rascunhos} rascunhos para ${quem} esperam sua aprovação.` });
-    if (paradas > 0) itens.push({ chave: `p-${c.id}`, texto: `Uma mensagem para ${quem} foi aprovada, mas ainda não saiu.` });
+    if (paradas > 0) {
+      itens.push({
+        chave: `p-${c.id}`,
+        texto: envioAutomatico ? `Uma mensagem para ${quem} foi aprovada, mas ainda não saiu.` : `Uma mensagem para ${quem} está aprovada: envie pelo celular e toque em "Já enviei".`,
+      });
+    }
     if (rascunhos === 0 && c.mensagens[0]?.direcao === "ENTRADA") itens.push({ chave: `e-${c.id}`, texto: `${quem} respondeu e espera o seu retorno.` });
     return itens.map((i) => ({ ...i, conversaId: c.id }));
   });
@@ -178,6 +189,8 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
               <ConversaWhatsapp
                 destinatario={{ nome: c.contato?.nome ?? c.nomeNoWhatsapp ?? empresa.nomeFantasia, numero: formatarNumero(c.numero) }}
                 mensagens={c.mensagens}
+                envioAutomatico={envioAutomatico}
+                envioPeloCelular={envioPeloCelularDaConversa({ numero: c.numero, empresa, contato: c.contato, mensagens: c.mensagens }, limites, agora)}
                 aviso={c._count.mensagens > c.mensagens.length ? `Mostrando as ${c.mensagens.length} mensagens mais recentes de ${c._count.mensagens}.` : undefined}
               />
             </Bloco>

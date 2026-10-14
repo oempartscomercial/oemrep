@@ -7,6 +7,8 @@ import { Botao } from "@/components/patterns/botao";
 import { CampoTextarea } from "@/components/patterns/campo";
 import { formatarNumero } from "@/domain/mensagens/exibicao";
 import { aprovarMensagem, consultarEnvio, prepararMensagem, type ConsultaDeEnvio } from "@/app/(app)/conversas/actions";
+import { linkDoWhatsapp } from "@/domain/mensagens/envio-manual";
+import { EnvioPeloCelular } from "@/components/crm/envio-pelo-celular";
 
 const TITULO = { PRIMEIRO_CONTATO: "Primeira mensagem", FOLLOW_UP: "Follow-up", RESPOSTA: "Responder" } as const;
 
@@ -19,6 +21,8 @@ export function ComporMensagem({ contatoId, nome, aoFechar }: { contatoId: strin
   const [avisos, setAvisos] = useState<string[]>([]);
   const [resultado, setResultado] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  // Aprovada sem envio automático: o compositor oferece na hora o envio pelo celular.
+  const [paraCelular, setParaCelular] = useState<{ id: string; link: string } | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -37,6 +41,7 @@ export function ComporMensagem({ contatoId, nome, aoFechar }: { contatoId: strin
   const vazio = texto.trim().length === 0;
   const definitivos = consulta?.bloqueios?.filter((b) => !b.espera) ?? [];
   const esperas = consulta?.bloqueios?.filter((b) => b.espera) ?? [];
+  const envioAutomatico = consulta?.envioAutomatico ?? true;
 
   async function salvar(aprovar: boolean) {
     setOcupado(true);
@@ -57,6 +62,11 @@ export function ComporMensagem({ contatoId, nome, aoFechar }: { contatoId: strin
     router.refresh();
     if (a.erros.length) return setErros(a.erros);
     if (a.status === "ENVIADA") return aoFechar();
+    const link = !envioAutomatico && a.status === "APROVADA" && consulta?.numero ? linkDoWhatsapp(consulta.numero, texto.trim()) : null;
+    if (link) {
+      setParaCelular({ id: r.id, link });
+      return setResultado("Aprovada.");
+    }
     setResultado(
       a.status === "APROVADA"
         ? `Aprovada, mas ainda não saiu. ${a.motivo ?? ""} Ela sai quando você tentar de novo.`
@@ -73,17 +83,25 @@ export function ComporMensagem({ contatoId, nome, aoFechar }: { contatoId: strin
           <DialogTitle>{consulta?.tipo ? TITULO[consulta.tipo] : "Mensagem"} · WhatsApp</DialogTitle>
           <DialogDescription>
             Para {nome}{consulta?.numero ? ` · ${formatarNumero(consulta.numero)}` : ""}. Você revisa e aprova: nada sai sem o seu OK.
+            {consulta && !envioAutomatico && " O envio automático não está ligado: depois de aprovar, você envia pelo celular de prospecção."}
           </DialogDescription>
         </DialogHeader>
 
         {!consulta ? (
           <p className="text-sm text-muted-foreground">Carregando…</p>
         ) : resultado ? (
-          <p className="text-sm">{resultado}</p>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm">{resultado}</p>
+            {paraCelular && <EnvioPeloCelular id={paraCelular.id} link={paraCelular.link} nome={nome} envioAutomatico={envioAutomatico} aoMarcar={aoFechar} />}
+          </div>
         ) : pendente ? (
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium">
-              {pendente.status === "RASCUNHO" ? "Já existe um rascunho esperando sua aprovação para este contato." : "Já existe uma mensagem aprovada, esperando para sair."}
+              {pendente.status === "RASCUNHO"
+                ? "Já existe um rascunho esperando sua aprovação para este contato."
+                : envioAutomatico
+                  ? "Já existe uma mensagem aprovada, esperando para sair."
+                  : "Já existe uma mensagem aprovada esperando você enviar pelo celular."}
             </p>
             <p className="whitespace-pre-wrap break-words rounded-md border border-dashed border-warning/60 bg-warning-soft px-3 py-2 text-sm">{pendente.texto}</p>
             <p className="text-sm text-muted-foreground">Edite, aprove ou descarte essa mensagem na conversa. Só depois dá para escrever outra.</p>
@@ -106,7 +124,7 @@ export function ComporMensagem({ contatoId, nome, aoFechar }: { contatoId: strin
             {esperas.length > 0 && (
               <ul className="rounded-md border bg-warning-soft px-3 py-2 text-sm text-warning">
                 {esperas.map((b) => (
-                  <li key={b.codigo}>{b.texto} Dá para aprovar agora: ela fica esperando e sai quando liberar.</li>
+                  <li key={b.codigo}>{b.texto}{envioAutomatico && " Dá para aprovar agora: ela fica esperando e sai quando liberar."}</li>
                 ))}
               </ul>
             )}
@@ -126,7 +144,7 @@ export function ComporMensagem({ contatoId, nome, aoFechar }: { contatoId: strin
             <>
               <Botao className="h-11 md:h-8" carregando={ocupado} disabled={vazio} onClick={() => salvar(false)}>Salvar rascunho</Botao>
               <Botao variante="primario" className="h-11 md:h-8" carregando={ocupado} disabled={definitivos.length > 0 || vazio} onClick={() => salvar(true)}>
-                Aprovar e enviar
+                {envioAutomatico ? "Aprovar e enviar" : "Aprovar"}
               </Botao>
             </>
           )}
