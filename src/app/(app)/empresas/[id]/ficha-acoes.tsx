@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRightLeft, Check, MessageSquarePlus } from "lucide-react";
+import { ArrowRightLeft, CalendarPlus, Check, MessageCircle, MessageSquarePlus } from "lucide-react";
+import { ComporMensagem } from "@/components/crm/compor-mensagem";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Botao } from "@/components/patterns/botao";
@@ -23,6 +24,8 @@ type Props = {
   usuarioId: string;
   /** Falso quando há algo esperando o Rômulo (rascunho, resposta): aí 'Registrar contato' deixa de ser o botão principal. */
   destaque?: boolean;
+  /** Contato principal para escrever no WhatsApp (o primeiro com telefone, origem e sem 'não contatar'). */
+  whatsapp?: { contatoId: string; nome: string } | null;
 };
 
 const CANAIS = [
@@ -37,9 +40,9 @@ const DESTINOS: Situacao[] = ["CANDIDATA", "APROVADA", "EM_CONTATO", "CONVERSAND
 
 const novoPasso = (usuarioId: string): PassoForm => ({ acao: "", prazo: somarDias(hojeEmSaoPaulo(), 3), responsavelId: usuarioId });
 
-export function FichaAcoes({ clienteId, nome, situacao, passoAbertoId, responsaveis, usuarioId, destaque = true }: Props) {
+export function FichaAcoes({ clienteId, nome, situacao, passoAbertoId, responsaveis, usuarioId, destaque = true, whatsapp = null }: Props) {
   const router = useRouter();
-  const [dialogo, setDialogo] = useState<"contato" | "passo" | null>(null);
+  const [dialogo, setDialogo] = useState<"contato" | "passo" | "whatsapp" | null>(null);
   const [movimento, setMovimento] = useState<AlvoMovimento | null>(null);
   const ativa = etapaAtiva(situacao);
   const podeMover = situacao !== "CLIENTE";
@@ -60,7 +63,12 @@ export function FichaAcoes({ clienteId, nome, situacao, passoAbertoId, responsav
         </Botao>
       )}
       {!passoAbertoId && (
-        <Botao className="h-11 md:h-8" onClick={() => setDialogo("passo")}>Marcar próximo passo</Botao>
+        <Botao className="h-11 md:h-8" icone={<CalendarPlus />} onClick={() => setDialogo("passo")}>Marcar próximo passo</Botao>
+      )}
+      {whatsapp && (
+        <Botao className="h-11 md:h-8" icone={<MessageCircle className="text-success" />} onClick={() => setDialogo("whatsapp")}>
+          WhatsApp
+        </Botao>
       )}
       {podeMover && (
         <DropdownMenu>
@@ -77,6 +85,7 @@ export function FichaAcoes({ clienteId, nome, situacao, passoAbertoId, responsav
         </DropdownMenu>
       )}
 
+      {dialogo === "whatsapp" && whatsapp && <ComporMensagem contatoId={whatsapp.contatoId} nome={whatsapp.nome} aoFechar={() => setDialogo(null)} />}
       {dialogo === "contato" && <DialogoContato clienteId={clienteId} nome={nome} exigePasso={ativa && !passoAbertoId} responsaveis={responsaveis} usuarioId={usuarioId} aoFechar={fechar} />}
       {dialogo === "passo" && (
         <DialogoPasso passoId={passoAbertoId} nome={nome} clienteId={clienteId} exigeProximo={ativa} responsaveis={responsaveis} usuarioId={usuarioId} aoFechar={fechar} />

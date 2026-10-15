@@ -10,6 +10,8 @@ import { DialogoMovimento, type AlvoMovimento } from "@/components/crm/dialogo-m
 import { DialogoNovaOportunidade, type FabricaOpcao } from "@/components/crm/dialogo-nova-oportunidade";
 import { DialogoContato } from "./ficha-acoes";
 import { ETAPAS_DO_QUADRO_OP, etapaAtivaOp, oportunidadeAberta, ROTULO_ETAPA_OP, ROTULO_TIPO_OP, type EtapaOportunidade, type TipoOportunidade } from "@/domain/crm/oportunidade";
+import { PassoDoCartao, type PassoCartao } from "@/components/crm/passo-do-cartao";
+import { PONTO_DA_ETAPA } from "@/components/crm/selo-situacao";
 import { cn } from "@/lib/utils";
 
 type Oportunidade = {
@@ -19,7 +21,7 @@ type Oportunidade = {
   etapa: string;
   motivoPerda: string | null;
   passoId: string | null;
-  passo: { acao: string; quando: string; atrasado: boolean; responsavel: string } | null;
+  passo: PassoCartao;
 };
 
 const DESTINOS: EtapaOportunidade[] = [...ETAPAS_DO_QUADRO_OP, "ADIADA", "PERDIDA"];
@@ -34,6 +36,7 @@ export function OportunidadesFicha({
   responsaveis,
   usuarioId,
   oportunidades,
+  hoje,
 }: {
   clienteId: string;
   nome: string;
@@ -42,6 +45,7 @@ export function OportunidadesFicha({
   responsaveis: { id: string; nome: string }[];
   usuarioId: string;
   oportunidades: Oportunidade[];
+  hoje: string;
 }) {
   const router = useRouter();
   const [nova, setNova] = useState(false);
@@ -51,10 +55,10 @@ export function OportunidadesFicha({
   const encerradas = oportunidades.filter((o) => !oportunidadeAberta(o.etapa));
 
   return (
-    <section className="rounded-lg border bg-card">
-      <div className="flex items-center justify-between border-b px-4 py-2">
-        <h2 className="text-xs font-medium text-muted-foreground">Oportunidades da carteira</h2>
-        <Botao size="xs" variante="ghost" icone={<Plus />} onClick={() => setNova(true)}>
+    <section className="rounded-xl border bg-card shadow-xs">
+      <div className="flex items-center justify-between border-b px-4 py-2.5">
+        <h2 className="text-sm font-semibold">Fábricas na carteira</h2>
+        <Botao size="xs" variante="ghost" className="h-11 md:h-6" icone={<Plus />} onClick={() => setNova(true)}>
           Nova
         </Botao>
       </div>
@@ -67,26 +71,20 @@ export function OportunidadesFicha({
             <li key={o.id} className="flex flex-col gap-2 px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Selo cor="blue">{o.fabrica}</Selo>
-                <span className="text-sm font-medium">{rotulo(o.etapa)}</span>
+                <span className="flex items-center gap-1.5 text-sm font-medium">
+                  <span className={cn("size-2 rounded-full", PONTO_DA_ETAPA[o.etapa])} aria-hidden />
+                  {rotulo(o.etapa)}
+                </span>
                 <span className="text-xs text-muted-foreground">{ROTULO_TIPO_OP[o.tipo as TipoOportunidade]}</span>
               </div>
-              {o.passo ? (
-                <p className="text-sm">
-                  {o.passo.acao}
-                  <span className={cn("ml-2 text-xs", o.passo.atrasado ? "font-medium text-destructive" : "text-muted-foreground")}>
-                    {o.passo.quando} · {o.passo.responsavel}
-                  </span>
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">{o.etapa === "A_ABORDAR" ? "Ainda não abordado." : "Sem próximo passo marcado."}</p>
-              )}
+              <PassoDoCartao passo={o.passo} hoje={hoje} cobrar={o.etapa !== "A_ABORDAR"} semPasso={o.etapa === "A_ABORDAR" ? "Ainda não abordado." : "Sem próximo passo marcado."} />
               <div className="flex gap-2">
-                <Botao size="xs" icone={<MessageSquarePlus />} onClick={() => setContato(o)}>
+                <Botao size="xs" className="h-11 md:h-6" icone={<MessageSquarePlus />} onClick={() => setContato(o)}>
                   Registrar contato
                 </Botao>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Botao size="xs">Mover etapa</Botao>
+                    <Botao size="xs" className="h-11 md:h-6">Mover etapa</Botao>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
                     {DESTINOS.filter((d) => d !== o.etapa).map((d) => (

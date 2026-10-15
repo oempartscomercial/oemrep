@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizarCnpj, cnpjValido } from "../cnpj";
+import { formatarCnpj, normalizarCnpj, cnpjValido } from "../cnpj";
 
 describe("normalizarCnpj", () => {
   it("remove pontuação e mantém só os dígitos", () => {
@@ -30,5 +30,12 @@ describe("cnpjValido", () => {
 
   it("rejeita CNPJ com tamanho incorreto", () => {
     expect(cnpjValido("123")).toBe(false);
+  });
+});
+
+describe("formatarCnpj", () => {
+  it("põe a máscara num CNPJ de 14 dígitos e devolve o resto como veio", () => {
+    expect(formatarCnpj("11444777000161")).toBe("11.444.777/0001-61");
+    expect(formatarCnpj("123")).toBe("123");
   });
 });
