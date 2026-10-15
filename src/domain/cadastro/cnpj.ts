@@ -24,3 +24,9 @@ export function cnpjValido(cnpjComOuSemMascara: string): boolean {
 
   return digitos[12] === digito1 && digitos[13] === digito2;
 }
+
+/** "11444777000161" → "11.444.777/0001-61". Fora do formato, devolve como veio. */
+export function formatarCnpj(cnpj: string): string {
+  const d = normalizarCnpj(cnpj);
+  return d.length === 14 ? `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}` : cnpj;
+}

@@ -23,3 +23,24 @@ export function formatarReais(valor: number): string {
   const comMilhar = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return `${centavos < 0 ? "-" : ""}R$ ${comMilhar},${resto}`;
 }
+
+const FAIXAS: [number, string][] = [
+  [1e9, "bi"],
+  [1e6, "mi"],
+  [1e3, "mil"],
+];
+
+/** Valor curto para eixo de gráfico e cartão: `1234567` → `"R$ 1,2 mi"`, `850000` → `"R$ 850 mil"`. */
+export function abreviarReais(valor: number): string {
+  const sinal = valor < 0 ? "-" : "";
+  const absoluto = Math.abs(valor);
+  const virgula = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 }).replace(/\./g, "");
+  for (const [i, [base, sufixo]] of FAIXAS.entries()) {
+    if (absoluto < base) continue;
+    const n = Math.round((absoluto / base) * 10) / 10;
+    // 999.960 vira "1.000 mil" no arredondamento: sobe para a faixa de cima.
+    if (n >= 1000 && i > 0) return `${sinal}R$ ${virgula(n / 1000)} ${FAIXAS[i - 1][1]}`;
+    return `${sinal}R$ ${virgula(n)} ${sufixo}`;
+  }
+  return `${sinal}R$ ${Math.round(absoluto)}`;
+}

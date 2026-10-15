@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatarReais, emCentavos } from "../moeda";
+import { abreviarReais, formatarReais, emCentavos } from "../moeda";
 
 describe("formatarReais", () => {
   it("usa vírgula decimal e ponto de milhar", () => {
@@ -47,5 +47,25 @@ describe("emCentavos", () => {
     expect(emCentavos(1.005)).toBe(101);
     expect(emCentavos(19.99)).toBe(1999);
     expect(emCentavos(0.1 + 0.2)).toBe(30);
+  });
+});
+
+describe("abreviarReais", () => {
+  it("abrevia milhões e milhares com uma casa, sem ',0'", () => {
+    expect(abreviarReais(1_234_567)).toBe("R$ 1,2 mi");
+    expect(abreviarReais(2_000_000)).toBe("R$ 2 mi");
+    expect(abreviarReais(12_500)).toBe("R$ 12,5 mil");
+    expect(abreviarReais(850_000)).toBe("R$ 850 mil");
+    expect(abreviarReais(3_400_000_000)).toBe("R$ 3,4 bi");
+  });
+
+  it("valores abaixo de mil ficam inteiros; zero e negativos também", () => {
+    expect(abreviarReais(0)).toBe("R$ 0");
+    expect(abreviarReais(999.4)).toBe("R$ 999");
+    expect(abreviarReais(-1_500_000)).toBe("-R$ 1,5 mi");
+  });
+
+  it("arredonda para cima de faixa sem escrever '1.000 mil'", () => {
+    expect(abreviarReais(999_960)).toBe("R$ 1 mi");
   });
 });

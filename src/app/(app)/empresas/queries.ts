@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { UsuarioSessao } from "@/lib/sessao";
 import { filtroFabricasPermitidas } from "@/lib/authz";
@@ -31,14 +32,14 @@ export async function listarEmpresas(tipo: TipoEmpresa, q: string, pagina: numbe
   return { total, empresas, contagem: { todas: contagem[0], clientes: contagem[1], prospeccao: contagem[2] } };
 }
 
-/** Quem pode receber tarefa do CRM (ativo e não operador). */
-export function listarResponsaveis() {
-  return prisma.usuario.findMany({
+/** Quem pode receber tarefa do CRM (ativo e não operador). Uma consulta por requisição. */
+export const listarResponsaveis = cache(() =>
+  prisma.usuario.findMany({
     where: { ativo: true, perfil: { not: "OPERADOR" } },
     orderBy: { nome: "asc" },
     select: { id: true, nome: true },
-  });
-}
+  }),
+);
 
 export async function buscarFicha(id: string, usuario: UsuarioSessao) {
   const fabricasPermitidas = filtroFabricasPermitidas(usuario);

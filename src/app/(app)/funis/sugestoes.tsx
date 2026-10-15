@@ -25,7 +25,7 @@ export function Sugestoes({ sugestoes }: { sugestoes: Sugestao[] }) {
 
   if (sugestoes.length === 0) return null;
   return (
-    <section className="rounded-lg border bg-card">
+    <section className="rounded-xl border bg-card shadow-xs">
       <div className="border-b px-4 py-2.5">
         <h2 className="text-sm font-semibold">Ideias de expansão</h2>
         <p className="text-xs text-muted-foreground">Fábricas que o cliente ainda não compra, começando por quem mais pediu. Ninguém garante que vá comprar: é um ponto de partida para conversar.</p>

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
@@ -27,7 +28,7 @@ function paraSessao(usuario: UsuarioComFabricas): UsuarioSessao {
   };
 }
 
-export async function obterUsuarioLogado(): Promise<UsuarioSessao | null> {
+async function lerUsuarioLogado(): Promise<UsuarioSessao | null> {
   // Só em dev local (.env), nunca em produção: assume a identidade de um usuário
   // real do banco para que a navegação sem login sirva para verificação visual.
   // Usar uma linha real (e não uma sessão fictícia) mantém válidos o escopo por
@@ -85,3 +86,10 @@ export async function obterUsuarioLogado(): Promise<UsuarioSessao | null> {
   // Usuário desativado no cadastro perde o acesso mesmo com login válido no Supabase.
   return usuario?.ativo ? paraSessao(usuario) : null;
 }
+
+/**
+ * Usuário da requisição. Layout, guarda do CRM e página pedem o usuário cada um por si; o
+ * `cache` do React faz a consulta ao Supabase Auth e ao banco acontecer uma vez só por
+ * requisição (antes eram três idas ao Supabase em sequência, uma por camada).
+ */
+export const obterUsuarioLogado = cache(lerUsuarioLogado);
