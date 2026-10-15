@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { UsuarioSessao } from "@/lib/sessao";
 import { filtroFabricasPermitidas, podeVerCrm } from "@/lib/authz";
@@ -9,7 +10,6 @@ import { saldoAFaturar, valorDoPedido } from "@/domain/pedido/valor";
 import { resumirPorFabrica, type ResumoFabrica } from "@/domain/analise/painel";
 import { emTransito } from "@/domain/rastreio/parada";
 import {
-  calcularTotaisMensaisAoVivo,
   combinarSeries,
   type HistoricoMensalRow,
   type PontoMensal,
@@ -92,43 +92,43 @@ export async function buscarResumoDashboard(usuario: UsuarioSessao, agora: Date 
   };
 }
 
+/**
+ * Série mensal de pedidos recebidos × NFe. O banco já devolve a soma por mês (antes vinham
+ * todos os pedidos com todos os itens e todas as notas para somar aqui, a cada visita ao Início).
+ */
 export async function buscarSerieMensal(usuario: UsuarioSessao): Promise<PontoMensal[]> {
   const fabricasPermitidas = filtroFabricasPermitidas(usuario);
-  const wherePedidoFabrica = fabricasPermitidas ? { fabricaId: { in: fabricasPermitidas } } : {};
-  const whereNotaFabrica = fabricasPermitidas
-    ? { pedidos: { some: { pedido: { fabricaId: { in: fabricasPermitidas } } } } }
-    : {};
   const whereHistoricoFabrica = fabricasPermitidas ? { fabricaId: { in: fabricasPermitidas } } : {};
+  const ids = fabricasPermitidas && fabricasPermitidas.length > 0 ? fabricasPermitidas : [""];
+  const filtroPedido = fabricasPermitidas ? Prisma.sql`WHERE p."fabricaId" IN (${Prisma.join(ids)})` : Prisma.empty;
+  const filtroNota = fabricasPermitidas
+    ? Prisma.sql`WHERE EXISTS (SELECT 1 FROM "NotaFiscalPedido" np JOIN "Pedido" p ON p."id" = np."pedidoId" WHERE np."notaFiscalId" = n."id" AND p."fabricaId" IN (${Prisma.join(ids)}))`
+    : Prisma.empty;
 
   const [historicoRaw, pedidos, notas] = await Promise.all([
-    prisma.historicoMensal.findMany({ where: whereHistoricoFabrica }),
-    prisma.pedido.findMany({
-      where: wherePedidoFabrica,
-      include: { itens: true },
-    }),
-    prisma.notaFiscal.findMany({ where: whereNotaFabrica }),
+    prisma.historicoMensal.findMany({ where: whereHistoricoFabrica, select: { ano: true, mes: true, tipo: true, valor: true } }),
+    // O mês do pedido é o da data informada; um pedido rápido (sem itens) vale o total declarado.
+    prisma.$queryRaw<{ mes: string; valor: number }[]>`
+      SELECT to_char(COALESCE(p."dataPedido", p."criadoEm"), 'YYYY-MM') AS mes,
+             SUM(COALESCE(i.total, p."valorTotalDeclarado", 0))::float8 AS valor
+      FROM "Pedido" p
+      LEFT JOIN (SELECT "pedidoId", SUM("quantidadePedida" * "valorUnitario") AS total FROM "ItemPedido" GROUP BY "pedidoId") i ON i."pedidoId" = p."id"
+      ${filtroPedido}
+      GROUP BY 1`,
+    prisma.$queryRaw<{ mes: string; valor: number }[]>`
+      SELECT to_char(n."dataEmissao", 'YYYY-MM') AS mes, SUM(n."totalNota")::float8 AS valor
+      FROM "NotaFiscal" n
+      ${filtroNota}
+      GROUP BY 1`,
   ]);
 
-  const historico: HistoricoMensalRow[] = historicoRaw.map((h) => ({
-    ano: h.ano,
-    mes: h.mes,
-    tipo: h.tipo,
-    valor: Number(h.valor),
-  }));
+  const historico: HistoricoMensalRow[] = historicoRaw.map((h) => ({ ano: h.ano, mes: h.mes, tipo: h.tipo, valor: Number(h.valor) }));
+  const aoVivo = new Map<string, PontoMensal>();
+  const ponto = (mes: string) => aoVivo.get(mes) ?? aoVivo.set(mes, { mes, valorPedido: 0, valorNfe: 0 }).get(mes)!;
+  for (const p of pedidos) ponto(p.mes).valorPedido += Number(p.valor);
+  for (const n of notas) ponto(n.mes).valorNfe += Number(n.valor);
 
-  const aoVivo = calcularTotaisMensaisAoVivo(
-    pedidos.map((p) => ({
-      // O mês do pedido é o da data informada; um pedido rápido (sem itens) vale o total declarado.
-      criadoEm: p.dataPedido ?? p.criadoEm,
-      itens:
-        p.itens.length > 0
-          ? p.itens.map((i) => ({ quantidadePedida: i.quantidadePedida, valorUnitario: Number(i.valorUnitario) }))
-          : [{ quantidadePedida: 1, valorUnitario: Number(p.valorTotalDeclarado ?? 0) }],
-    })),
-    notas.map((n) => ({ dataEmissao: n.dataEmissao, totalNota: Number(n.totalNota) })),
-  );
-
-  return combinarSeries(historico, aoVivo);
+  return combinarSeries(historico, [...aoVivo.values()]);
 }
 
 export type TarefasCrm = {

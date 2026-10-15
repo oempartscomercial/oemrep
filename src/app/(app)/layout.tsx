@@ -1,24 +1,19 @@
+import { Suspense } from "react";
 import { AppShell } from "@/components/layouts/app-shell";
+import { SeloConversasCabecalho, SeloConversasMenu } from "@/components/layouts/selo-conversas";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { podeVerCrm } from "@/lib/authz";
-import { contarPendenciasDeConversas } from "./conversas/queries";
-
-// Selo do menu é acessório: se a contagem falhar, a página segue sem ele.
-async function pendenciasDeConversasDoMenu(usuario: Awaited<ReturnType<typeof obterUsuarioLogado>>) {
-  if (!usuario || !podeVerCrm(usuario)) return null;
-  try {
-    return (await contarPendenciasDeConversas()).total;
-  } catch (erro) {
-    console.error("Selo de Conversas: contagem falhou", erro);
-    return null;
-  }
-}
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const usuario = await obterUsuarioLogado();
-  const pendenciasConversas = await pendenciasDeConversasDoMenu(usuario);
+  // O selo de Conversas chega depois, em streaming; sem CRM (OPERADOR) não há selo.
+  const comSelo = usuario !== null && podeVerCrm(usuario);
   return (
-    <AppShell usuario={usuario ? { nome: usuario.nome, perfil: usuario.perfil } : null} pendenciasConversas={pendenciasConversas}>
+    <AppShell
+      usuario={usuario ? { nome: usuario.nome, perfil: usuario.perfil } : null}
+      seloConversas={comSelo ? <Suspense fallback={null}><SeloConversasMenu /></Suspense> : null}
+      seloCabecalho={comSelo ? <Suspense fallback={null}><SeloConversasCabecalho /></Suspense> : null}
+    >
       {children}
     </AppShell>
   );

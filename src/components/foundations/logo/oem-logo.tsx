@@ -10,7 +10,7 @@ export const OemLogo = ({ className, ...props }: HTMLAttributes<HTMLDivElement>)
     <span className="grid size-6 place-items-center rounded-md bg-primary text-[11px] font-bold text-primary-foreground">O</span>
     <span className="flex flex-col leading-none">
       <span className="text-sm font-semibold tracking-tight">OEM</span>
-      <span className="text-[10px] text-muted-foreground">Representações</span>
+      <span className="text-[11px] text-muted-foreground">Representações</span>
     </span>
   </div>
 );
