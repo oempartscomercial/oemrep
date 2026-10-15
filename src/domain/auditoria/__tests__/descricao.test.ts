@@ -58,5 +58,6 @@ describe("descreverEvento", () => {
       para: "14/10/2026",
     });
     expect(descreverEvento(evento("prefixo", null, "oem_abc123", "TokenApi", "t1"), n).campo).toBe("Começo do token");
+    expect(descreverEvento(evento("origem", null, "OAUTH", "TokenApi", "t1"), n)).toMatchObject({ campo: "Origem", para: "Autorizado no Claude (Permitir)" });
   });
 });

@@ -31,9 +31,11 @@ export function interpretarLinkDeAcesso(search: string, hash: string): LinkDeAce
 }
 
 // Destino pós-login vindo da URL: só caminho do próprio site. "//host" e "/\host" são
-// lidos pelo navegador como outro domínio, por isso também caem no padrão.
+// lidos pelo navegador como outro domínio, por isso também caem no padrão. Caractere de
+// controle também: o navegador apaga tab e quebra de linha da URL, e "/<tab>/host" vira "//host".
+const CONTROLE = /[\u0000-\u001f\u007f]/;
 export function caminhoInterno(destino: string | null | undefined, padrao: string): string {
-  if (!destino || !destino.startsWith("/") || destino.startsWith("//") || destino.includes("\\")) return padrao;
+  if (!destino || !destino.startsWith("/") || destino.startsWith("//") || destino.includes("\\") || CONTROLE.test(destino)) return padrao;
   return destino;
 }
 

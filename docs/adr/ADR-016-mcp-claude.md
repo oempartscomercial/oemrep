@@ -20,7 +20,8 @@ plataforma, nunca direto no banco", sem dizer o formato.
    - claude.ai (conector personalizado, que não aceita cabeçalho): `/api/mcp/<token>`.
      O código não registra a URL, mas o **log de requisições da Vercel registra o caminho**, com o
      token. Risco aceito por ora; quem tem acesso aos logs já tem acesso ao projeto. Saída
-     futura: OAuth no conector.
+     futura: OAuth no conector. **Atualização:** feito no [ADR-017](ADR-017-mcp-oauth.md); o
+     token manual passou a ser o jeito "Avançado".
 4. **Mesmas regras das telas.** As regras de gravação que estavam presas nas server actions
    foram para `src/lib/crm` (empresas, contatos, prospecção, busca); a tela e o MCP chamam as
    mesmas funções. O que o Claude grava sai no nome do dono do token, com `Interacao.origem =

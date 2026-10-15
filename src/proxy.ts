@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { rotaProtegida, loginDispensado } from "@/lib/auth-guard";
+import { rotaProtegida, loginDispensado, caminhoDoLogin } from "@/lib/auth-guard";
 
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next();
@@ -37,8 +37,8 @@ export async function proxy(request: NextRequest) {
   const { data } = await supabase.auth.getUser();
 
   if (!data.user) {
-    const loginUrl = new URL("/login", request.url);
-    return NextResponse.redirect(loginUrl);
+    const { pathname, search } = request.nextUrl;
+    return NextResponse.redirect(new URL(caminhoDoLogin(pathname, search, request.method), request.url));
   }
 
   return response;

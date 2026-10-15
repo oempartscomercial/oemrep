@@ -102,4 +102,23 @@ describe("tokens de acesso do Claude", () => {
       await b.limpar();
     }
   }, 15000);
+
+  it("lista os autorizados pelo OAuth junto, com a origem; parado há mais de 90 dias aparece expirado", async () => {
+    const c = await cenario("t6");
+    try {
+      await criarToken(c.sessao, "Token manual");
+      const agora = Date.now();
+      const base = { usuarioId: c.usuario.id, origem: "OAUTH" as const, prefixo: "oem_xxxxxx", expiraEm: new Date(agora + 3600_000) };
+      await prisma.tokenApi.create({ data: { ...base, nome: "Claude", hash: `h-ok-${agora}`, refreshHash: `r-ok-${agora}`, refreshExpiraEm: new Date(agora + 86400_000) } });
+      await prisma.tokenApi.create({ data: { ...base, nome: "Claude Code", hash: `h-velho-${agora}`, refreshHash: `r-velho-${agora}`, refreshExpiraEm: new Date(agora - 1000) } });
+      const lista = await listarTokens(c.sessao);
+      const por = (nome: string) => lista.find((t) => t.nome === nome)!;
+      expect(por("Token manual")).toMatchObject({ origem: "MANUAL", expirado: false });
+      expect(por("Claude")).toMatchObject({ origem: "OAUTH", expirado: false });
+      expect(por("Claude Code")).toMatchObject({ origem: "OAUTH", expirado: true });
+      expect(JSON.stringify(lista)).not.toContain("refresh");
+    } finally {
+      await c.limpar();
+    }
+  }, 15000);
 });

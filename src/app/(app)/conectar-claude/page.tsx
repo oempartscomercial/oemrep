@@ -1,5 +1,6 @@
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { listarTokens } from "@/lib/mcp/tokens";
+import { origemDoApp } from "@/lib/origem";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { PainelConexao, type AcessoLinha } from "./painel-conexao";
@@ -15,6 +16,8 @@ export default async function ConectarClaudePage() {
     id: t.id,
     nome: t.nome,
     prefixo: t.prefixo,
+    origem: t.origem,
+    expirado: t.expirado,
     dono: t.meu ? null : t.dono,
     criadoEm: quando(t.criadoEm)!,
     ultimoUsoEm: quando(t.ultimoUsoEm),
@@ -27,7 +30,7 @@ export default async function ConectarClaudePage() {
         titulo="Conectar o Claude"
         descricao="Deixa o Claude ler e anotar no CRM por você: agenda, fichas, carteira e registros. Tudo o que ele grava fica no seu nome, marcado “pelo Claude”."
       />
-      <PainelConexao acessos={acessos} nomeSugerido={`Claude de ${usuario.nome.split(" ")[0]}`} />
+      <PainelConexao acessos={acessos} origem={await origemDoApp()} nomeSugerido={`Claude de ${usuario.nome.split(" ")[0]}`} />
     </PageContainer>
   );
 }

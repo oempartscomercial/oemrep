@@ -63,6 +63,7 @@ const VALORES: Record<string, string> = {
   FORA_DE_FABRICACAO: "Fora de fabricação",
   DESISTENCIA: "Desistência",
   MANUAL: "Manual",
+  OAUTH: "Autorizado no Claude (Permitir)",
   EXCEL: "Planilha",
   A_ABORDAR: "A abordar",
   ABORDADO: "Abordado",

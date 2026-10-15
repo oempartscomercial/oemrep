@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createHash } from "node:crypto";
-import { extrairBearer, gerarToken, hashDoToken, pareceToken, prefixoDoToken } from "../token";
+import { extrairBearer, gerarSegredo, gerarToken, hashDoToken, pareceToken, prefixoDoToken } from "../token";
 
 describe("token de acesso do Claude", () => {
   it("gera um segredo novo a cada vez, com o prefixo oem_ e sem caracteres que quebram URL", () => {
@@ -34,5 +34,17 @@ describe("token de acesso do Claude", () => {
     expect(extrairBearer("Basic dXNlcjpzZW5oYQ==")).toBeNull();
     expect(extrairBearer("Bearer ")).toBeNull();
     expect(extrairBearer(null)).toBeNull();
+  });
+});
+
+describe("segredos do OAuth (código e renovação)", () => {
+  it("código e refresh têm prefixos próprios e não passam por token de acesso", () => {
+    const codigo = gerarSegredo("codigo");
+    const refresh = gerarSegredo("renovacao");
+    expect(codigo).toMatch(/^oemc_[A-Za-z0-9_-]{43}$/);
+    expect(refresh).toMatch(/^oemr_[A-Za-z0-9_-]{43}$/);
+    expect(pareceToken(codigo)).toBe(false);
+    expect(pareceToken(refresh)).toBe(false);
+    expect(gerarSegredo("codigo")).not.toBe(codigo);
   });
 });

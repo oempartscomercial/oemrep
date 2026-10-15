@@ -5,7 +5,7 @@ import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase";
 import { validarAcesso } from "./actions";
 import { traduzirErroAuth } from "@/domain/auth/mensagens";
-import { interpretarLinkDeAcesso } from "@/domain/auth/link";
+import { caminhoInterno, interpretarLinkDeAcesso } from "@/domain/auth/link";
 import { AuthLayout } from "@/components/layouts/auth-layout";
 import { Botao } from "@/components/patterns/botao";
 import { CampoTexto } from "@/components/patterns/campo";
@@ -48,7 +48,8 @@ export default function LoginPage() {
     }
     // Navegação completa: com router.replace + refresh o Next 16 cancelava a ida para a
     // raiz e a tela ficava "entrando" para sempre, mesmo com a sessão já criada.
-    window.location.assign("/");
+    // ?proximo= (ex.: a autorização do Claude) só vale se for caminho do próprio site.
+    window.location.assign(caminhoInterno(new URLSearchParams(window.location.search).get("proximo"), "/"));
   }
 
   return (

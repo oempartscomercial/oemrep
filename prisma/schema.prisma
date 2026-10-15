@@ -118,24 +118,74 @@ model Usuario {
   arquivosEnviados     ArquivoImportado[]
   importacoesPedido    ImportacaoPedido[]
   tokensApi            TokenApi[]
+  codigosOAuth         CodigoOAuth[]
 }
 
 // Acesso do Claude ao CRM pelo servidor MCP (/api/mcp). O segredo aparece uma única vez,
 // na criação; aqui fica só o hash SHA-256. Tudo o que o Claude grava sai em nome do usuário
 // dono do token. Token revogado deixa de valer na hora e não volta.
+// Um acesso OAuth (ADR-017) também é uma linha daqui: uma por autorização ("Permitir"). A
+// renovação troca hash, refreshHash e as validades na mesma linha, e o par antigo deixa de
+// valer; revogar a linha derruba o access e o refresh juntos.
 model TokenApi {
-  id          String    @id @default(cuid())
-  usuarioId   String
-  usuario     Usuario   @relation(fields: [usuarioId], references: [id])
-  nome        String
+  id              String         @id @default(cuid())
+  usuarioId       String
+  usuario         Usuario        @relation(fields: [usuarioId], references: [id])
+  nome            String
   // Começo do token, para a pessoa reconhecer qual é qual na lista (ex.: "oem_k3Zp9Q").
-  prefixo     String
-  hash        String    @unique
-  criadoEm    DateTime  @default(now())
-  ultimoUsoEm DateTime?
-  revogadoEm  DateTime?
+  prefixo         String
+  hash            String         @unique
+  criadoEm        DateTime       @default(now())
+  ultimoUsoEm     DateTime?
+  revogadoEm      DateTime?
+  origem          OrigemTokenApi @default(MANUAL)
+  clienteOAuthId  String?
+  clienteOAuth    ClienteOAuth?  @relation(fields: [clienteOAuthId], references: [id])
+  // Só OAuth: validade do access token atual (o manual não vence).
+  expiraEm        DateTime?
+  refreshHash     String?        @unique
+  refreshExpiraEm DateTime?
+  codigosOAuth    CodigoOAuth[]
 
   @@index([usuarioId])
+}
+
+enum OrigemTokenApi {
+  MANUAL
+  OAUTH
+}
+
+// Aplicativo que se registrou sozinho (registro dinâmico, RFC 7591): o claude.ai, o Claude
+// Code de cada computador. Cliente público: não tem segredo, a prova é o PKCE. O id é o client_id.
+model ClienteOAuth {
+  id           String        @id @default(cuid())
+  nome         String
+  redirectUris String[]
+  criadoEm     DateTime      @default(now())
+  tokens       TokenApi[]
+  codigos      CodigoOAuth[]
+}
+
+// Código de autorização: sai do "Permitir", vale 5 minutos e uma vez só. Guarda o hash e tudo o
+// que a troca por token precisa conferir. Se for reapresentado depois de usado, o acesso que ele
+// gerou é revogado (tokenApiId).
+model CodigoOAuth {
+  id             String       @id @default(cuid())
+  hash           String       @unique
+  clienteOAuthId String
+  clienteOAuth   ClienteOAuth @relation(fields: [clienteOAuthId], references: [id])
+  usuarioId      String
+  usuario        Usuario      @relation(fields: [usuarioId], references: [id])
+  redirectUri    String
+  codeChallenge  String
+  recurso        String
+  criadoEm       DateTime     @default(now())
+  expiraEm       DateTime
+  usadoEm        DateTime?
+  tokenApiId     String?
+  tokenApi       TokenApi?    @relation(fields: [tokenApiId], references: [id])
+
+  @@index([expiraEm])
 }
 
 model UsuarioFabrica {

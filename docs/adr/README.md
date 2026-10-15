@@ -22,3 +22,4 @@ e por quê**.
 | [ADR-014](ADR-014-shadcn-ui-visual-attio.md) | shadcn/ui como base visual, direção tipo Attio |
 | [ADR-015](ADR-015-whatsapp-e-assistente.md) | WhatsApp e assistente do Rômulo: núcleo próprio, duas linhas, aprovação humana (proposto) |
 | [ADR-016](ADR-016-mcp-claude.md) | O Claude usa o CRM por um servidor MCP da plataforma, com token por usuário (proposto) |
+| [ADR-017](ADR-017-mcp-oauth.md) | O Claude se conecta ao CRM por OAuth (Conectar → Permitir), com o token manual como avançado (proposto) |

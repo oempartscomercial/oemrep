@@ -83,7 +83,10 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   (token no cabeçalho Bearer ou em `/api/mcp/<token>` para o conector do claude.ai), tela
   "Conectar o Claude" para gerar e revogar tokens (`TokenApi`, só o hash no banco). As regras de
   gravação do CRM moram em `src/lib/crm` e servem às telas e ao MCP; o que o Claude grava tem
-  `Interacao.origem = CLAUDE`.
+  `Interacao.origem = CLAUDE`. **OAuth** (`docs/adr/ADR-017-mcp-oauth.md`): a plataforma é o
+  servidor de autorização (metadados em `/.well-known/*`, registro dinâmico, PKCE S256, tela de
+  Permitir em `/oauth/autorizar`, tokens em `/oauth/token`); o access token é um `TokenApi` com
+  `origem = OAUTH`. Regras puras em `src/domain/mcp/oauth.ts`, banco em `src/lib/mcp/oauth.ts`.
 
 Próximo passo: **MVP completo (Épicos 1–7).** Os 7 épicos do roteiro estão concluídos.
 Evoluções futuras (V2+) — conciliação Autoflex, OCR de DANFE, CCe, parâmetros por

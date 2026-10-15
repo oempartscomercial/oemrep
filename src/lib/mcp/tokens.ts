@@ -3,9 +3,11 @@ import { podeVerCrm, type PerfilUsuario } from "@/lib/authz";
 import type { UsuarioSessao } from "@/lib/sessao";
 import { compararCampos } from "@/domain/auditoria/evento";
 import { gerarToken, hashDoToken, pareceToken, prefixoDoToken } from "@/domain/mcp/token";
+import { venceu } from "@/domain/mcp/oauth";
 
 // Tokens de acesso do Claude ao CRM (servidor MCP em /api/mcp). O segredo sai daqui uma vez,
 // na criação; o banco guarda o hash. Cada usuário cuida dos seus; ADMIN vê e revoga todos.
+// Os acessos autorizados pelo OAuth (src/lib/mcp/oauth.ts) moram na mesma tabela.
 
 const SEM_PERMISSAO = "Você não tem permissão para acessar o CRM.";
 
@@ -27,51 +29,71 @@ export type TokenNaLista = {
   id: string;
   nome: string;
   prefixo: string;
+  /** MANUAL: token gerado na tela. OAUTH: autorizado pelo "Permitir" do Claude. */
+  origem: "MANUAL" | "OAUTH";
   dono: string;
   meu: boolean;
   criadoEm: Date;
   ultimoUsoEm: Date | null;
   revogadoEm: Date | null;
+  /** OAuth sem renovação há mais de 90 dias: não volta sozinho, é preciso conectar de novo. */
+  expirado: boolean;
 };
 
 export async function listarTokens(usuario: UsuarioSessao): Promise<TokenNaLista[]> {
+  const agora = new Date();
   const tokens = await prisma.tokenApi.findMany({
     where: usuario.perfil === "ADMIN" ? {} : { usuarioId: usuario.id },
     orderBy: [{ revogadoEm: { sort: "desc", nulls: "first" } }, { criadoEm: "desc" }],
-    select: { id: true, nome: true, prefixo: true, criadoEm: true, ultimoUsoEm: true, revogadoEm: true, usuarioId: true, usuario: { select: { nome: true } } },
+    select: {
+      id: true, nome: true, prefixo: true, origem: true, criadoEm: true, ultimoUsoEm: true, revogadoEm: true, refreshExpiraEm: true,
+      usuarioId: true, usuario: { select: { nome: true } },
+    },
   });
-  return tokens.map(({ usuario: dono, usuarioId, ...t }) => ({ ...t, dono: dono.nome, meu: usuarioId === usuario.id }));
+  return tokens.map(({ usuario: dono, usuarioId, refreshExpiraEm, ...t }) => ({
+    ...t,
+    dono: dono.nome,
+    meu: usuarioId === usuario.id,
+    expirado: !t.revogadoEm && venceu(refreshExpiraEm, agora),
+  }));
 }
 
 export async function revogarToken(usuario: UsuarioSessao, id: string): Promise<{ erros: string[] }> {
   const token = await prisma.tokenApi.findUnique({ where: { id } });
   if (!token || (token.usuarioId !== usuario.id && usuario.perfil !== "ADMIN")) return { erros: ["Acesso não encontrado."] };
   if (token.revogadoEm) return { erros: ["Este acesso já estava revogado."] };
-  const agora = new Date();
+  await marcarRevogado(id, usuario.id, new Date());
+  return { erros: [] };
+}
+
+/** Revoga na hora (no OAuth, access e refresh juntos: são a mesma linha) e audita em nome de quem revogou. */
+export async function marcarRevogado(id: string, quemRevogaId: string, agora: Date): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const r = await tx.tokenApi.updateMany({ where: { id, revogadoEm: null }, data: { revogadoEm: agora } });
     if (r.count === 0) return;
     await tx.eventoAuditoria.createMany({
-      data: compararCampos("TokenApi", id, usuario.id, { revogadoEm: null }, { revogadoEm: agora.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }) }),
+      data: compararCampos("TokenApi", id, quemRevogaId, { revogadoEm: null }, { revogadoEm: agora.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }) }),
     });
   });
-  return { erros: [] };
 }
 
 export type Autenticacao =
   | { ok: true; usuario: UsuarioSessao; tokenId: string }
   | { ok: false; status: 401 | 403; mensagem: string };
 
-const NAO_AUTORIZADO = { ok: false, status: 401, mensagem: "Token inválido ou revogado. Gere um novo em Conectar o Claude." } as const;
+const NAO_AUTORIZADO = { ok: false, status: 401, mensagem: "Token inválido, vencido ou revogado. Conecte o Claude de novo (Conectar o Claude, na plataforma)." } as const;
 
-/** Token → usuário dono, se o token vale e o usuário está ativo e usa o CRM. Marca o último uso. */
+/**
+ * Token → usuário dono, se o token vale e o usuário está ativo e usa o CRM. Marca o último uso.
+ * Vale para os dois tipos: o manual (não vence) e o access token do OAuth (vence em 1 hora).
+ */
 export async function autenticarToken(token: string): Promise<Autenticacao> {
   if (!pareceToken(token)) return NAO_AUTORIZADO;
   const salvo = await prisma.tokenApi.findUnique({
     where: { hash: hashDoToken(token) },
     include: { usuario: { include: { fabricas: { select: { fabricaId: true } } } } },
   });
-  if (!salvo || salvo.revogadoEm || !salvo.usuario.ativo) return NAO_AUTORIZADO;
+  if (!salvo || salvo.revogadoEm || venceu(salvo.expiraEm, new Date()) || !salvo.usuario.ativo) return NAO_AUTORIZADO;
   const perfil = salvo.usuario.perfil as PerfilUsuario;
   if (!podeVerCrm({ perfil })) return { ok: false, status: 403, mensagem: SEM_PERMISSAO };
 

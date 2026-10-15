@@ -15,6 +15,19 @@ export function hashDoToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
+// Segredos do OAuth (ADR-017): o código de autorização (uso único, 5 minutos) e o refresh token.
+// Prefixos próprios para nunca passarem por token de acesso (pareceToken só aceita "oem_").
+const PREFIXOS_OAUTH = { codigo: "oemc_", renovacao: "oemr_" } as const;
+const FORMATO_OAUTH = { codigo: /^oemc_[A-Za-z0-9_-]{43}$/, renovacao: /^oemr_[A-Za-z0-9_-]{43}$/ } as const;
+
+export function gerarSegredo(tipo: keyof typeof PREFIXOS_OAUTH): string {
+  return PREFIXOS_OAUTH[tipo] + randomBytes(32).toString("base64url");
+}
+
+export function pareceSegredo(tipo: keyof typeof PREFIXOS_OAUTH, texto: string | null | undefined): boolean {
+  return FORMATO_OAUTH[tipo].test(texto ?? "");
+}
+
 /** O começo visível na lista ("oem_" + 6 caracteres): identifica sem revelar. */
 export function prefixoDoToken(token: string): string {
   return token.slice(0, PREFIXO.length + 6);

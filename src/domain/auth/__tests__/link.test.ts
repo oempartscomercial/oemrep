@@ -2,6 +2,11 @@ import { describe, it, expect } from "vitest";
 import { interpretarLinkDeAcesso, caminhoInterno, tipoDeLinkValido, ehConvite } from "../link";
 
 describe("interpretarLinkDeAcesso", () => {
+  it("o ?proximo= da autorização do Claude não é link de acesso (os parâmetros dela vão codificados)", () => {
+    const proximo = encodeURIComponent("/oauth/autorizar?response_type=code&code_challenge=abc&state=x&error=y");
+    expect(interpretarLinkDeAcesso(`?proximo=${proximo}`, "")).toEqual({ tipo: "nenhum" });
+  });
+
   it("lê o code do fluxo PKCE (recuperação pedida pelo navegador)", () => {
     expect(interpretarLinkDeAcesso("?code=abc123", "")).toEqual({ tipo: "codigo", codigo: "abc123" });
   });
@@ -43,6 +48,15 @@ describe("caminhoInterno (anti open-redirect)", () => {
       expect(caminhoInterno(ruim, "/")).toBe("/");
     }
     expect(caminhoInterno(null, "/x")).toBe("/x");
+  });
+  it("recusa caractere de controle: o navegador apaga tab e quebra de linha e \"/\\t/evil.com\" vira \"//evil.com\"", () => {
+    for (const ruim of ["/\t/evil.com", "/\n/evil.com", "/\r/evil.com", "/a\u0000b", "/a\u007f"]) {
+      expect(caminhoInterno(ruim, "/")).toBe("/");
+    }
+  });
+  it("aceita a volta para a autorização do Claude, com a query inteira", () => {
+    const volta = "/oauth/autorizar?response_type=code&client_id=c1&redirect_uri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&state=x";
+    expect(caminhoInterno(volta, "/")).toBe(volta);
   });
 });
 
