@@ -94,6 +94,11 @@ export function GraficoMensal({ serie, mesAtual, podeImportar }: { serie: PontoM
         </div>
       </div>
 
+      {serie.length === 0 ? (
+        <p className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
+          Sem dados ainda. {podeImportar ? "Importe o histórico ou registre pedidos e NFes." : "Os meses aparecem aqui conforme pedidos e NFes forem registrados."}
+        </p>
+      ) : (
       <div className="relative flex gap-2">
         {/* Eixo Y: valores abreviados; o exato aparece ao passar o mouse (ou tocar) na coluna. */}
         <div className="relative mt-3 h-56 w-16 shrink-0 text-right text-xs text-muted-foreground tabular" aria-hidden>
@@ -174,6 +179,8 @@ export function GraficoMensal({ serie, mesAtual, podeImportar }: { serie: PontoM
           </div>
         </div>
       </div>
+
+      )}
 
       <div className="flex flex-col gap-2 border-t pt-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         {avisoNfe ? (
