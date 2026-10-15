@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { obterUsuarioLogado, type UsuarioSessao } from "@/lib/sessao";
 import { podeVerCrm } from "@/lib/authz";
 import * as crm from "@/lib/crm/empresas";
+import * as cadastro from "@/lib/crm/cadastro";
+import type { EntradaCadastroEmpresa } from "@/domain/crm/cadastro";
 
 // As regras moram em src/lib/crm/empresas.ts, que o Claude (servidor MCP) também usa.
 // Aqui fica só o que é da tela: sessão, permissão e revalidação.
@@ -69,4 +71,17 @@ export async function concluirProximoPasso(entrada: { id: string; proximo?: Pass
   const r = await crm.concluirProximoPasso(autor(sessao.usuario), entrada);
   if (r.clienteId) revalidar(r.clienteId);
   return { erros: r.erros };
+}
+
+/** Edição do cadastro direto na ficha (painel lateral). Como em Cadastros, só ADMIN altera. */
+export async function editarCadastroEmpresa(id: string, entrada: EntradaCadastroEmpresa): Promise<Resultado> {
+  const usuario = await obterUsuarioLogado();
+  if (!usuario) return { erros: [SEM_SESSAO] };
+  if (usuario.perfil !== "ADMIN") return { erros: ["Só administrador altera o cadastro da empresa."] };
+  const r = await cadastro.editarCadastroEmpresa(usuario.id, id, entrada);
+  if (r.erros.length === 0) {
+    revalidar(id);
+    revalidatePath("/cadastros/clientes");
+  }
+  return r;
 }
