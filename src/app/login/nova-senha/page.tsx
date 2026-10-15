@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase";
 import { traduzirErroAuth } from "@/domain/auth/mensagens";
@@ -24,7 +23,6 @@ const SEM_LINK = "Link inválido. Peça um novo link.";
 const LINK_RECUSADO = "Este link expirou ou já foi usado. Peça um novo.";
 
 export default function NovaSenhaPage() {
-  const router = useRouter();
   const [estado, setEstado] = useState<Estado>({ etapa: "validando" });
   const [senha, setSenha] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
@@ -83,8 +81,9 @@ export default function NovaSenhaPage() {
       setEnviando(false);
       return;
     }
-    router.replace("/");
-    router.refresh();
+    // Navegação completa: com router.replace + refresh o Next 16 cancelava a ida para a
+    // raiz e a tela ficava "entrando" para sempre, mesmo com a sessão já criada.
+    window.location.assign("/");
   }
 
   const convite = estado.etapa === "pronto" && estado.convite;

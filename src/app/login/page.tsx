@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase";
 import { validarAcesso } from "./actions";
@@ -12,7 +11,6 @@ import { Botao } from "@/components/patterns/botao";
 import { CampoTexto } from "@/components/patterns/campo";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -48,8 +46,9 @@ export default function LoginPage() {
       setEnviando(false);
       return;
     }
-    router.replace("/");
-    router.refresh();
+    // Navegação completa: com router.replace + refresh o Next 16 cancelava a ida para a
+    // raiz e a tela ficava "entrando" para sempre, mesmo com a sessão já criada.
+    window.location.assign("/");
   }
 
   return (
