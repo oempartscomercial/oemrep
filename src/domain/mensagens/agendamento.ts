@@ -40,8 +40,6 @@ export function interpretarMomento(texto: string, agora: Date, horaPadrao: numbe
 
   const [primeira, ...resto] = t.split(" ");
   const restoTexto = resto.join(" ");
-  let dia: string | null = null;
-  let horaTexto = restoTexto;
 
   const semana = DIAS.findIndex((d) => primeira === d || primeira === `${d}-feira`);
   if (semana >= 0) {
@@ -58,14 +56,14 @@ export function interpretarMomento(texto: string, agora: Date, horaPadrao: numbe
     return null;
   }
 
-  dia = interpretarDia(primeira, hoje);
+  const dia = interpretarDia(primeira, hoje);
   if (!dia) {
     // Só a hora ("16h"): hoje.
     const hora = lerHora(t);
     if (!hora) return null;
     return { tipo: "em", quando: emSaoPaulo(hoje, hora[0], hora[1]) };
   }
-  const hora = lerHora(horaTexto);
+  const hora = lerHora(restoTexto);
   if (hora === null) return null;
   const [h, m] = hora ?? [horaPadrao, 0];
   return { tipo: "em", quando: emSaoPaulo(dia, h, m) };
