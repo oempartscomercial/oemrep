@@ -112,9 +112,25 @@ describe("lerEventoEvolution — o que não é conversa individual", () => {
     expect(e).toMatchObject({ tipo: "sem_numero", jid: "99887766554433@lid", idExterno: "3EB0AAAA" });
   });
 
-  it("outros eventos (conexão, recibo de leitura) são ignorados", () => {
-    expect(lerEventoEvolution(upsert({ state: "open" }, "connection.update"))[0].tipo).toBe("ignorado");
+  it("outros eventos (apagar, contatos, presença) são ignorados", () => {
     expect(lerEventoEvolution(upsert({ state: "open" }, "messages.delete"))[0].tipo).toBe("ignorado");
+    expect(lerEventoEvolution(upsert({ id: "x" }, "contacts.upsert"))[0].tipo).toBe("ignorado");
+  });
+});
+
+describe("lerEventoEvolution — Evolution v2: mensagem enviada e conexão", () => {
+  it("SEND_MESSAGE (mensagem que saiu pela API) é lida como mensagem nossa", () => {
+    const [e] = lerEventoEvolution(
+      upsert({ key: chave({ fromMe: true, id: "3EB0SEND" }), message: { conversation: "Olá, quem cuida da compra?" }, messageTimestamp: 1_791_300_000, status: "PENDING" }, "SEND_MESSAGE"),
+    );
+    expect(e).toMatchObject({ tipo: "mensagem", idExterno: "3EB0SEND", direcao: "SAIDA", texto: "Olá, quem cuida da compra?" });
+    expect(lerEventoEvolution(upsert({ key: chave({ fromMe: true, id: "3EB0SEND2" }), message: { conversation: "x" } }, "send.message"))[0].tipo).toBe("mensagem");
+  });
+
+  it("CONNECTION_UPDATE vira o estado da conexão do celular", () => {
+    expect(lerEventoEvolution(upsert({ instance: "prospeccao", state: "open", statusReason: 200 }, "CONNECTION_UPDATE"))).toEqual([{ tipo: "conexao", estado: "open" }]);
+    expect(lerEventoEvolution(upsert({ state: "close" }, "connection.update"))).toEqual([{ tipo: "conexao", estado: "close" }]);
+    expect(lerEventoEvolution(upsert({}, "connection.update"))[0].tipo).toBe("ignorado");
   });
 });
 

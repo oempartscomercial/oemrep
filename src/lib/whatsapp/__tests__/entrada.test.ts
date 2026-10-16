@@ -115,8 +115,9 @@ describe("entrada — resposta de quem estava 'em contato'", () => {
     }
   });
 
-  it("número sem empresa só grava a mensagem (nunca responde, nunca muda o CRM)", async () => {
+  it("conversa sem empresa só grava a mensagem (nunca responde, nunca muda o CRM)", async () => {
     const n = numeroDeTeste();
+    await prisma.conversa.create({ data: { linha: "PROSPECCAO", numero: n.e164, motivoSemVinculo: "numero_em_varias_empresas", ultimaMensagemEm: new Date() } });
     try {
       const r = await registrarEvento("PROSPECCAO", upsert(n.e164, "IN-4", "Quem fala?"));
       expect(r.resultados).toEqual(["mensagem"]);
@@ -182,8 +183,9 @@ describe("saída — recibos e eco da própria mensagem", () => {
       const r = await registrarEvento("PROSPECCAO", recibo("ENV-7", "DELIVERY_ACK"));
       expect(r.resultados).toEqual(["status: sem mudança"]);
       expect((await prisma.mensagem.findFirstOrThrow({ where: { idExterno: "ENV-7" } })).status).toBe("LIDA");
+      // Recibo de mensagem que não é nossa (conversa pessoal): nem o evento fica guardado.
       const sem = await registrarEvento("PROSPECCAO", recibo("NAO-EXISTE", "READ"));
-      expect(sem.resultados).toEqual(["status: sem mudança"]);
+      expect(sem).toEqual({ eventoId: null, resultados: ["ignorado: recibo de mensagem que não é da base"] });
     } finally {
       await c.limpar();
     }

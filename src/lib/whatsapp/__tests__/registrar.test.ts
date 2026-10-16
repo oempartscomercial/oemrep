@@ -37,11 +37,12 @@ async function limpar(numeros: string[], clienteIds: string[]) {
   await prisma.mensagem.deleteMany({ where: { conversaId: { in: ids } } });
   await prisma.conversa.deleteMany({ where: { id: { in: ids } } });
   await prisma.eventoWhatsapp.deleteMany({ where: { id: { in: eventos.flatMap((e) => (e.eventoId ? [e.eventoId] : [])) } } });
+  await prisma.interacao.deleteMany({ where: { clienteId: { in: clienteIds } } });
   await prisma.contato.deleteMany({ where: { clienteId: { in: clienteIds } } });
   await prisma.cliente.deleteMany({ where: { id: { in: clienteIds } } });
 }
 
-describe("registrarEvento — fase 1 do ADR-015", () => {
+describe("registrarEvento — ADR-015 e ADR-019", () => {
   it("grava a mensagem de um contato conhecido na conversa da empresa", async () => {
     const n = numeroDeTeste();
     const { empresa, contato } = await empresaComContato("a", n.cadastro);
@@ -60,7 +61,7 @@ describe("registrarEvento — fase 1 do ADR-015", () => {
       });
       expect(conversa.mensagens[0].ocorridoEm).toEqual(new Date(1_791_300_000_000));
 
-      const bruto = await prisma.eventoWhatsapp.findUniqueOrThrow({ where: { id: r.eventoId } });
+      const bruto = await prisma.eventoWhatsapp.findUniqueOrThrow({ where: { id: r.eventoId! } });
       expect(bruto.processadoEm).not.toBeNull();
       expect(bruto.resultado).toBe("mensagem");
       expect(bruto.payload).toMatchObject({ event: "messages.upsert" });
@@ -95,7 +96,7 @@ describe("registrarEvento — fase 1 do ADR-015", () => {
     const n = numeroDeTeste();
     const { empresa } = await empresaComContato("c", n.cadastro);
     const corpo = evento(`${n.e164.slice(1)}@s.whatsapp.net`, { id: "WA-C1" });
-    let segundo: string | undefined;
+    let segundo: string | null = null;
     try {
       await registrarEvento("PROSPECCAO", corpo);
       const r2 = await registrarEvento("PROSPECCAO", corpo);
@@ -121,18 +122,14 @@ describe("registrarEvento — fase 1 do ADR-015", () => {
     }
   });
 
-  it("número que ninguém cadastrou fica sem empresa, com o motivo", async () => {
+  it("número que ninguém cadastrou não é guardado (pode ser conversa pessoal)", async () => {
     const n = numeroDeTeste();
-    try {
-      await registrarEvento("PROSPECCAO", evento(`${n.e164.slice(1)}@s.whatsapp.net`, { id: "WA-E1", pushName: "Desconhecido" }));
-      const conversa = await prisma.conversa.findUniqueOrThrow({ where: { linha_numero: { linha: "PROSPECCAO", numero: n.e164 } } });
-      expect(conversa).toMatchObject({ clienteId: null, contatoId: null, motivoSemVinculo: "numero_desconhecido" });
-    } finally {
-      await limpar([n.e164], []);
-    }
+    const r = await registrarEvento("PROSPECCAO", evento(`${n.e164.slice(1)}@s.whatsapp.net`, { id: "WA-E1", pushName: "Desconhecido" }));
+    expect(r).toEqual({ eventoId: null, resultados: ["ignorado: número fora da base"] });
+    expect(await prisma.conversa.count({ where: { numero: n.e164 } })).toBe(0);
   });
 
-  it("número em duas empresas não é atribuído a nenhuma", async () => {
+  it("número em duas empresas é da base, mas não é atribuído a nenhuma", async () => {
     const n = numeroDeTeste();
     const a = await empresaComContato("f1", n.cadastro);
     const b = await empresaComContato("f2", n.cadastro);
@@ -145,12 +142,12 @@ describe("registrarEvento — fase 1 do ADR-015", () => {
     }
   });
 
-  it("conversa sem empresa é ligada quando o contato passa a existir e chega nova mensagem", async () => {
+  it("conversa sem empresa (de antes da regra) é ligada quando o contato passa a existir e chega nova mensagem", async () => {
     const n = numeroDeTeste();
     let empresaId: string | undefined;
     try {
       const jid = `${n.e164.slice(1)}@s.whatsapp.net`;
-      await registrarEvento("PROSPECCAO", evento(jid, { id: "WA-G1" }));
+      await prisma.conversa.create({ data: { linha: "PROSPECCAO", numero: n.e164, motivoSemVinculo: "numero_desconhecido", ultimaMensagemEm: new Date(1_791_300_000_000) } });
       const { empresa } = await empresaComContato("g", n.cadastro);
       empresaId = empresa.id;
       await registrarEvento("PROSPECCAO", evento(jid, { id: "WA-G2", ts: 1_791_300_900 }));
@@ -161,22 +158,18 @@ describe("registrarEvento — fase 1 do ADR-015", () => {
     }
   });
 
-  it("o que não é conversa individual deixa só o evento bruto, com o motivo", async () => {
+  it("o que não é conversa individual não deixa nem o evento bruto", async () => {
     const grupo = await registrarEvento("PROSPECCAO", evento("120363025246125486@g.us", { id: "WA-H1" }));
     const lid = await registrarEvento("PROSPECCAO", evento("99887766554433@lid", { id: "WA-H2" }));
-    try {
-      expect(grupo.resultados).toEqual(["ignorado: mensagem de grupo"]);
-      expect(lid.resultados[0]).toMatch(/^sem_numero: identificador interno/);
-      expect(await prisma.conversa.count({ where: { numero: { in: ["+120363025246125486", "+99887766554433"] } } })).toBe(0);
-      const guardado = await prisma.eventoWhatsapp.findUniqueOrThrow({ where: { id: lid.eventoId } });
-      expect(guardado.resultado).toMatch(/^sem_numero/);
-    } finally {
-      await prisma.eventoWhatsapp.deleteMany({ where: { id: { in: [grupo.eventoId, lid.eventoId] } } });
-    }
+    expect(grupo).toEqual({ eventoId: null, resultados: ["ignorado: mensagem de grupo"] });
+    expect(lid.eventoId).toBeNull();
+    expect(lid.resultados[0]).toMatch(/^ignorado: identificador interno/);
+    expect(await prisma.conversa.count({ where: { numero: { in: ["+120363025246125486", "+99887766554433"] } } })).toBe(0);
   });
 
   it("mensagem sem horário usa o momento da chegada", async () => {
     const n = numeroDeTeste();
+    const { empresa } = await empresaComContato("i", n.cadastro);
     const antes = Date.now();
     try {
       const corpo = evento(`${n.e164.slice(1)}@s.whatsapp.net`, { id: "WA-I1" });
@@ -185,7 +178,7 @@ describe("registrarEvento — fase 1 do ADR-015", () => {
       const m = await prisma.mensagem.findFirstOrThrow({ where: { idExterno: "WA-I1" } });
       expect(m.ocorridoEm.getTime()).toBeGreaterThanOrEqual(antes - 1000);
     } finally {
-      await limpar([n.e164], []);
+      await limpar([n.e164], [empresa.id]);
     }
   });
 });
