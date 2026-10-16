@@ -29,7 +29,7 @@ const quando = (d: Date) => `${formatarDia(diaEmSaoPaulo(d))} ${formatarHora(d)}
 
 export default async function ConversasPage() {
   const [{ conversas, semTelefone, limite }, pendentes, followUps, limites] = await Promise.all([listarConversas(), listarPendentes(), listarFollowUpsDeHoje(), lerLimites()]);
-  const envioAutomatico = envioAutomaticoLigado();
+  const envioAutomatico = await envioAutomaticoLigado();
   const agora = new Date();
 
   const linhas: ConversaLinha[] = conversas.map((c) => {

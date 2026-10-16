@@ -30,7 +30,7 @@ export async function despachar(
   mensagemId: string,
   opcoes: { transporte?: TransporteWhatsapp; agora?: Date } = {},
 ): Promise<ResultadoDoDespacho> {
-  const transporte = opcoes.transporte ?? obterTransporte();
+  const transporte = opcoes.transporte ?? (await obterTransporte());
   const agora = opcoes.agora ?? new Date();
 
   const mensagem = await prisma.mensagem.findUnique({

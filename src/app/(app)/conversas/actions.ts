@@ -430,6 +430,6 @@ export async function consultarEnvio(entrada: { contatoId: string }): Promise<Co
     pendente: pendente?.texto ? { texto: pendente.texto, status: pendente.status as "RASCUNHO" | "APROVADA" } : undefined,
     ultimaRecebida: recebida?.texto ?? undefined,
     numero: numero ?? undefined,
-    envioAutomatico: envioAutomaticoLigado(),
+    envioAutomatico: await envioAutomaticoLigado(),
   };
 }

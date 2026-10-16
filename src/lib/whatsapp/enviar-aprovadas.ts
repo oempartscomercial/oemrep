@@ -31,7 +31,7 @@ export async function enviarAprovadas(
   opcoes: { agora?: Date; transporte?: TransporteWhatsapp; limite?: number; mensagemIds?: string[] } = {},
 ): Promise<ResumoDoEnvioAgendado> {
   const agora = opcoes.agora ?? new Date();
-  const transporte = opcoes.transporte ?? obterTransporte();
+  const transporte = opcoes.transporte ?? (await obterTransporte());
   // Máximo de despachos por execução. Cancelamentos por idade não contam.
   const limite = opcoes.limite ?? LOTE_PADRAO;
   // mensagemIds restringe o lote (testes e reenvio pontual); o cron não passa.

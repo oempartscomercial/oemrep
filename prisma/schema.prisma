@@ -120,6 +120,7 @@ model Usuario {
   importacoesPedido    ImportacaoPedido[]
   tokensApi            TokenApi[]
   codigosOAuth         CodigoOAuth[]
+  integracoes          Integracao[]
 }
 
 // Acesso do Claude ao CRM pelo servidor MCP (/api/mcp). O segredo aparece uma única vez,
@@ -866,10 +867,57 @@ model Mensagem {
   erro                String?
   // Por que a mensagem aprovada ainda não saiu (fora do horário, linha caída...).
   motivoBloqueio      String?
+  // Aprovada para sair a partir deste instante (ADR-019). Nulo = assim que der. O envio
+  // agendado só pega as vencidas, e ainda respeita horário comercial e as demais proteções.
+  agendadaPara        DateTime?
+  // A pessoa aprovou conversando com o Claude (ferramenta aprovar_mensagem_whatsapp do MCP):
+  // aprovadaPorId continua sendo ela; isto só registra por onde veio o "pode enviar".
+  aprovadaPeloClaude  Boolean                @default(false)
   classificacao       ClassificacaoMensagem?
   classificacaoOrigem OrigemClassificacao?
 
   // O mesmo evento pode chegar mais de uma vez: o id do WhatsApp evita a duplicata.
   @@unique([linha, idExterno])
   @@index([conversaId, ocorridoEm])
+  @@index([status, agendadaPara])
+}
+
+enum TipoIntegracao {
+  EVOLUTION
+  CHATWOOT
+}
+
+// Serviços externos configurados na tela Administração → Integrações (ADR-019), uma linha por
+// tipo. Os segredos ficam cifrados (AES-256-GCM, chave na variável INTEGRACOES_CHAVE); a tela
+// só mostra o final (segredoFinal) e nunca devolve o segredo salvo.
+model Integracao {
+  tipo                  TipoIntegracao @id
+  url                   String
+  // Evolution: nome da instância (ex.: prospeccao).
+  instancia             String?
+  // Chatwoot: número da conta.
+  conta                 String?
+  // Evolution: a API key. Chatwoot: o token de acesso.
+  segredoCifrado        String
+  segredoFinal          String
+  // Evolution: a aprovada sai sozinha. Desligado = a pessoa envia pelo celular e toca em "Já enviei".
+  envioAutomatico       Boolean        @default(false)
+  // Evolution: segredo que a Evolution manda ao chamar o webhook do sistema (gerado ao configurar).
+  webhookSegredoCifrado String?
+  webhookConfiguradoEm  DateTime?
+  // Último estado da conexão avisado pela Evolution (evento connection.update): open, close, connecting.
+  estadoConexao         String?
+  estadoConexaoEm       DateTime?
+  atualizadoEm          DateTime       @updatedAt
+  atualizadoPorId       String?
+  atualizadoPor         Usuario?       @relation(fields: [atualizadoPorId], references: [id])
+}
+
+// Trava de uma tarefa agendada (o envio do WhatsApp roda a cada 5 minutos). Funciona atrás do
+// pooler do Supabase, que não segura advisory lock de sessão: roda quem consegue empurrar
+// ocupadaAte para o futuro; a trava vence sozinha se a execução morrer no meio.
+model Trava {
+  chave      String   @id
+  dono       String
+  ocupadaAte DateTime
 }

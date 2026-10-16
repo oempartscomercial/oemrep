@@ -62,7 +62,7 @@ export function BlocoCarregando({ linhas = 3, alto = false }: { linhas?: number;
 export async function ConversasDaEmpresa({ empresa }: { empresa: Empresa }) {
   const [conversas, limites] = await Promise.all([buscarConversas(empresa.id), lerLimites()]);
   if (conversas.length === 0) return null;
-  const envioAutomatico = envioAutomaticoLigado();
+  const envioAutomatico = await envioAutomaticoLigado();
   const agora = new Date();
 
   // O que espera uma ação do Rômulo: rascunho ou aprovada parada, e resposta do contato sem retorno.
