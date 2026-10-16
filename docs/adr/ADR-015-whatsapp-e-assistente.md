@@ -3,6 +3,10 @@
 **Data:** 2026-10-06 · **Status:** Proposto (depende da validação do Rômulo e do piloto da fase 0)
 · Complementa o [ADR-013](ADR-013-modulo-crm.md), que deixou o WhatsApp fora do escopo.
 
+> **Atualização (16/10/2026):** configuração da Evolution/Chatwoot na tela, webhook só de
+> números da base, envio agendado e ferramentas do MCP estão no
+> [ADR-019](ADR-019-integracoes-whatsapp-pelo-sistema.md). As regras de envio deste ADR continuam.
+
 ## Contexto
 O CRM (ADR-013) guarda empresas, contatos, linha do tempo e próximos passos. Duas coisas
 ainda dependem de WhatsApp:

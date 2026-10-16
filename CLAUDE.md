@@ -87,6 +87,14 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   servidor de autorização (metadados em `/.well-known/*`, registro dinâmico, PKCE S256, tela de
   Permitir em `/oauth/autorizar`, tokens em `/oauth/token`); o access token é um `TokenApi` com
   `origem = OAUTH`. Regras puras em `src/domain/mcp/oauth.ts`, banco em `src/lib/mcp/oauth.ts`.
+- **WhatsApp pelo sistema** (`docs/adr/ADR-019-integracoes-whatsapp-pelo-sistema.md`): tela
+  Administração → Integrações (só ADMIN, `src/app/(app)/integracoes`) guarda Evolution e Chatwoot
+  na tabela `Integracao`, segredos cifrados com `INTEGRACOES_CHAVE` (`src/lib/integracoes`);
+  `obterTransporte` lê o banco e cai nas variáveis `EVOLUTION_*`. Webhook só guarda número da
+  base (`src/lib/whatsapp/registrar.ts`). Mensagem aprovada pode ter `agendadaPara`; o cron
+  `/api/cron/whatsapp` (trava na tabela `Trava`) solta as vencidas. Regras de rascunho/aprovação/
+  cancelamento em `src/lib/whatsapp/mensagens.ts`, usadas pela tela Conversas, pela ficha e pelas
+  ferramentas `*_mensagem_whatsapp`/`status_whatsapp` do MCP (`src/lib/mcp/whatsapp.ts`).
 
 Próximo passo: **MVP completo (Épicos 1–7).** Os 7 épicos do roteiro estão concluídos.
 Evoluções futuras (V2+) — conciliação Autoflex, OCR de DANFE, CCe, parâmetros por
