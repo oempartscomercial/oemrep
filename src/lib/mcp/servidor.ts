@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { UsuarioSessao } from "@/lib/sessao";
 import * as consultas from "./consultas";
 import * as escritas from "./escritas";
+import * as whatsapp from "./whatsapp";
 
 // Servidor MCP do CRM da OEM: o Claude do usuário lê e grava o CRM pela plataforma, com as
 // mesmas regras das telas. Um servidor por requisição (modo sem sessão), já preso ao usuário
@@ -15,7 +16,7 @@ Você fala com um usuário da OEM (normalmente o Rômulo, dono, que não é téc
 - Empresa em andamento (aprovada, em contato, conversando, avanço) precisa de próximo passo com data e responsável. Se faltar, pergunte uma vez.
 - Pedido recebido não é faturamento: nunca diga "faturou" ou "receita" sobre pedidos.
 - "Não contatar" vale na hora (registrar_interacao com nao_contatar).
-- Você não envia mensagens: no máximo escreve rascunhos para o usuário enviar.
+- WhatsApp de prospecção: você prepara (preparar_mensagem_whatsapp), mostra ao usuário o destinatário e o texto exato, e só aprova (aprovar_mensagem_whatsapp) depois do OK explícito dele para aquele texto ("pode enviar", "manda"). Nunca aprove por conta própria, nunca mude o texto depois do OK, nunca envie e-mail. As regras do sistema (não contatar, origem do número, horário comercial, limite do dia, duplicada) valem sempre: se bloquear, explique em uma frase.
 - Rudolph só no Norte e Nordeste (regra do contrato).
 - Responda em português simples, curto, com datas DD/MM/AAAA e dia da semana; não mostre ids ao usuário (use-os só nas chamadas).`;
 
@@ -103,6 +104,75 @@ export function criarServidorMcp(usuario: UsuarioSessao): McpServer {
       annotations: LEITURA,
     },
     async (a) => texto(await consultas.conversasRecentes(a)),
+  );
+
+  server.registerTool(
+    "preparar_mensagem_whatsapp",
+    {
+      title: "Preparar mensagem de WhatsApp",
+      description:
+        "Cria um RASCUNHO de mensagem de WhatsApp para um contato cadastrado de uma empresa (nada é enviado). Devolve o destinatário, o texto exato, o tipo e o que impediria ou seguraria o envio (não contatar, origem do número, horário comercial, limite do dia, mensagem repetida). Depois de chamar: mostre ao usuário o destinatário e o texto exato e pergunte se pode enviar (agora ou quando). Só aprove depois do OK explícito dele para AQUELE texto. Primeira mensagem: curta, sem link, citando algo real do catálogo da empresa e com pergunta sobre quem compra (modelo do usuário). Só para contato cadastrado com fonte; nunca deduza número.",
+      inputSchema: {
+        empresa,
+        contato: z.string().optional().describe("Nome do contato na empresa (ou o número). Vazio = o único contato de telefone da empresa."),
+        numero: z.string().optional().describe("Número com DDD, se o usuário disse o número. Precisa já estar cadastrado na empresa."),
+        texto: z.string().min(1).describe("Texto exato da mensagem, como o usuário vai ver e aprovar."),
+        tipo: z
+          .enum(["primeiro_contato", "follow_up", "resposta"])
+          .optional()
+          .describe("Vazio = o sistema deduz pela conversa (nada ainda = primeiro contato; o contato falou por último = resposta; senão follow-up)."),
+      },
+      annotations: ESCRITA,
+    },
+    async (a) => texto(await whatsapp.prepararMensagemWhatsapp(usuario, a)),
+  );
+
+  server.registerTool(
+    "aprovar_mensagem_whatsapp",
+    {
+      title: "Aprovar e enviar (ou agendar) mensagem de WhatsApp",
+      description:
+        "Aprova um rascunho em nome do usuário (fica registrado que foi aprovado pelo Claude a pedido dele) e envia agora ou agenda. SÓ CHAME depois que o usuário viu o texto exato e o destinatário e disse explicitamente que pode enviar. Uma chamada por mensagem. O sistema ainda aplica as proteções: devolve ENVIADA, AGENDADA para …, APROVADA esperando (horário, conexão, limite do dia: sai sozinha depois) ou BLOQUEADA por … (cancelada). Fora do horário comercial, a agendada espera a próxima abertura.",
+      inputSchema: {
+        mensagem_id: z.string().min(1).describe("O [mensagem_id: …] devolvido por preparar_mensagem_whatsapp ou mensagens_whatsapp."),
+        enviar_em: z.string().optional().describe('Quando enviar: "agora" (padrão), "amanhã 9h", "segunda 14h", "23/10 9h" ou DD/MM/AAAA HH:MM (horário de Brasília). Até 30 dias à frente.'),
+      },
+      annotations: { ...ESCRITA, openWorldHint: true },
+    },
+    async (a) => texto(await whatsapp.aprovarMensagemWhatsapp(usuario, a)),
+  );
+
+  server.registerTool(
+    "cancelar_mensagem_whatsapp",
+    {
+      title: "Cancelar mensagem de WhatsApp",
+      description: "Cancela um rascunho ou uma mensagem aprovada que ainda não saiu (inclusive agendada). Use quando o usuário desistir ou quiser trocar o texto (depois prepare outra). O que já saiu não volta.",
+      inputSchema: { mensagem_id: z.string().min(1).describe("O [mensagem_id: …] da mensagem.") },
+      annotations: { ...ESCRITA, destructiveHint: true },
+    },
+    async (a) => texto(await whatsapp.cancelarMensagemWhatsapp(usuario, a)),
+  );
+
+  server.registerTool(
+    "mensagens_whatsapp",
+    {
+      title: "Mensagens de WhatsApp pendentes",
+      description:
+        "O que está pendente no WhatsApp de prospecção: rascunhos esperando aprovação, aprovadas que ainda não saíram (agendadas ou esperando), enviadas hoje e respostas de contatos esperando retorno. Use para 'alguém respondeu?', 'o que falta aprovar?', 'o que saiu hoje?'. Sem filtro, mostra tudo.",
+      inputSchema: { filtro: z.enum(["rascunhos", "agendadas", "enviadas_hoje", "respostas"]).optional() },
+      annotations: LEITURA,
+    },
+    async (a) => texto(await whatsapp.mensagensWhatsapp(a)),
+  );
+
+  server.registerTool(
+    "status_whatsapp",
+    {
+      title: "WhatsApp conectado?",
+      description: "Diz se o celular de prospecção está conectado (e com qual número), se o envio automático está ligado, se as respostas estão chegando ao sistema e quantas mensagens esperam. Use para 'o WhatsApp caiu?', 'está conectado?'. Se estiver desconectado, oriente o usuário a pedir ao Arthur ou abrir a tela Integrações para ler o QR Code.",
+      annotations: { ...LEITURA, openWorldHint: true },
+    },
+    async () => texto(await whatsapp.statusWhatsapp()),
   );
 
   server.registerTool(
