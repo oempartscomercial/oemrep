@@ -1,10 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { obterParametroNumero } from "@/lib/parametros";
-import { verificarEnvio, type Limites } from "@/domain/mensagens/envio";
-import { diaEmSaoPaulo } from "@/domain/mensagens/exibicao";
+import { descreverMomento } from "@/domain/mensagens/agendamento";
 import { ErroDeEnvio, obterTransporte, type EstadoDaLinha, type TransporteWhatsapp } from "./transporte";
 import { aplicarEfeitosDoEnvio } from "./efeitos";
+import { verificarMensagem } from "./verificacao";
+
+export { JA_SAIU, lerLimites } from "./limites";
 
 // Envio de mensagem JÁ aprovada por uma pessoa (ADR-015 §3). Aqui só se aplicam as proteções
 // fixas e se chama o transporte; ninguém aprova nada neste arquivo.
@@ -12,19 +13,6 @@ import { aplicarEfeitosDoEnvio } from "./efeitos";
 // `codigos` só vem quando a mensagem continua aprovada esperando (códigos de verificarEnvio):
 // quem agenda decide por eles, não pelo texto do motivo.
 export type ResultadoDoDespacho = { status: "ENVIADA" | "APROVADA" | "CANCELADA" | "FALHOU" | "IGNORADA"; motivo?: string; codigos?: string[] };
-
-export const JA_SAIU = ["ENVIANDO", "ENVIADA", "ENTREGUE", "LIDA"] as const;
-
-export async function lerLimites(): Promise<Limites> {
-  const [horarioInicio, horarioFim, maxPrimeirosPorDia, diasEntreMensagens, maxTentativas] = await Promise.all([
-    obterParametroNumero("whatsapp_horario_inicio", 8),
-    obterParametroNumero("whatsapp_horario_fim", 18),
-    obterParametroNumero("whatsapp_limite_primeiros_dia", 15),
-    obterParametroNumero("whatsapp_dias_entre_mensagens", 3),
-    obterParametroNumero("whatsapp_max_tentativas", 3),
-  ]);
-  return { horarioInicio, horarioFim, maxPrimeirosPorDia, diasEntreMensagens, maxTentativas };
-}
 
 export async function despachar(
   mensagemId: string,
@@ -38,36 +26,16 @@ export async function despachar(
     include: { conversa: { include: { cliente: true, contato: true } } },
   });
   if (!mensagem || mensagem.direcao !== "SAIDA" || mensagem.status !== "APROVADA") return { status: "IGNORADA" };
-  const { conversa } = mensagem;
-  if (!conversa.cliente || !conversa.contato || !mensagem.tipoEnvio || !mensagem.texto) {
-    return cancelar(mensagem.id, "A mensagem não está ligada a um contato cadastrado.");
+  // Agendada para mais tarde: ainda não é a hora. Quem quer antes usa "Enviar agora", que tira o agendamento.
+  if (mensagem.agendadaPara && mensagem.agendadaPara > agora) {
+    return { status: "APROVADA", motivo: `Agendada para ${descreverMomento(mensagem.agendadaPara)}.`, codigos: ["agendada"] };
   }
+  const { conversa } = mensagem;
 
-  const [historico, limites, linha] = await Promise.all([
-    prisma.mensagem.findMany({
-      where: { conversaId: conversa.id, id: { not: mensagem.id } },
-      select: { direcao: true, status: true, texto: true, ocorridoEm: true },
-    }),
-    lerLimites(),
-    transporte.estado().catch((): EstadoDaLinha => "desconhecida"),
-  ]);
-  const inicioDoDia = new Date(`${diaEmSaoPaulo(agora)}T00:00:00-03:00`);
-  const primeirosContatosHoje = await prisma.mensagem.count({
-    where: { linha: mensagem.linha, tipoEnvio: "PRIMEIRO_CONTATO", status: { in: [...JA_SAIU] }, enviadaEm: { gte: inicioDoDia, lt: new Date(inicioDoDia.getTime() + 86_400_000) } },
-  });
-
-  const verificacao = verificarEnvio({
-    agora,
-    tipo: mensagem.tipoEnvio,
-    texto: mensagem.texto,
-    empresa: { situacao: conversa.cliente.situacao, naoContatar: conversa.cliente.naoContatar },
-    contato: { naoContatar: conversa.contato.naoContatar, origemContato: conversa.contato.origemContato },
-    numero: conversa.numero,
-    historico: historico.map((h) => ({ direcao: h.direcao, status: h.status, texto: h.texto, ocorridoEm: h.ocorridoEm })),
-    primeirosContatosHoje,
-    limites,
-    linha,
-  });
+  const linha = await transporte.estado().catch((): EstadoDaLinha => "desconhecida");
+  const avaliacao = await verificarMensagem(mensagem, { agora, linha });
+  if (!avaliacao) return cancelar(mensagem.id, "A mensagem não está ligada a um contato cadastrado.");
+  const { verificacao, limites } = avaliacao;
 
   if (!verificacao.ok) {
     const motivo = verificacao.bloqueios.map((b) => b.texto).join(" ");
@@ -85,7 +53,7 @@ export async function despachar(
   if (reserva.count === 0) return { status: "IGNORADA" };
 
   try {
-    const { idExterno } = await transporte.enviarTexto(conversa.numero, mensagem.texto);
+    const { idExterno } = await transporte.enviarTexto(conversa.numero, mensagem.texto!);
     try {
       // Se o eco chegou antes e já adotou a mensagem, não há mais nada ENVIANDO para atualizar.
       await prisma.mensagem.updateMany({
