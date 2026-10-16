@@ -10,6 +10,7 @@ import { ConversasTabela, type ConversaLinha } from "./conversas-tabela";
 import { envioPeloCelularDaConversa } from "@/domain/mensagens/envio-manual";
 import { lerLimites } from "@/lib/whatsapp/despachar";
 import { envioAutomaticoLigado } from "@/lib/whatsapp/transporte";
+import { descreverMomento } from "@/domain/mensagens/agendamento";
 
 const ROTULO_TIPO: Record<string, string> = { PRIMEIRO_CONTATO: "Primeiro contato", FOLLOW_UP: "Follow-up", RESPOSTA: "Resposta" };
 
@@ -61,7 +62,7 @@ export default async function ConversasPage() {
           titulo={`Para aprovar (${pendentes.length})`}
           dica={
             envioAutomatico
-              ? "Nada sai sem o seu OK. Aprovada que não saiu está esperando horário, limite ou a linha."
+              ? "Nada sai sem o seu OK. Aprovada que não saiu está agendada ou esperando horário, limite ou a linha; o sistema tenta de novo sozinho."
               : "Nada sai sem o seu OK. O envio automático não está ligado: depois de aprovar, você envia pelo celular de prospecção."
           }
         >
@@ -71,10 +72,19 @@ export default async function ConversasPage() {
                 <Link href={`/empresas/${m.conversa.cliente?.id}`} className="font-medium hover:underline">
                   {m.conversa.cliente?.nomeFantasia ?? "Sem empresa"}
                 </Link>
-                <span className="text-xs text-muted-foreground">{ROTULO_TIPO[m.tipoEnvio ?? ""] ?? ""} · {m.status === "RASCUNHO" ? "rascunho" : envioAutomatico ? "aprovada, esperando" : "aprovada, envie pelo celular"}</span>
+                <span className="text-xs text-muted-foreground">
+                  {ROTULO_TIPO[m.tipoEnvio ?? ""] ?? ""} ·{" "}
+                  {m.status === "RASCUNHO"
+                    ? "rascunho"
+                    : !envioAutomatico
+                      ? "aprovada, envie pelo celular"
+                      : m.agendadaPara && m.agendadaPara > agora
+                        ? `agendada para ${descreverMomento(m.agendadaPara)}`
+                        : "aprovada, esperando"}
+                </span>
               </div>
               <p className="whitespace-pre-wrap break-words">{m.texto}</p>
-              {m.motivoBloqueio && envioAutomatico && <p className="text-xs text-warning">{m.motivoBloqueio}</p>}
+              {m.motivoBloqueio && envioAutomatico && !(m.agendadaPara && m.agendadaPara > agora) && <p className="text-xs text-warning">{m.motivoBloqueio}</p>}
               {(m.status === "RASCUNHO" || m.status === "APROVADA") && m.texto && <AcoesDaMensagem
                   id={m.id}
                   status={m.status}
@@ -82,6 +92,7 @@ export default async function ConversasPage() {
                   destinatario={{ nome: m.conversa.contato?.nome ?? m.conversa.cliente?.nomeFantasia ?? "o contato", numero: formatarNumero(m.conversa.numero) }}
                   ultimaRecebida={m.conversa.mensagens.find((x) => x.direcao === "ENTRADA" && x.texto)?.texto ?? null}
                   envioAutomatico={envioAutomatico}
+                  agendadaPara={m.agendadaPara && m.agendadaPara > agora ? m.agendadaPara : null}
                   envioPeloCelular={
                     envioPeloCelularDaConversa(
                       { numero: m.conversa.numero, empresa: m.conversa.cliente, contato: m.conversa.contato, mensagens: m.conversa.mensagens },

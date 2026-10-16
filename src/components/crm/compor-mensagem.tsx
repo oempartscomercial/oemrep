@@ -69,7 +69,7 @@ export function ComporMensagem({ contatoId, nome, aoFechar }: { contatoId: strin
     }
     setResultado(
       a.status === "APROVADA"
-        ? `Aprovada, mas ainda não saiu. ${a.motivo ?? ""} Ela sai quando você tentar de novo.`
+        ? `Aprovada, mas ainda não saiu. ${a.motivo ?? ""} O sistema tenta de novo sozinho.`
         : a.status === "FALHOU"
           ? `Não foi enviada. ${a.motivo ?? ""}`
           : `Não saiu: ${a.motivo ?? "bloqueada pelas proteções."}`,

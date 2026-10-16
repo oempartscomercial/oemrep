@@ -9,7 +9,7 @@ describe("menu lateral", () => {
   it("tem os módulos do MVP em ordem", () => {
     expect(ITENS_MENU.map((i) => i.href)).toEqual([
       "/", "/funis", "/empresas", "/conversas", "/pedidos", "/pedidos/itens", "/conferencia", "/rastreio",
-      "/divergencias", "/pedidos-x-nfe", "/alertas", "/auditoria", "/conectar-claude", "/cadastros",
+      "/divergencias", "/pedidos-x-nfe", "/alertas", "/auditoria", "/conectar-claude", "/integracoes", "/cadastros",
     ]);
   });
 

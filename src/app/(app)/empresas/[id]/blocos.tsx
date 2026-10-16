@@ -117,6 +117,7 @@ export async function ConversasDaEmpresa({ empresa }: { empresa: Empresa }) {
                 destinatario={{ nome: quem, numero: formatarNumero(c.numero) }}
                 mensagens={c.mensagens}
                 envioAutomatico={envioAutomatico}
+                agora={agora}
                 envioPeloCelular={envioPeloCelularDaConversa({ numero: c.numero, empresa: { situacao: empresa.situacao, naoContatar: empresa.naoContatar }, contato: c.contato, mensagens: c.mensagens }, limites, agora)}
                 aviso={c._count.mensagens > c.mensagens.length ? `Mostrando as ${c.mensagens.length} mensagens mais recentes de ${c._count.mensagens}.` : undefined}
               />
