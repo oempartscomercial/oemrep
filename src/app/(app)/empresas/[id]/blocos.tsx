@@ -70,7 +70,8 @@ export async function ConversasDaEmpresa({ empresa }: { empresa: Empresa }) {
     const quem = c.contato?.nome ?? c.nomeNoWhatsapp ?? empresa.nome;
     const itens: { chave: string; texto: string }[] = [];
     const rascunhos = c.mensagens.filter((m) => m.direcao === "SAIDA" && m.status === "RASCUNHO").length;
-    const paradas = c.mensagens.filter((m) => m.direcao === "SAIDA" && m.status === "APROVADA").length;
+    // Agendada para mais tarde não espera ninguém: sai sozinha na hora marcada.
+    const paradas = c.mensagens.filter((m) => m.direcao === "SAIDA" && m.status === "APROVADA" && !(envioAutomatico && m.agendadaPara && m.agendadaPara > agora)).length;
     if (rascunhos > 0) itens.push({ chave: `r-${c.id}`, texto: rascunhos === 1 ? `Um rascunho para ${quem} espera sua aprovação.` : `${rascunhos} rascunhos para ${quem} esperam sua aprovação.` });
     if (paradas > 0) {
       itens.push({

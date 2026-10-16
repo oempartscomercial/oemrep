@@ -91,6 +91,8 @@ export function PainelEvolution({ config, podeSalvar, enderecoDoWebhook }: { con
   const [estado, setEstado] = useState<EstadoDaInstancia | null>(null);
   const [qrAberto, setQrAberto] = useState(false);
   const [confirmarWebhook, setConfirmarWebhook] = useState<string | null>(null);
+  // O resultado do webhook aparece junto do bloco do webhook; o resto, embaixo dos botões principais.
+  const [retornoWebhook, setRetornoWebhook] = useState<Retorno>(null);
   const salva = config !== null;
   const daTela = config?.origem === "tela";
 
@@ -153,17 +155,17 @@ export function PainelEvolution({ config, podeSalvar, enderecoDoWebhook }: { con
 
   const webhook = (substituir = false) =>
     rodar("webhook", async () => {
+      setRetornoWebhook(null);
       const r = await configurarWebhookAcao({ substituir });
-      if (r.erros.length) return { tipo: "erro", texto: r.erros.join(" ") };
-      if (r.precisaConfirmar) {
-        setConfirmarWebhook(r.precisaConfirmar.urlAtual);
-        return;
-      }
+      if (r.erros.length) return setRetornoWebhook({ tipo: "erro", texto: r.erros.join(" ") });
+      if (r.precisaConfirmar) return setConfirmarWebhook(r.precisaConfirmar.urlAtual);
       setConfirmarWebhook(null);
       router.refresh();
-      return r.conferido
-        ? { tipo: "ok", texto: "Webhook configurado e conferido: as mensagens do WhatsApp passam a chegar ao sistema." }
-        : { tipo: "aviso", texto: "A Evolution aceitou o webhook, mas não confirmou a configuração ao ler de volta. Confira mandando uma mensagem de teste de um contato da base." };
+      setRetornoWebhook(
+        r.conferido
+          ? { tipo: "ok", texto: "Webhook configurado e conferido: as mensagens do WhatsApp passam a chegar ao sistema." }
+          : { tipo: "aviso", texto: "A Evolution aceitou o webhook, mas não confirmou a configuração ao ler de volta. Confira mandando uma mensagem de teste de um contato da base." },
+      );
     });
 
   return (
@@ -253,6 +255,7 @@ export function PainelEvolution({ config, podeSalvar, enderecoDoWebhook }: { con
             {config?.webhookConfiguradoEm ? "Configurar de novo" : "Configurar webhook"}
           </Botao>
         </div>
+        <Mensagem retorno={retornoWebhook} />
       </div>
 
       {qrAberto && (
@@ -362,7 +365,7 @@ function DialogoQrCode({ aoFechar, aoConectar }: { aoFechar: () => void; aoConec
               {/* eslint-disable-next-line @next/next/no-img-element -- imagem em data: vinda da Evolution, não otimizável */}
               <img src={imagem} alt="QR Code para conectar o WhatsApp" className="size-64 rounded-md border bg-white p-2" />
               {codigo && <p className="text-xs text-muted-foreground">Ou use o código no celular: <span className="font-mono">{codigo}</span></p>}
-              <p className="text-xs text-muted-foreground">O código se renova sozinho. Esta janela fecha quando conectar.</p>
+              <p className="text-xs text-muted-foreground">O código se renova sozinho. Quando o celular conectar, aparece aqui.</p>
             </>
           ) : (
             <p className="text-sm text-muted-foreground">Pedindo o QR Code…</p>

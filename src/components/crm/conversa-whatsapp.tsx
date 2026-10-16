@@ -3,6 +3,7 @@ import { formatarDia } from "@/domain/crm/prazo";
 import type { TipoMensagem } from "@/domain/mensagens/evolution";
 import { AcoesDaMensagem, type DestinatarioDaMensagem } from "@/components/crm/acoes-da-mensagem";
 import type { EnvioPeloCelular } from "@/domain/mensagens/envio-manual";
+import { descreverMomento } from "@/domain/mensagens/agendamento";
 import { cn } from "@/lib/utils";
 
 export type MensagemExibida = {
@@ -44,7 +45,7 @@ function situacaoDaSaida(m: MensagemExibida, envioAutomatico: boolean, agora: Da
     case "APROVADA":
       // Sem envio automático o motivo da espera (linha, horário) não vale: quem envia é a pessoa.
       if (!envioAutomatico) return { rotulo: "Aprovada · envie pelo celular", tom: "aviso" };
-      if (m.agendadaPara && m.agendadaPara > agora) return { rotulo: "Aprovada · agendada", tom: "aviso" };
+      if (m.agendadaPara && m.agendadaPara > agora) return { rotulo: `Aprovada · agendada para ${descreverMomento(m.agendadaPara)}`, tom: "aviso" };
       return { rotulo: "Aprovada · ainda não saiu", detalhe: m.motivoBloqueio, tom: "aviso" };
     case "ENVIANDO":
       return { rotulo: "Enviando…", tom: "neutro" };

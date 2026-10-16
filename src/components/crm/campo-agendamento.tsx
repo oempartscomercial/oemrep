@@ -4,10 +4,14 @@ import { CampoTexto } from "@/components/patterns/campo";
 
 const FUSO = "America/Sao_Paulo";
 
-/** "AAAA-MM-DDTHH:MM" de amanhã às 9h no relógio de São Paulo: o valor inicial do campo. */
-export function amanhaAsNove(agora: number): string {
-  const dia = new Date(agora + 86_400_000).toLocaleDateString("sv-SE", { timeZone: FUSO });
-  return `${dia}T09:00`;
+/** "AAAA-MM-DDTHH:MM" do próximo dia útil às 9h no relógio de São Paulo: o valor inicial do campo. */
+export function proximoDiaUtilAsNove(agora: number): string {
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(agora + i * 86_400_000);
+    const semana = d.toLocaleDateString("en-US", { timeZone: FUSO, weekday: "short" });
+    if (semana !== "Sat" && semana !== "Sun") return `${d.toLocaleDateString("sv-SE", { timeZone: FUSO })}T09:00`;
+  }
+  return `${new Date(agora + 86_400_000).toLocaleDateString("sv-SE", { timeZone: FUSO })}T09:00`;
 }
 
 /**

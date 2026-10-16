@@ -8,8 +8,7 @@ import { CampoTextarea } from "@/components/patterns/campo";
 import { aprovarMensagem, cancelarMensagem, editarRascunho, tentarEnviar } from "@/app/(app)/conversas/actions";
 import type { EnvioPeloCelular as Preparo } from "@/domain/mensagens/envio-manual";
 import { AVISO_SEM_ENVIO_AUTOMATICO, EnvioPeloCelular } from "@/components/crm/envio-pelo-celular";
-import { amanhaAsNove, CampoAgendamento } from "@/components/crm/campo-agendamento";
-import { descreverMomento } from "@/domain/mensagens/agendamento";
+import { proximoDiaUtilAsNove, CampoAgendamento } from "@/components/crm/campo-agendamento";
 
 /** Segundos entre confirmar e a mensagem sair de verdade: dá tempo de desfazer. */
 const SEGUNDOS_PARA_DESFAZER = 10;
@@ -28,7 +27,7 @@ type Props = {
   envioAutomatico: boolean;
   /** Para aprovada: o link do WhatsApp com o texto, ou por que não enviar. */
   envioPeloCelular?: Preparo;
-  /** Aprovada com hora marcada (ainda no futuro): mostra quando sai e "Enviar agora". */
+  /** Aprovada com hora marcada (ainda no futuro): o botão vira "Enviar agora" (quem mostra a hora é a conversa). */
   agendadaPara?: Date | null;
 };
 
@@ -92,7 +91,7 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
 
   function abrirAprovacao() {
     setQuando("agora");
-    setAgendarPara(amanhaAsNove(Date.now()));
+    setAgendarPara(proximoDiaUtilAsNove(Date.now()));
     setConfirmando(true);
   }
 
@@ -101,7 +100,6 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
       {status === "APROVADA" && envioPeloCelular?.link && (
         <EnvioPeloCelular id={id} link={envioPeloCelular.link} nome={nome} envioAutomatico={envioAutomatico} />
       )}
-      {agendada && <p className="text-right text-xs font-medium text-warning">Agendada para {descreverMomento(agendada)}.</p>}
       {status === "APROVADA" && envioPeloCelular?.bloqueio && (
         <p role="alert" className="max-w-sm text-right text-xs font-medium text-destructive">Não envie: {envioPeloCelular.bloqueio}</p>
       )}
