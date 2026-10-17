@@ -206,6 +206,19 @@ describe("saída — recibos e eco da própria mensagem", () => {
     }
   });
 
+  it("enviada pelo Chatwoot (já ENVIADA, sem id do WhatsApp): o eco também é adotado", async () => {
+    const c = await cenario("EM_CONTATO");
+    try {
+      const enviada = await c.nossa("", { idExterno: null, status: "ENVIADA", texto: "Quem cuida da compra?", ocorridoEm: new Date(), tipoEnvio: "RESPOSTA" });
+      const r = await registrarEvento("PROSPECCAO", upsert(c.n.e164, "ECO-CW", "Quem cuida da compra?", { fromMe: true }));
+      expect(r.resultados).toEqual(["adotada"]);
+      expect(await prisma.mensagem.findUniqueOrThrow({ where: { id: enviada.id } })).toMatchObject({ idExterno: "ECO-CW", status: "ENVIADA", origem: "PLATAFORMA" });
+      expect(await prisma.mensagem.count({ where: { conversaId: c.conversa.id, direcao: "SAIDA" } })).toBe(1);
+    } finally {
+      await c.limpar();
+    }
+  });
+
   it("mensagem digitada no celular continua entrando como ENVIADA do Rômulo", async () => {
     const c = await cenario("EM_CONTATO");
     try {

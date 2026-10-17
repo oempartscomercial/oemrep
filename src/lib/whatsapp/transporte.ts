@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { lerEvolution } from "@/lib/integracoes/config";
+import { lerChatwoot, lerEvolution } from "@/lib/integracoes/config";
+import { criarTransporteChatwoot } from "./transporte-chatwoot";
 
 // Adaptador de saída (ADR-015 §1): duas operações, enviar e saber se a linha está de pé. O
 // resto do sistema só conhece TransporteWhatsapp; trocar a Evolution pela API oficial é
@@ -17,7 +18,8 @@ export class ErroDeEnvio extends Error {
 export interface TransporteWhatsapp {
   nome: string;
   estado(): Promise<EstadoDaLinha>;
-  enviarTexto(numeroE164: string, texto: string): Promise<{ idExterno: string }>;
+  /** idExterno nulo = o id do WhatsApp só chega depois, pelo eco no webhook (envio pelo Chatwoot). */
+  enviarTexto(numeroE164: string, texto: string): Promise<{ idExterno: string | null }>;
 }
 
 const TEMPO_LIMITE_MS = 15_000;
@@ -94,7 +96,12 @@ export async function obterTransporte(env: Ambiente = process.env): Promise<Tran
   if (env.WHATSAPP_TRANSPORTE === "simulado" && env.NODE_ENV !== "production") return criarTransporteSimulado();
   try {
     const cfg = await lerEvolution(env);
-    if (cfg?.envioAutomatico && cfg.url && cfg.apikey && cfg.instancia) return criarTransporteEvolution(cfg);
+    if (cfg?.envioAutomatico && cfg.url && cfg.apikey && cfg.instancia) {
+      // Com o Chatwoot salvo na tela, o envio passa por ele (a mensagem fica na caixa de entrada).
+      const chatwoot = await lerChatwoot(env);
+      if (chatwoot?.url && chatwoot.conta && chatwoot.token) return criarTransporteChatwoot({ evolution: cfg, chatwoot });
+      return criarTransporteEvolution(cfg);
+    }
   } catch (erro) {
     console.error("[whatsapp] configuração da Evolution não pôde ser lida; envio desligado", erro instanceof Error ? erro.message : erro);
   }

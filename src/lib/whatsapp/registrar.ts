@@ -66,13 +66,15 @@ async function obterConversa(linha: LinhaWhatsapp, m: Mensagem, ocorridoEm: Date
 
 // A plataforma envia, e o WhatsApp devolve o eco da mesma mensagem como "minha". Se o eco
 // chega antes de a API responder com o id, a mensagem ainda está ENVIANDO sem id: ela é
-// adotada em vez de virar uma segunda mensagem "pelo celular".
+// adotada em vez de virar uma segunda mensagem "pelo celular". Enviada pelo Chatwoot, ela já
+// está ENVIADA sem id (o id do WhatsApp só existe depois que a Evolution envia) e é adotada igual.
 async function adotarEcoDeEnvio(conversaId: string, m: Mensagem, ocorridoEm: Date, eventoId: string): Promise<boolean> {
   const candidata = await prisma.mensagem.findFirst({
     where: {
       conversaId,
       direcao: "SAIDA",
-      status: "ENVIANDO",
+      status: { in: ["ENVIANDO", "ENVIADA"] },
+      envioManual: false,
       idExterno: null,
       texto: m.texto,
       criadoEm: { gte: new Date(Date.now() - 10 * 60_000) },
@@ -81,7 +83,7 @@ async function adotarEcoDeEnvio(conversaId: string, m: Mensagem, ocorridoEm: Dat
   });
   if (!candidata) return false;
   const { count } = await prisma.mensagem.updateMany({
-    where: { id: candidata.id, status: "ENVIANDO", idExterno: null },
+    where: { id: candidata.id, status: { in: ["ENVIANDO", "ENVIADA"] }, idExterno: null },
     data: { idExterno: m.idExterno, status: "ENVIADA", enviadaEm: ocorridoEm, eventoId },
   });
   return count > 0;

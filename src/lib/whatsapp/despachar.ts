@@ -58,7 +58,7 @@ export async function despachar(
       // Se o eco chegou antes e já adotou a mensagem, não há mais nada ENVIANDO para atualizar.
       await prisma.mensagem.updateMany({
         where: { id: mensagem.id, status: "ENVIANDO" },
-        data: { status: "ENVIADA", idExterno, enviadaEm: agora, ocorridoEm: agora, erro: null },
+        data: { status: "ENVIADA", ...(idExterno ? { idExterno } : {}), enviadaEm: agora, ocorridoEm: agora, erro: null },
       });
     } catch (erro) {
       // O eco já gravou esse id em outra linha: mantém a mensagem como enviada, sem o id.

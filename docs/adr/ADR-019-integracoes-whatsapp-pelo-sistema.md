@@ -57,6 +57,19 @@ O celular conectado pode ser o pessoal do Rômulo, com conversas pessoais.
    duplo. A Vercel (plano Hobby) só roda cron 1x/dia: o `vercel.json` mantém o diário como rede de
    segurança, e o de 5 minutos fica no Supabase (SQL abaixo, **não aplicado**).
 
+10. **O envio passa pelo Chatwoot** quando ele está salvo na tela (17/10/2026). O sistema cria a
+    mensagem na conversa do contato na caixa que a Evolution alimenta (o nome da caixa vem de
+    `GET /chatwoot/find/<instância>` da Evolution, não de configuração nossa); se o contato ou a
+    conversa não existem no Chatwoot, cria os dois. A integração Evolution → Chatwoot leva ao
+    WhatsApp. Assim tudo o que o sistema manda aparece no Chatwoot, onde o Rômulo responde. O
+    estado da linha continua vindo da Evolution. Sem Chatwoot salvo, envia direto pela Evolution,
+    como antes. O id do WhatsApp só existe depois que a Evolution envia: a mensagem fica `ENVIADA`
+    sem id e o eco do webhook a adota (por conversa, texto e últimos 10 minutos). Falha antes de
+    postar a mensagem tem certeza de que não enviou; depois, só 4xx tem.
+    **A conferir no primeiro envio real:** se o eco chega pelo webhook e é adotado (não vira
+    duplicata "pelo celular"); se o contato criado pelo sistema não duplica o que a Evolution cria
+    quando a pessoa responde (número com e sem o 9).
+
 ## SQL para o Supabase (pg_cron + pg_net) — aplicar à mão, uma vez
 No painel do Supabase: Database → Extensions, ligar `pg_cron` e `pg_net` (ou rodar os `create
 extension`). Depois, no SQL Editor, trocando `<CRON_SECRET>` pelo mesmo valor da Vercel e o domínio
