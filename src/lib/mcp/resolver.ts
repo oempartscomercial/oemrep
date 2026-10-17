@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { montarWhereEmpresas } from "@/lib/crm/busca";
 import { ROTULO_SITUACAO, type Situacao } from "@/domain/crm/funil";
+import { acharFabricaPorNome } from "@/domain/crm/fabrica-prospeccao";
+import { listarFabricasAtivas } from "@/lib/crm/fabricas-prospeccao";
 
 // O Claude fala o nome ("a Dispetral"), não o id. Aqui o nome vira uma empresa ou um usuário,
 // ou uma pergunta de volta quando há mais de um candidato. Nunca se escolhe no chute.
@@ -54,4 +56,18 @@ export async function resolverResponsavel(texto: string | null | undefined, padr
   return achados.length === 0
     ? { ok: false, mensagem: `Ninguém chamado "${texto}" pode receber tarefas do CRM. Quem pode: ${nomes}.` }
     : { ok: false, mensagem: `Mais de uma pessoa para "${texto}": ${achados.map((u) => u.nome).join(", ")}. Diga o nome completo.` };
+}
+
+/** Nomes de fábrica falados ("rudolph", "h3") → fábricas ativas. Qualquer nome que não casa devolve a pergunta. */
+export async function resolverFabricas(nomes: string[] | undefined): Promise<Resolvido<{ id: string; nome: string }[]>> {
+  const pedidos = (nomes ?? []).filter((n) => n.trim());
+  if (pedidos.length === 0) return { ok: true, valor: [] };
+  const ativas = await listarFabricasAtivas();
+  const achadas: { id: string; nome: string }[] = [];
+  for (const nome of pedidos) {
+    const r = acharFabricaPorNome(nome, ativas);
+    if (!r.ok) return r;
+    if (!achadas.some((f) => f.id === r.valor.id)) achadas.push(r.valor);
+  }
+  return { ok: true, valor: achadas };
 }

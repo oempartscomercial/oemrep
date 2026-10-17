@@ -18,6 +18,7 @@ const amanha = somarDias(hoje, 1);
 let usuario: { id: string; nome: string };
 let colega: { id: string; nome: string };
 let fabrica: { id: string };
+let rudolph: { id: string };
 let token = "";
 const empresas: Record<string, string> = {};
 
@@ -61,6 +62,7 @@ beforeAll(async () => {
   usuario = await prisma.usuario.create({ data: { nome: `Rômulo ${SUFIXO}`, email: `romulo-${SUFIXO}@teste.local`, perfil: "ADMIN" } });
   colega = await prisma.usuario.create({ data: { nome: `Zélia ${SUFIXO}`, email: `zelia-${SUFIXO}@teste.local`, perfil: "ANALISTA" } });
   fabrica = await prisma.fabrica.create({ data: { nome: `Bowden ${SUFIXO}` } });
+  rudolph = await prisma.fabrica.create({ data: { nome: `Rudolph ${SUFIXO}` } });
 
   const aprovada = await prisma.cliente.create({
     data: { nomeFantasia: `Real Trator ${SUFIXO}`, situacao: "APROVADA", cidade: "Recife", uf: "PE", site: `realtrator-${SUFIXO}.com.br` },
@@ -99,9 +101,10 @@ afterAll(async () => {
   await prisma.proximoPasso.deleteMany({ where: { clienteId: { in: clientes } } });
   await prisma.contato.deleteMany({ where: { clienteId: { in: clientes } } });
   await prisma.pedidoHistorico.deleteMany({ where: { clienteId: { in: clientes } } });
+  await prisma.clienteFabrica.deleteMany({ where: { clienteId: { in: clientes } } });
   await prisma.cliente.deleteMany({ where: { id: { in: clientes } } });
   await prisma.tokenApi.deleteMany({ where: { usuarioId: { in: usuarios } } });
-  await prisma.fabrica.delete({ where: { id: fabrica.id } });
+  await prisma.fabrica.deleteMany({ where: { id: { in: [fabrica.id, rudolph.id] } } });
   await prisma.usuario.deleteMany({ where: { id: { in: usuarios } } });
 }, 30000);
 
@@ -312,4 +315,57 @@ describe("/api/mcp — escrita", () => {
     expect(ruim.erro).toBe(true);
     await client.close();
   }, 15000);
+});
+
+describe("/api/mcp — fábrica da prospecção", () => {
+  it("nova_empresa grava a fábrica; ver_empresa mostra 'prospecção para'; buscar_empresas e agenda filtram pela fábrica", async () => {
+    const client = await conectar({ header: `Bearer ${token}` });
+    const errada = await chamar(client, "nova_empresa", { nome: `Fábrica Errada ${SUFIXO}`, uf: "PE", fabricas: ["Bosch"] });
+    expect(errada.erro).toBe(true);
+    expect(errada.texto).toContain('Fábrica "Bosch" não existe.');
+    expect(await prisma.cliente.count({ where: { nomeFantasia: `Fábrica Errada ${SUFIXO}` } })).toBe(0);
+
+    const r = await chamar(client, "nova_empresa", { nome: `Agro Rudolph ${SUFIXO}`, uf: "MA", fabricas: [`rudolph ${SUFIXO}`] });
+    expect(r.erro).toBe(false);
+    expect(r.texto).toContain(`Prospecção para: Rudolph ${SUFIXO}`);
+    expect(r.texto).not.toContain("AVISO");
+
+    const ficha = await chamar(client, "ver_empresa", { empresa: `Agro Rudolph ${SUFIXO}` });
+    expect(ficha.texto).toContain(`PROSPECÇÃO PARA: Rudolph ${SUFIXO}`);
+
+    const busca = await chamar(client, "buscar_empresas", { texto: SUFIXO, fabrica: `Rudolph ${SUFIXO}` });
+    expect(busca.texto).toContain(`Agro Rudolph ${SUFIXO}`);
+    expect(busca.texto).not.toContain("Candidata Norte");
+    const soFabrica = await chamar(client, "buscar_empresas", { fabrica: `Rudolph ${SUFIXO}` });
+    expect(soFabrica.texto).toContain(`Agro Rudolph ${SUFIXO}`);
+
+    const agenda = await chamar(client, "agenda", { fabrica: `Rudolph ${SUFIXO}` });
+    expect(agenda.texto).toContain(`FÁBRICA: Rudolph ${SUFIXO}`);
+    expect(agenda.texto).toContain(`Agro Rudolph ${SUFIXO}`);
+    expect(agenda.texto).not.toContain(`Candidata Norte ${SUFIXO}`);
+    expect(agenda.texto).not.toContain(`Real Trator ${SUFIXO}`);
+    await client.close();
+  }, 20000);
+
+  it("registrar_interacao inclui e tira fábrica da prospecção; recusa em cliente", async () => {
+    const client = await conectar({ header: `Bearer ${token}` });
+    const r = await chamar(client, "registrar_interacao", {
+      empresa: empresas.candidata,
+      canal: "outro",
+      resumo: "Vai ser prospectada para duas fábricas",
+      incluir_fabricas: [`Rudolph ${SUFIXO}`, `Bowden ${SUFIXO}`],
+    });
+    expect(r.erro).toBe(false);
+    expect(r.texto).toContain(`Prospecção para: Bowden ${SUFIXO}, Rudolph ${SUFIXO}`);
+    const r2 = await chamar(client, "registrar_interacao", { empresa: empresas.candidata, canal: "outro", resumo: "Bowden fica para depois", tirar_fabricas: [`Bowden ${SUFIXO}`] });
+    expect(r2.texto).toContain(`Prospecção para: Rudolph ${SUFIXO}`);
+    const vinculos = await prisma.clienteFabrica.findMany({ where: { clienteId: empresas.candidata } });
+    expect(vinculos.map((v) => v.fabricaId)).toEqual([rudolph.id]);
+
+    const cliente = await chamar(client, "registrar_interacao", { empresa: empresas.cliente, canal: "outro", resumo: "teste", incluir_fabricas: [`Rudolph ${SUFIXO}`] });
+    expect(cliente.erro).toBe(true);
+    expect(cliente.texto).toContain("já é cliente");
+    expect(await prisma.interacao.count({ where: { clienteId: empresas.cliente, resumo: "teste" } })).toBe(0);
+    await client.close();
+  }, 20000);
 });

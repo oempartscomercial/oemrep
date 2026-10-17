@@ -19,6 +19,8 @@ export interface CartaoFunil {
   id: string;
   nome: string;
   local: string;
+  /** Fábricas para as quais a empresa está sendo prospectada. */
+  fabricas: string[];
   /** Prospecção Rudolph só no Norte e Nordeste (regra do contrato). */
   foraDaRegiao: boolean;
   situacao: string;
@@ -76,8 +78,11 @@ export function Quadro({
                 )}
               </div>
             </div>
-            {(c.foraDaRegiao || c.naoContatar) && (
+            {(c.fabricas.length > 0 || c.foraDaRegiao || c.naoContatar) && (
               <div className="flex flex-wrap gap-1">
+                {c.fabricas.map((f) => (
+                  <Selo key={f} cor="blue">{f}</Selo>
+                ))}
                 {c.naoContatar && <Selo cor="error">Não contatar</Selo>}
                 {c.foraDaRegiao && <Selo cor="warning">Fora do Norte/Nordeste</Selo>}
               </div>

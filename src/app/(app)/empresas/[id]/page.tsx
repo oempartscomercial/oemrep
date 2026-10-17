@@ -13,7 +13,7 @@ import { AvatarEmpresa, AvatarPessoa } from "@/components/crm/avatar-iniciais";
 import { PrazoSelo } from "@/components/crm/prazo-selo";
 import { formatarDiaComSemana, hojeEmSaoPaulo, situacaoDoPrazo } from "@/domain/crm/prazo";
 import { ETAPAS_ATIVAS } from "@/domain/crm/funil";
-import { ufNorteNordeste } from "@/domain/crm/regiao";
+import { alertaRegiaoRudolph } from "@/domain/crm/fabrica-prospeccao";
 import { linkDoSite } from "@/domain/crm/cadastro";
 import { formatarCnpj } from "@/domain/cadastro/cnpj";
 import { normalizarTelefone } from "@/domain/mensagens/telefone";
@@ -42,7 +42,7 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
   const passo = empresa.proximosPassos[0] ?? null;
   const prazo = passo?.prazo.toISOString().slice(0, 10) ?? null;
   const emAndamento = (ETAPAS_ATIVAS as readonly string[]).includes(empresa.situacao);
-  const foraDaRegiao = PROSPECCAO.has(empresa.situacao) && !!empresa.uf && !ufNorteNordeste(empresa.uf);
+  const foraDaRegiao = PROSPECCAO.has(empresa.situacao) && alertaRegiaoRudolph(empresa.uf, empresa.fabricas.map((f) => f.fabrica.nome));
   const site = linkDoSite(empresa.site);
   const resumo = { id: empresa.id, nome: empresa.nomeFantasia, situacao: empresa.situacao, naoContatar: empresa.naoContatar };
   // Atalho de WhatsApp: o primeiro contato com telefone, origem registrada e sem "não contatar".
@@ -70,7 +70,7 @@ export default async function FichaPage({ params }: { params: Promise<{ id: stri
     { rotulo: "Grupo", valor: empresa.grupo },
     { rotulo: "Origem", valor: empresa.origem },
     {
-      rotulo: "Fábricas",
+      rotulo: empresa.situacao === "CLIENTE" ? "Fábricas que compra" : "Prospecção para",
       valor: empresa.fabricas.length ? <span className="flex flex-wrap gap-1">{empresa.fabricas.map((f) => <Selo key={f.fabricaId} cor="blue">{f.fabrica.nome}</Selo>)}</span> : null,
     },
     { rotulo: "Na base desde", valor: empresa.criadoEm.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }) },

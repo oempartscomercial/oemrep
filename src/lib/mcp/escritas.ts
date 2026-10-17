@@ -2,8 +2,9 @@ import type { UsuarioSessao } from "@/lib/sessao";
 import * as crm from "@/lib/crm/empresas";
 import { criarContato } from "@/lib/crm/contatos";
 import { criarEmpresaProspeccao } from "@/lib/crm/prospeccao";
+import { ajustarFabricasProspeccao } from "@/lib/crm/fabricas-prospeccao";
 import { formatarDia, formatarDiaComSemana, hojeEmSaoPaulo, interpretarDia } from "@/domain/crm/prazo";
-import { nomeComLocal, resolverEmpresa, resolverResponsavel, rotuloSituacao } from "./resolver";
+import { nomeComLocal, resolverEmpresa, resolverFabricas, resolverResponsavel, rotuloSituacao } from "./resolver";
 import type { Resposta } from "./consultas";
 
 // Ferramentas de escrita do servidor MCP. Toda gravação sai em nome do dono do token, com
@@ -40,6 +41,8 @@ export type RegistrarArgs = {
   proximo_passo?: PassoArgs;
   sem_proximo_passo?: boolean;
   nao_contatar?: boolean;
+  incluir_fabricas?: string[];
+  tirar_fabricas?: string[];
   contato_novo?: {
     nome?: string;
     funcao?: string;
@@ -72,6 +75,16 @@ export async function registrarInteracao(usuario: UsuarioSessao, args: Registrar
 
   const quando = momentoDoContato(args.data, hoje);
   if (!quando.ok) return falha(quando.mensagem);
+
+  // Fábricas da prospecção: conferidas antes de gravar qualquer coisa.
+  const incluir = await resolverFabricas(args.incluir_fabricas);
+  if (!incluir.ok) return falha(`Nada foi gravado. ${incluir.mensagem}`);
+  const tirar = await resolverFabricas(args.tirar_fabricas);
+  if (!tirar.ok) return falha(`Nada foi gravado. ${tirar.mensagem}`);
+  const mudaFabricas = incluir.valor.length + tirar.valor.length > 0;
+  if (mudaFabricas && empresa.situacao === "CLIENTE") {
+    return falha("Nada foi gravado. Esta empresa já é cliente: as fábricas dela são as que compra. Para oferecer outra fábrica, use uma oportunidade da carteira.");
+  }
 
   let passo: { passo: crm.PassoEntrada; responsavel: string } | null = null;
   if (args.proximo_passo) {
@@ -130,6 +143,11 @@ export async function registrarInteracao(usuario: UsuarioSessao, args: Registrar
     else if (nova === "PAUSADA" && retomadaEm) feito.push(`Retomar em ${formatarDiaComSemana(retomadaEm)}.`);
     else if (args.sem_proximo_passo) feito.push("Sem próximo passo.");
   }
+  if (mudaFabricas) {
+    const f = await ajustarFabricasProspeccao(usuario, empresa.id, { incluir: incluir.valor.map((x) => x.id), tirar: tirar.valor.map((x) => x.id) });
+    if (f.erros.length > 0) feito.push(`AVISO: as fábricas não mudaram. ${f.erros.join(" ")}`);
+    else feito.push(`Prospecção para: ${f.fabricas?.length ? f.fabricas.join(", ") : "nenhuma fábrica"}`);
+  }
   for (const aviso of resultado.avisos ?? []) feito.push(`AVISO: ${aviso}`);
   return { texto: feito.join("\n") };
 }
@@ -171,8 +189,10 @@ export async function concluirProximoPasso(usuario: UsuarioSessao, args: { passo
 
 export async function novaEmpresa(
   usuario: UsuarioSessao,
-  args: { nome: string; uf?: string; cidade?: string; cnpj?: string; site?: string; observacoes?: string; mesmo_assim?: boolean },
+  args: { nome: string; uf?: string; cidade?: string; cnpj?: string; site?: string; observacoes?: string; fabricas?: string[]; mesmo_assim?: boolean },
 ): Promise<Resposta> {
+  const fabricas = await resolverFabricas(args.fabricas);
+  if (!fabricas.ok) return falha(`Nada foi gravado. ${fabricas.mensagem}`);
   const r = await criarEmpresaProspeccao(autor(usuario), {
     nome: args.nome,
     uf: args.uf,
@@ -180,6 +200,7 @@ export async function novaEmpresa(
     cnpj: args.cnpj,
     site: args.site,
     observacoes: args.observacoes,
+    fabricasIds: fabricas.valor.map((f) => f.id),
     mesmoAssim: args.mesmo_assim,
   });
   if (r.erros.length > 0) {
@@ -189,7 +210,11 @@ export async function novaEmpresa(
   }
   const local = [args.cidade?.trim(), args.uf?.trim().toUpperCase()].filter(Boolean).join("/");
   return {
-    texto: [`Empresa cadastrada: ${args.nome.trim()}${local ? ` (${local})` : ""} — a avaliar · id: ${r.id}`, ...(r.avisos ?? []).map((a) => `AVISO: ${a}`)].join("\n"),
+    texto: [
+      `Empresa cadastrada: ${args.nome.trim()}${local ? ` (${local})` : ""} — a avaliar · id: ${r.id}`,
+      fabricas.valor.length ? `Prospecção para: ${fabricas.valor.map((f) => f.nome).sort().join(", ")}` : "Sem fábrica marcada: pergunte ao usuário para qual fábrica é a prospecção e marque com registrar_interacao (incluir_fabricas).",
+      ...(r.avisos ?? []).map((a) => `AVISO: ${a}`),
+    ].join("\n"),
   };
 }
 

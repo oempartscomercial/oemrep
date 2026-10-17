@@ -1,13 +1,15 @@
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { sugerirExpansao } from "@/domain/crm/oportunidade";
+import type { FabricaDoFunil } from "@/domain/crm/fabrica-prospeccao";
+import { whereFabricaProspeccao } from "@/lib/crm/fabricas-prospeccao";
 
 const PASSO = { select: { acao: true, prazo: true, responsavel: { select: { nome: true } } } } as const;
 
-/** Empresas do funil de prospecção, só com o que o cartão mostra. */
-export function buscarProspeccao(colunas: string[]) {
+/** Empresas do funil de prospecção (de uma fábrica, das sem fábrica ou de todas), só com o que o cartão mostra. */
+export function buscarProspeccao(colunas: string[], fabrica: FabricaDoFunil = "todas") {
   return prisma.cliente.findMany({
-    where: { situacao: { in: colunas as never[] } },
+    where: { situacao: { in: colunas as never[] }, ...whereFabricaProspeccao(fabrica) },
     orderBy: { nomeFantasia: "asc" },
     select: {
       id: true,
@@ -16,6 +18,7 @@ export function buscarProspeccao(colunas: string[]) {
       uf: true,
       situacao: true,
       naoContatar: true,
+      fabricas: { select: { fabrica: { select: { nome: true } } }, orderBy: { fabrica: { nome: "asc" } } },
       proximosPassos: { where: { concluidoEm: null, oportunidadeId: null }, orderBy: { prazo: "asc" }, take: 1, ...PASSO },
       interacoes: { orderBy: { data: "desc" }, take: 1, select: { data: true } },
     },

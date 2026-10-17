@@ -24,3 +24,4 @@ e por quê**.
 | [ADR-016](ADR-016-mcp-claude.md) | O Claude usa o CRM por um servidor MCP da plataforma, com token por usuário (proposto) |
 | [ADR-017](ADR-017-mcp-oauth.md) | O Claude se conecta ao CRM por OAuth (Conectar → Permitir), com o token manual como avançado (proposto) |
 | [ADR-019](ADR-019-integracoes-whatsapp-pelo-sistema.md) | WhatsApp de prospecção pelo sistema: integrações na tela (segredos cifrados), webhook só da base, envio agendado com cron de 5 min e ferramentas no MCP (proposto) |
+| [ADR-020](ADR-020-prospeccao-por-fabrica.md) | Prospecção por fábrica: `ClienteFabrica` diz para quem se prospecta (várias fábricas, uma etapa por empresa), filtro lembrado no funil e no MCP |

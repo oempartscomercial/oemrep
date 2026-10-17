@@ -11,7 +11,8 @@ import { ROTULO_ETAPA_OP, type EtapaOportunidade } from "@/domain/crm/oportunida
 import { descreverPrazo, formatarDia, formatarDiaComSemana, hojeEmSaoPaulo, somarDias } from "@/domain/crm/prazo";
 import { formatarReais } from "@/domain/formato/moeda";
 import { descreverMensagem, diaEmSaoPaulo, formatarNumero } from "@/domain/mensagens/exibicao";
-import { localDa, nomeComLocal, resolverEmpresa, rotuloSituacao } from "./resolver";
+import { whereFabricaProspeccao } from "@/lib/crm/fabricas-prospeccao";
+import { localDa, nomeComLocal, resolverEmpresa, resolverFabricas, rotuloSituacao } from "./resolver";
 
 // Ferramentas de leitura do servidor MCP. Respostas em texto curto e estruturado, em
 // português; ids só onde a chamada seguinte precisa deles.
@@ -46,20 +47,34 @@ function autorDa(i: { origem: string; usuario: { nome: string } | null }): strin
 
 // ---------------------------------------------------------------------------- agenda
 
-export async function agenda(): Promise<Resposta> {
+/** Uma fábrica só (o dia do Rômulo é por fábrica) ou todas. */
+async function lerFiltroFabrica(nome: string | undefined): Promise<{ ok: true; fabrica: { id: string; nome: string } | null } | { ok: false; mensagem: string }> {
+  if (!nome?.trim()) return { ok: true, fabrica: null };
+  const r = await resolverFabricas([nome]);
+  return r.ok ? { ok: true, fabrica: r.valor[0] } : r;
+}
+
+export async function agenda(args: { fabrica?: string } = {}): Promise<Resposta> {
   const hoje = hojeEmSaoPaulo();
+  const filtro = await lerFiltroFabrica(args.fabrica);
+  if (!filtro.ok) return falha(filtro.mensagem);
+  const daFabrica = filtro.fabrica ? whereFabricaProspeccao(filtro.fabrica.id) : {};
+  // Com fábrica: passos da empresa ligada a ela e passos de oportunidade da carteira dessa fábrica.
+  const passosDaFabrica = filtro.fabrica
+    ? { OR: [{ oportunidadeId: null, cliente: daFabrica }, { oportunidade: { fabricaId: filtro.fabrica.id } }] }
+    : {};
   const [passos, andamento, candidatas, conversas, rascunhos] = await Promise.all([
     prisma.proximoPasso.findMany({
-      where: { concluidoEm: null, cliente: { situacao: { not: "DESCARTADA" } } },
+      where: { concluidoEm: null, cliente: { situacao: { not: "DESCARTADA" } }, ...passosDaFabrica },
       include: { cliente: true, responsavel: { select: { nome: true } }, oportunidade: { include: { fabrica: true } } },
     }),
     prisma.cliente.findMany({
-      where: { situacao: { in: ["APROVADA", "EM_CONTATO", "CONVERSANDO", "AVANCO"] }, proximosPassos: { none: { concluidoEm: null, oportunidadeId: null } } },
+      where: { situacao: { in: ["APROVADA", "EM_CONTATO", "CONVERSANDO", "AVANCO"] }, proximosPassos: { none: { concluidoEm: null, oportunidadeId: null } }, ...daFabrica },
       orderBy: { nomeFantasia: "asc" },
     }),
-    prisma.cliente.findMany({ where: { situacao: "CANDIDATA" }, orderBy: { criadoEm: "asc" } }),
+    prisma.cliente.findMany({ where: { situacao: "CANDIDATA", ...daFabrica }, orderBy: { criadoEm: "asc" } }),
     prisma.conversa.findMany({
-      where: { linha: "PROSPECCAO", clienteId: { not: null } },
+      where: { linha: "PROSPECCAO", clienteId: { not: null }, ...(filtro.fabrica ? { cliente: daFabrica } : {}) },
       include: { cliente: { select: { nomeFantasia: true } }, mensagens: { where: { status: { in: ["RECEBIDA", "ENVIADA", "ENTREGUE", "LIDA"] } }, orderBy: { ocorridoEm: "desc" }, take: 1 } },
       orderBy: { ultimaMensagemEm: "desc" },
       take: 100,
@@ -74,7 +89,7 @@ export async function agenda(): Promise<Resposta> {
   const esperando = conversas.filter((c) => c.mensagens[0]?.direcao === "ENTRADA");
 
   const partes = [
-    `HOJE É ${formatarDiaComSemana(hoje).toUpperCase()}`,
+    `HOJE É ${formatarDiaComSemana(hoje).toUpperCase()}${filtro.fabrica ? ` · FÁBRICA: ${filtro.fabrica.nome} (só o que é dela)` : ""}`,
     bloco("ATRASADO", grupos.atrasados.map(linha)),
     bloco("PARA HOJE", grupos.hoje.map(linha)),
     bloco("PRÓXIMOS 7 DIAS", grupos.proximos7.map(linha)),
@@ -98,26 +113,41 @@ export async function agenda(): Promise<Resposta> {
 
 const SITUACOES = ["CANDIDATA", "APROVADA", "EM_CONTATO", "CONVERSANDO", "AVANCO", "PAUSADA", "DESCARTADA", "CLIENTE"] as const;
 
-export async function buscarEmpresas(args: { texto?: string; situacao?: string }): Promise<Resposta> {
+export async function buscarEmpresas(args: { texto?: string; situacao?: string; fabrica?: string }): Promise<Resposta> {
   const texto = args.texto?.trim() ?? "";
   const situacao = args.situacao?.trim().toUpperCase();
   if (situacao && !(SITUACOES as readonly string[]).includes(situacao)) return falha(`Situação desconhecida: ${args.situacao}.`);
-  if (!texto && !situacao) return falha("Diga o que procurar (nome, CNPJ, site ou cidade) ou uma situação.");
+  const filtro = await lerFiltroFabrica(args.fabrica);
+  if (!filtro.ok) return falha(filtro.mensagem);
+  if (!texto && !situacao && !filtro.fabrica) return falha("Diga o que procurar (nome, CNPJ, site ou cidade), uma situação ou uma fábrica.");
 
-  const where = { ...montarWhereEmpresas("todas", texto), ...(situacao ? { situacao: situacao as (typeof SITUACOES)[number] } : {}) };
+  const where = {
+    AND: [
+      montarWhereEmpresas("todas", texto),
+      situacao ? { situacao: situacao as (typeof SITUACOES)[number] } : {},
+      filtro.fabrica ? whereFabricaProspeccao(filtro.fabrica.id) : {},
+    ],
+  };
   const [total, empresas] = await Promise.all([
     prisma.cliente.count({ where }),
     prisma.cliente.findMany({
       where,
       orderBy: { nomeFantasia: "asc" },
       take: 20,
-      include: { proximosPassos: { where: { concluidoEm: null, oportunidadeId: null }, orderBy: { prazo: "asc" }, take: 1 } },
+      include: {
+        proximosPassos: { where: { concluidoEm: null, oportunidadeId: null }, orderBy: { prazo: "asc" }, take: 1 },
+        fabricas: { select: { fabrica: { select: { nome: true } } }, orderBy: { fabrica: { nome: "asc" } } },
+      },
     }),
   ]);
-  if (total === 0) return { texto: `Nenhuma empresa encontrada${texto ? ` para "${texto}"` : ""}${situacao ? ` na situação ${rotuloSituacao(situacao)}` : ""}.` };
+  if (total === 0) {
+    return { texto: `Nenhuma empresa encontrada${texto ? ` para "${texto}"` : ""}${situacao ? ` na situação ${rotuloSituacao(situacao)}` : ""}${filtro.fabrica ? ` na fábrica ${filtro.fabrica.nome}` : ""}.` };
+  }
   const linhas = empresas.map((e) => {
     const passo = e.proximosPassos[0];
-    const extra = [e.naoContatar ? "NÃO CONTATAR" : null, passo ? `próximo: ${passo.acao} (${formatarDia(dia(passo.prazo))})` : null].filter(Boolean).join(" — ");
+    const nomesFabricas = e.fabricas.map((f) => f.fabrica.nome).join(", ");
+    const fabricas = nomesFabricas ? `${e.situacao === "CLIENTE" ? "compra" : "prospecção para"}: ${nomesFabricas}` : null;
+    const extra = [fabricas, e.naoContatar ? "NÃO CONTATAR" : null, passo ? `próximo: ${passo.acao} (${formatarDia(dia(passo.prazo))})` : null].filter(Boolean).join(" — ");
     return `- ${nomeComLocal(e)} [${rotuloSituacao(e.situacao)}]${extra ? ` — ${extra}` : ""} · id: ${e.id}`;
   });
   const mais = total > empresas.length ? `\n- … e mais ${total - empresas.length}. Refine a busca.` : "";
@@ -178,7 +208,9 @@ export async function verEmpresa(usuario: UsuarioSessao, args: { empresa: string
   const abertas = empresa.oportunidades.filter((o) => o.etapa !== "GANHA" && o.etapa !== "PERDIDA");
   if (abertas.length > 0) partes.push(`OPORTUNIDADES DA CARTEIRA\n${abertas.map((o) => `- ${o.fabrica.nome}: ${ROTULO_ETAPA_OP[o.etapa as EtapaOportunidade]}`).join("\n")}`);
 
-  if (empresa.fabricas.length > 0) partes.push(`FÁBRICAS QUE COMPRA (cadastro): ${empresa.fabricas.map((f) => f.fabrica.nome).sort().join(", ")}`);
+  const nomesFabricas = empresa.fabricas.map((f) => f.fabrica.nome).sort().join(", ");
+  if (empresa.situacao !== "CLIENTE") partes.push(`PROSPECÇÃO PARA: ${nomesFabricas || "nenhuma fábrica marcada (pergunte ao usuário e marque com registrar_interacao, incluir_fabricas)"}`);
+  else if (nomesFabricas) partes.push(`FÁBRICAS QUE COMPRA (cadastro): ${nomesFabricas}`);
 
   if (historico.length > 0) {
     const carteira = await carteiraDoCliente(usuario, empresa.id, hoje);

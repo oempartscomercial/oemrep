@@ -1,12 +1,14 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { obterUsuarioLogado } from "@/lib/sessao";
 import { listarResponsaveis } from "../empresas/queries";
 import { buscarCarteira, buscarProspeccao, buscarSugestoes, dadosParaNovaOportunidade } from "./queries";
 import { ETAPAS_DO_QUADRO } from "@/domain/crm/funil";
 import { ETAPAS_DO_QUADRO_OP, ETAPAS_FORA_DO_QUADRO_OP } from "@/domain/crm/oportunidade";
 import { hojeEmSaoPaulo } from "@/domain/crm/prazo";
-import { ufNorteNordeste } from "@/domain/crm/regiao";
+import { alertaRegiaoRudolph, COOKIE_FABRICA_FUNIL, lerFabricaDoFunil, type FabricaDoFunil } from "@/domain/crm/fabrica-prospeccao";
+import { listarFabricasAtivas } from "@/lib/crm/fabricas-prospeccao";
 import { PageContainer } from "@/components/layouts/page-container";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +17,7 @@ import { Quadro, type CartaoFunil } from "./quadro";
 import { QuadroCarteira, type CartaoCarteira } from "./quadro-carteira";
 import { Sugestoes } from "./sugestoes";
 import { NovaOportunidadeBotao } from "./nova-oportunidade-botao";
+import { FiltroFabrica } from "./filtro-fabrica";
 
 type Passo = { acao: string; prazo: Date; responsavel: { nome: string } };
 const resumirPasso = (p: Passo | undefined) => (p ? { acao: p.acao, prazo: p.prazo.toISOString().slice(0, 10), responsavel: p.responsavel.nome } : null);
@@ -33,19 +36,23 @@ function QuadroCarregando({ colunas }: { colunas: number }) {
   );
 }
 
-async function FunilProspeccao({ colunas, usuarioId }: { colunas: string[]; usuarioId: string }) {
+async function FunilProspeccao({ colunas, fabrica, usuarioId }: { colunas: string[]; fabrica: FabricaDoFunil; usuarioId: string }) {
   const hoje = hojeEmSaoPaulo();
-  const [empresas, responsaveis] = await Promise.all([buscarProspeccao(colunas), listarResponsaveis()]);
-  const cartoes: CartaoFunil[] = empresas.map((e) => ({
+  const [empresas, responsaveis] = await Promise.all([buscarProspeccao(colunas, fabrica), listarResponsaveis()]);
+  const cartoes: CartaoFunil[] = empresas.map((e) => {
+    const fabricas = e.fabricas.map((f) => f.fabrica.nome);
+    return {
     id: e.id,
     nome: e.nomeFantasia,
     local: [e.cidade, e.uf].filter(Boolean).join("/"),
-    foraDaRegiao: !!e.uf && !ufNorteNordeste(e.uf),
+    fabricas,
+    foraDaRegiao: alertaRegiaoRudolph(e.uf, fabricas),
     situacao: e.situacao,
     passo: resumirPasso(e.proximosPassos[0]),
     ultimoContato: e.interacoes[0]?.data.toISOString().slice(0, 10) ?? null,
     naoContatar: e.naoContatar,
-  }));
+    };
+  });
   return <Quadro cartoes={cartoes} colunas={colunas} responsaveis={responsaveis} usuarioId={usuarioId} hoje={hoje} />;
 }
 
@@ -75,9 +82,11 @@ async function IdeiasDeExpansao() {
 }
 
 export default async function FunisPage({ searchParams }: { searchParams: Promise<{ funil?: string; fora?: string }> }) {
-  const [{ funil, fora }, usuario] = await Promise.all([searchParams, obterUsuarioLogado()]);
+  const [{ funil, fora }, usuario, guardados, fabricas] = await Promise.all([searchParams, obterUsuarioLogado(), cookies(), listarFabricasAtivas()]);
   if (!usuario) return null; // o layout do CRM já mostra a sessão expirada
   const carteira = funil === "carteira";
+  // Fábrica do dia: lembrada entre as visitas (cookie); fábrica que sumiu volta para todas.
+  const fabrica = lerFabricaDoFunil(guardados.get(COOKIE_FABRICA_FUNIL)?.value, fabricas);
   const mostrarFora = fora === "1";
 
   const abas = [
@@ -103,7 +112,9 @@ export default async function FunisPage({ searchParams }: { searchParams: Promis
             <Suspense fallback={<Skeleton className="h-8 w-40" />}>
               <BotaoNova />
             </Suspense>
-          ) : undefined
+          ) : (
+            <FiltroFabrica fabricas={fabricas} atual={fabrica} />
+          )
         }
       />
       <div className="-mt-2 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b">
@@ -130,8 +141,8 @@ export default async function FunisPage({ searchParams }: { searchParams: Promis
           </Link>
         </div>
       </div>
-      <Suspense key={`${funil}-${fora}`} fallback={<QuadroCarregando colunas={colunas.length} />}>
-        {carteira ? <FunilCarteira colunas={colunas} mostrarFora={mostrarFora} usuarioId={usuario.id} /> : <FunilProspeccao colunas={colunas} usuarioId={usuario.id} />}
+      <Suspense key={`${funil}-${fora}-${fabrica}`} fallback={<QuadroCarregando colunas={colunas.length} />}>
+        {carteira ? <FunilCarteira colunas={colunas} mostrarFora={mostrarFora} usuarioId={usuario.id} /> : <FunilProspeccao colunas={colunas} fabrica={fabrica} usuarioId={usuario.id} />}
       </Suspense>
       {carteira && (
         <Suspense fallback={null}>
