@@ -8,6 +8,7 @@ import { CampoTextarea } from "@/components/patterns/campo";
 import { aprovarMensagem, cancelarMensagem, editarRascunho, tentarEnviar } from "@/app/(app)/conversas/actions";
 import type { EnvioPeloCelular as Preparo } from "@/domain/mensagens/envio-manual";
 import { AVISO_SEM_ENVIO_AUTOMATICO, EnvioPeloCelular } from "@/components/crm/envio-pelo-celular";
+import { proximoDiaUtilAsNove, CampoAgendamento } from "@/components/crm/campo-agendamento";
 
 /** Segundos entre confirmar e a mensagem sair de verdade: dá tempo de desfazer. */
 const SEGUNDOS_PARA_DESFAZER = 10;
@@ -26,10 +27,12 @@ type Props = {
   envioAutomatico: boolean;
   /** Para aprovada: o link do WhatsApp com o texto, ou por que não enviar. */
   envioPeloCelular?: Preparo;
+  /** Aprovada com hora marcada (ainda no futuro): o botão vira "Enviar agora" (quem mostra a hora é a conversa). */
+  agendadaPara?: Date | null;
 };
 
 /** Botões de uma mensagem nossa que ainda não saiu: rascunho (editar, aprovar, descartar) ou aprovada esperando. */
-export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebida, envioAutomatico, envioPeloCelular }: Props) {
+export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebida, envioAutomatico, envioPeloCelular, agendadaPara }: Props) {
   const router = useRouter();
   const [ocupado, setOcupado] = useState(false);
   const [retorno, setRetorno] = useState<string | null>(null);
@@ -39,6 +42,9 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
   const [confirmando, setConfirmando] = useState(false);
   const [descartando, setDescartando] = useState(false);
   const [contagem, setContagem] = useState<number | null>(null);
+  // No diálogo de aprovar: "agora" (com os segundos para desfazer) ou "agendar" (com data e hora).
+  const [quando, setQuando] = useState<"agora" | "agendar">("agora");
+  const [agendarPara, setAgendarPara] = useState("");
 
   async function rodar(fn: () => Promise<{ erros: string[]; status?: string; motivo?: string }>) {
     setOcupado(true);
@@ -47,7 +53,8 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
     setOcupado(false);
     if (r.erros.length) return setRetorno(r.erros[0]);
     // Sem envio automático, aprovada é o esperado (sai pelo celular): o motivo da espera só confundiria.
-    if (r.status && r.status !== "ENVIADA" && !(r.status === "APROVADA" && !envioAutomatico)) setRetorno(r.motivo ?? null);
+    // Agendada: a própria mensagem passa a mostrar quando sai.
+    if (r.status && r.status !== "ENVIADA" && r.status !== "AGENDADA" && !(r.status === "APROVADA" && !envioAutomatico)) setRetorno(r.motivo ?? null);
     router.refresh();
   }
 
@@ -80,6 +87,13 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
 
   const nome = destinatario?.nome ?? "o contato";
   const emContagem = contagem !== null;
+  const agendada = status === "APROVADA" && envioAutomatico && agendadaPara ? agendadaPara : null;
+
+  function abrirAprovacao() {
+    setQuando("agora");
+    setAgendarPara(proximoDiaUtilAsNove(Date.now()));
+    setConfirmando(true);
+  }
 
   return (
     <div className="mt-2 flex flex-col items-end gap-1.5">
@@ -104,11 +118,13 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
             {status === "RASCUNHO" && (
               <>
                 <Botao size="xs" className="h-11 md:h-6" onClick={() => setEditando(true)} disabled={ocupado}>Editar</Botao>
-                <Botao size="xs" className="h-11 md:h-6" variante="primario" carregando={ocupado} onClick={() => setConfirmando(true)}>{envioAutomatico ? "Aprovar e enviar" : "Aprovar"}</Botao>
+                <Botao size="xs" className="h-11 md:h-6" variante="primario" carregando={ocupado} onClick={abrirAprovacao}>{envioAutomatico ? "Aprovar e enviar" : "Aprovar"}</Botao>
               </>
             )}
             {status === "APROVADA" && envioAutomatico && (
-              <Botao size="xs" className="h-11 md:h-6" variante="primario" carregando={ocupado} onClick={() => rodar(() => tentarEnviar({ id }))}>Tentar enviar agora</Botao>
+              <Botao size="xs" className="h-11 md:h-6" variante="primario" carregando={ocupado} onClick={() => rodar(() => tentarEnviar({ id }))}>
+                {agendada ? "Enviar agora" : "Tentar enviar agora"}
+              </Botao>
             )}
           </div>
         </div>
@@ -122,9 +138,30 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
               <DialogTitle>{envioAutomatico ? `Enviar para ${nome}?` : `Aprovar a mensagem para ${nome}?`}</DialogTitle>
               <DialogDescription>
                 {destinatario ? `WhatsApp ${destinatario.numero}. ` : ""}
-                {envioAutomatico ? `Você ainda poderá desfazer por ${SEGUNDOS_PARA_DESFAZER} segundos.` : AVISO_SEM_ENVIO_AUTOMATICO}
+                {!envioAutomatico
+                  ? AVISO_SEM_ENVIO_AUTOMATICO
+                  : quando === "agora"
+                    ? `Você ainda poderá desfazer por ${SEGUNDOS_PARA_DESFAZER} segundos.`
+                    : "Fica aprovada e sai sozinha na hora marcada. Dá para cancelar até lá."}
               </DialogDescription>
             </DialogHeader>
+            {envioAutomatico && (
+              <div role="radiogroup" aria-label="Quando enviar" className="flex gap-1 rounded-md border p-1 text-sm">
+                {(["agora", "agendar"] as const).map((opcao) => (
+                  <button
+                    key={opcao}
+                    type="button"
+                    role="radio"
+                    aria-checked={quando === opcao}
+                    onClick={() => setQuando(opcao)}
+                    className={`min-h-11 flex-1 rounded px-3 font-medium md:min-h-8 ${quando === opcao ? "bg-muted" : "text-muted-foreground hover:bg-muted/50"}`}
+                  >
+                    {opcao === "agora" ? "Enviar agora" : "Agendar"}
+                  </button>
+                ))}
+              </div>
+            )}
+            {envioAutomatico && quando === "agendar" && <CampoAgendamento valor={agendarPara} aoMudar={setAgendarPara} id={`agendar-${id}`} />}
             {ultimaRecebida && (
               <div className="rounded-md border bg-card px-3 py-2 text-sm">
                 <p className="text-xs font-medium text-muted-foreground">{nome} disse por último</p>
@@ -140,14 +177,16 @@ export function AcoesDaMensagem({ id, status, texto, destinatario, ultimaRecebid
               <Botao
                 variante="primario"
                 className="h-11 md:h-8"
+                disabled={envioAutomatico && quando === "agendar" && !agendarPara}
                 onClick={() => {
                   setConfirmando(false);
                   // Sem envio automático nada sai ao aprovar: não há o que desfazer, aprova direto.
-                  if (envioAutomatico) setContagem(SEGUNDOS_PARA_DESFAZER);
-                  else void rodar(() => aprovarMensagem({ id }));
+                  if (!envioAutomatico) void rodar(() => aprovarMensagem({ id }));
+                  else if (quando === "agendar") void rodar(() => aprovarMensagem({ id, agendarPara }));
+                  else setContagem(SEGUNDOS_PARA_DESFAZER);
                 }}
               >
-                {envioAutomatico ? `Enviar para ${nome}` : "Aprovar"}
+                {!envioAutomatico ? "Aprovar" : quando === "agendar" ? "Agendar envio" : `Enviar para ${nome}`}
               </Botao>
             </DialogFooter>
           </DialogContent>

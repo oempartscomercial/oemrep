@@ -75,9 +75,17 @@ export async function aplicarEfeitosDaEntrada(
     return;
   }
 
-  if (!efeitos.passo) return;
-  const responsavelId = await responsavelPadrao(tx, conversa.id);
-  if (!responsavelId) return;
+  const responsavelId = efeitos.passo ? await responsavelPadrao(tx, conversa.id) : null;
+  if (!efeitos.passo || !responsavelId) {
+    // Sem tarefa nova (já conversa, ou não há quem receba): a resposta ainda entra na linha do
+    // tempo, uma vez por vez de falar do contato. "Precisa de você" na ficha vem da conversa.
+    if (await abreAVezDoContato(tx, conversa.id, mensagem)) {
+      await tx.interacao.create({
+        data: { clienteId: empresa.id, data: mensagem.ocorridoEm, canal: "WHATSAPP", comQuem: quem, origem: "AUTOMACAO", resumo: `Respondeu pelo WhatsApp: ${trecho(mensagem.texto)}.` },
+      });
+    }
+    return;
+  }
 
   const acao = efeitos.passo === "responder" ? `Responder a ${quem}` : `Ver resposta de ${quem}: disse que não tem interesse`;
   await tx.proximoPasso.updateMany({ where: { clienteId: empresa.id, oportunidadeId: null, concluidoEm: null }, data: { concluidoEm: new Date() } });
@@ -109,6 +117,18 @@ export async function aplicarEfeitosDaEntrada(
       },
     });
   }
+}
+
+const REAIS = ["RECEBIDA", "ENVIANDO", "ENVIADA", "ENTREGUE", "LIDA"] as const;
+
+/** A mensagem recebida é a primeira desde a última nossa (ou da conversa): o contato "pegou a vez". */
+async function abreAVezDoContato(tx: Tx, conversaId: string, mensagem: Mensagem): Promise<boolean> {
+  const anterior = await tx.mensagem.findFirst({
+    where: { conversaId, id: { not: mensagem.id }, status: { in: [...REAIS] }, ocorridoEm: { lte: mensagem.ocorridoEm } },
+    orderBy: { ocorridoEm: "desc" },
+    select: { direcao: true },
+  });
+  return !anterior || anterior.direcao === "SAIDA";
 }
 
 /** Quem tocou em "Já enviei" quando a mensagem saiu pelo celular, não pelo envio automático. */

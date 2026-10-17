@@ -27,6 +27,8 @@ export type EventoLido =
   | { tipo: "sem_numero"; idExterno: string; jid: string; motivo: string }
   // Recibo de uma mensagem que enviamos: chegou ao aparelho ou foi lida.
   | { tipo: "status"; idExterno: string; status: "ENTREGUE" | "LIDA" }
+  // O celular conectou ou caiu (connection.update): open, close ou connecting.
+  | { tipo: "conexao"; estado: string }
   | { tipo: "ignorado"; motivo: string };
 
 type Objeto = Record<string, unknown>;
@@ -95,8 +97,9 @@ function lerMensagem(data: Objeto): EventoLido {
     return { tipo: "sem_numero", idExterno, jid, motivo: jid.endsWith("@lid") ? "identificador interno, sem telefone" : "telefone não reconhecido" };
   }
 
-  // Nesta fase nada é enviado pela plataforma; toda mensagem "minha" foi digitada no celular
-  // do Rômulo. Quando a fase 2 enviar, o eco da própria mensagem cai na deduplicação por id.
+  // Mensagem "minha" foi digitada no celular de prospecção (ou respondida pelo Chatwoot). O eco da
+  // que a plataforma enviou também chega como "minha": quem grava a reconhece pelo id (ou adota a
+  // que ainda está ENVIANDO), e ela não vira uma segunda mensagem "pelo celular".
   const minha = chave.fromMe === true;
   return {
     tipo: "mensagem",
@@ -123,14 +126,29 @@ function lerRecibo(data: Objeto): EventoLido {
   return { tipo: "status", idExterno: id, status };
 }
 
+function lerConexao(data: Objeto): EventoLido {
+  const estado = texto(data.state);
+  return estado ? { tipo: "conexao", estado: estado.toLowerCase() } : ignorado("conexão sem estado");
+}
+
+// messages.upsert: mensagem nova (recebida ou digitada no celular). send.message: mensagem que saiu
+// pela API da Evolution (a nossa, ou uma resposta dada no Chatwoot); mesmo formato, cai na mesma
+// leitura e o eco da nossa é reconhecido por quem grava. messages.update: recibo. connection.update: conexão.
+const LEITORES: Record<string, (data: Objeto) => EventoLido> = {
+  "messages.upsert": lerMensagem,
+  "send.message": lerMensagem,
+  "messages.update": lerRecibo,
+  "connection.update": lerConexao,
+};
+
 export function lerEventoEvolution(payload: unknown): EventoLido[] {
   if (!ehObjeto(payload)) return [ignorado("corpo não é um evento")];
   const nome = texto(payload.event)?.toLowerCase().replace(/_/g, ".");
   if (!nome) return [ignorado("evento sem nome")];
-  if (nome !== "messages.upsert" && nome !== "messages.update") return [ignorado(`evento ${nome}`)];
+  const ler = LEITORES[nome];
+  if (!ler) return [ignorado(`evento ${nome}`)];
 
   const itens = Array.isArray(payload.data) ? payload.data : [payload.data];
-  const ler = nome === "messages.update" ? lerRecibo : lerMensagem;
   const lidos = itens.map((d) => (ehObjeto(d) ? ler(d) : ignorado("evento sem dados")));
   return lidos.length > 0 ? lidos : [ignorado("evento sem dados")];
 }

@@ -10,6 +10,12 @@ describe("menuDoPerfil (PRD §4)", () => {
     expect(rotas("OPERADOR")).not.toContain("/cadastros");
   });
 
+  it("só ADMIN vê Integrações (WhatsApp e Chatwoot)", () => {
+    expect(rotas("ADMIN")).toContain("/integracoes");
+    expect(rotas("ANALISTA")).not.toContain("/integracoes");
+    expect(rotas("OPERADOR")).not.toContain("/integracoes");
+  });
+
   it("Auditoria é de ADMIN e ANALISTA", () => {
     expect(rotas("ADMIN")).toContain("/auditoria");
     expect(rotas("ANALISTA")).toContain("/auditoria");

@@ -130,7 +130,11 @@ describe("/api/mcp — autenticação", () => {
     for (const client of [await conectar({ header: `Bearer ${token}` }), await conectar({ caminho: token })]) {
       const { tools } = await client.listTools();
       expect(tools.map((t) => t.name).sort()).toEqual(
-        ["adicionar_contato", "agenda", "agendar", "buscar_empresas", "carteira", "concluir_proximo_passo", "conversas_recentes", "nova_empresa", "registrar_interacao", "ver_empresa"].sort(),
+        [
+          "adicionar_contato", "agenda", "agendar", "aprovar_mensagem_whatsapp", "buscar_empresas", "cancelar_mensagem_whatsapp", "carteira",
+          "concluir_proximo_passo", "conversas_recentes", "mensagens_whatsapp", "nova_empresa", "preparar_mensagem_whatsapp", "registrar_interacao",
+          "status_whatsapp", "ver_empresa",
+        ].sort(),
       );
       expect(tools.find((t) => t.name === "agenda")?.annotations?.readOnlyHint).toBe(true);
       await client.close();

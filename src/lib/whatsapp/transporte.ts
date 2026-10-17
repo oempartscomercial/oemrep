@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { lerChatwoot, lerEvolution } from "@/lib/integracoes/config";
+import { criarTransporteChatwoot } from "./transporte-chatwoot";
 
 // Adaptador de saída (ADR-015 §1): duas operações, enviar e saber se a linha está de pé. O
 // resto do sistema só conhece TransporteWhatsapp; trocar a Evolution pela API oficial é
@@ -16,7 +18,8 @@ export class ErroDeEnvio extends Error {
 export interface TransporteWhatsapp {
   nome: string;
   estado(): Promise<EstadoDaLinha>;
-  enviarTexto(numeroE164: string, texto: string): Promise<{ idExterno: string }>;
+  /** idExterno nulo = o id do WhatsApp só chega depois, pelo eco no webhook (envio pelo Chatwoot). */
+  enviarTexto(numeroE164: string, texto: string): Promise<{ idExterno: string | null }>;
 }
 
 const TEMPO_LIMITE_MS = 15_000;
@@ -85,18 +88,27 @@ function criarTransporteDesligado(): TransporteWhatsapp {
 
 type Ambiente = Record<string, string | undefined>;
 
-// Desligado por padrão. Evolution só liga com tudo configurado E o interruptor
-// WHATSAPP_ENVIO_HABILITADO=true; o simulado nunca vale em produção.
-export function obterTransporte(env: Ambiente = process.env): TransporteWhatsapp {
+// Desligado por padrão. A configuração vem da tela Integrações (ADR-019) e, sem ela, das variáveis
+// antigas (EVOLUTION_* + WHATSAPP_TRANSPORTE=evolution + WHATSAPP_ENVIO_HABILITADO=true). Em
+// qualquer caso a Evolution só envia com o envio automático ligado de propósito. O simulado nunca
+// vale em produção. Configuração salva que não abre (INTEGRACOES_CHAVE trocada) = desligado.
+export async function obterTransporte(env: Ambiente = process.env): Promise<TransporteWhatsapp> {
   if (env.WHATSAPP_TRANSPORTE === "simulado" && env.NODE_ENV !== "production") return criarTransporteSimulado();
-  if (env.WHATSAPP_TRANSPORTE === "evolution" && env.WHATSAPP_ENVIO_HABILITADO === "true") {
-    const { EVOLUTION_URL: url, EVOLUTION_APIKEY: apikey, EVOLUTION_INSTANCIA_PROSPECCAO: instancia } = env;
-    if (url && apikey && instancia) return criarTransporteEvolution({ url, apikey, instancia });
+  try {
+    const cfg = await lerEvolution(env);
+    if (cfg?.envioAutomatico && cfg.url && cfg.apikey && cfg.instancia) {
+      // Com o Chatwoot salvo na tela, o envio passa por ele (a mensagem fica na caixa de entrada).
+      const chatwoot = await lerChatwoot(env);
+      if (chatwoot?.url && chatwoot.conta && chatwoot.token) return criarTransporteChatwoot({ evolution: cfg, chatwoot });
+      return criarTransporteEvolution(cfg);
+    }
+  } catch (erro) {
+    console.error("[whatsapp] configuração da Evolution não pôde ser lida; envio desligado", erro instanceof Error ? erro.message : erro);
   }
   return criarTransporteDesligado();
 }
 
 /** Falso = a mensagem aprovada não sai sozinha: a pessoa envia pelo celular e confirma. */
-export function envioAutomaticoLigado(env: Ambiente = process.env): boolean {
-  return obterTransporte(env).nome !== "desligado";
+export async function envioAutomaticoLigado(env: Ambiente = process.env): Promise<boolean> {
+  return (await obterTransporte(env)).nome !== "desligado";
 }

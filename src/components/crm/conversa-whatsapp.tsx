@@ -3,6 +3,7 @@ import { formatarDia } from "@/domain/crm/prazo";
 import type { TipoMensagem } from "@/domain/mensagens/evolution";
 import { AcoesDaMensagem, type DestinatarioDaMensagem } from "@/components/crm/acoes-da-mensagem";
 import type { EnvioPeloCelular } from "@/domain/mensagens/envio-manual";
+import { descreverMomento } from "@/domain/mensagens/agendamento";
 import { cn } from "@/lib/utils";
 
 export type MensagemExibida = {
@@ -18,6 +19,10 @@ export type MensagemExibida = {
   classificacao: string | null;
   /** Saiu pelo celular de prospecção e alguém tocou em "Já enviei". */
   envioManual?: boolean;
+  /** Aprovada para sair a partir desta hora. */
+  agendadaPara?: Date | null;
+  /** Aprovada conversando com o Claude. */
+  aprovadaPeloClaude?: boolean;
 };
 
 const ORIGEM_DA_SAIDA: Record<MensagemExibida["origem"], string> = {
@@ -33,13 +38,15 @@ const CLASSIFICACAO: Record<string, string> = {
 };
 
 // O que a pessoa precisa saber de uma mensagem nossa, em palavras simples.
-function situacaoDaSaida(m: MensagemExibida, envioAutomatico: boolean): { rotulo: string; detalhe?: string | null; tom: "neutro" | "aviso" | "erro" } | null {
+function situacaoDaSaida(m: MensagemExibida, envioAutomatico: boolean, agora: Date): { rotulo: string; detalhe?: string | null; tom: "neutro" | "aviso" | "erro" } | null {
   switch (m.status) {
     case "RASCUNHO":
       return { rotulo: "Rascunho · falta sua aprovação", tom: "aviso" };
     case "APROVADA":
       // Sem envio automático o motivo da espera (linha, horário) não vale: quem envia é a pessoa.
-      return envioAutomatico ? { rotulo: "Aprovada · ainda não saiu", detalhe: m.motivoBloqueio, tom: "aviso" } : { rotulo: "Aprovada · envie pelo celular", tom: "aviso" };
+      if (!envioAutomatico) return { rotulo: "Aprovada · envie pelo celular", tom: "aviso" };
+      if (m.agendadaPara && m.agendadaPara > agora) return { rotulo: `Aprovada · agendada para ${descreverMomento(m.agendadaPara)}`, tom: "aviso" };
+      return { rotulo: "Aprovada · ainda não saiu", detalhe: m.motivoBloqueio, tom: "aviso" };
     case "ENVIANDO":
       return { rotulo: "Enviando…", tom: "neutro" };
     case "FALHOU":
@@ -59,6 +66,7 @@ export function ConversaWhatsapp({
   destinatario,
   envioAutomatico,
   envioPeloCelular = {},
+  agora,
 }: {
   mensagens: MensagemExibida[];
   aviso?: string;
@@ -66,6 +74,8 @@ export function ConversaWhatsapp({
   envioAutomatico: boolean;
   /** Por id de mensagem aprovada: o link do WhatsApp ou por que não enviar. */
   envioPeloCelular?: Record<string, EnvioPeloCelular>;
+  /** Momento da página (para saber se a hora marcada já passou). */
+  agora: Date;
 }) {
   const grupos = agruparPorDia(mensagens);
   const ultimaRecebida = mensagens.filter((m) => m.direcao === "ENTRADA" && m.texto).sort((a, b) => b.ocorridoEm.getTime() - a.ocorridoEm.getTime())[0]?.texto ?? null;
@@ -78,10 +88,17 @@ export function ConversaWhatsapp({
           {g.mensagens.map((m) => {
             const { aviso: tipo, texto } = descreverMensagem(m);
             const minha = m.direcao === "SAIDA";
-            const situacao = minha ? situacaoDaSaida(m, envioAutomatico) : null;
+            const situacao = minha ? situacaoDaSaida(m, envioAutomatico, agora) : null;
             const pendente = m.status === "RASCUNHO" || m.status === "APROVADA";
             const cancelada = m.status === "CANCELADA";
-            const extras = [minha && (m.envioManual ? "pelo celular" : ORIGEM_DA_SAIDA[m.origem]), minha && RODAPE_DO_STATUS[m.status], formatarHora(m.ocorridoEm)].filter(Boolean).join(" · ");
+            const extras = [
+              minha && (m.envioManual ? "pelo celular" : ORIGEM_DA_SAIDA[m.origem]),
+              minha && m.aprovadaPeloClaude && "aprovada pelo Claude",
+              minha && RODAPE_DO_STATUS[m.status],
+              formatarHora(m.ocorridoEm),
+            ]
+              .filter(Boolean)
+              .join(" · ");
             return (
               <div key={m.id} className={cn("flex", minha ? "justify-end" : "justify-start")}>
                 <div
@@ -114,6 +131,7 @@ export function ConversaWhatsapp({
                       ultimaRecebida={ultimaRecebida}
                       envioAutomatico={envioAutomatico}
                       envioPeloCelular={envioPeloCelular[m.id]}
+                      agendadaPara={m.agendadaPara && m.agendadaPara > agora ? m.agendadaPara : null}
                     />
                   )}
                 </div>

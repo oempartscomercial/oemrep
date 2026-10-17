@@ -19,19 +19,29 @@ import {
 } from "@/lib/crm/contatos";
 import { tipoDeEnvioSugerido, validarRascunho, rascunhoDeFollowUp, rascunhoDePrimeiroContato, type TipoEnvio } from "@/domain/mensagens/rascunho";
 import { verificarEnvio, type Bloqueio } from "@/domain/mensagens/envio";
-import { despachar, lerLimites, type ResultadoDoDespacho } from "@/lib/whatsapp/despachar";
+import { interpretarMomento } from "@/domain/mensagens/agendamento";
+import { lerLimites } from "@/lib/whatsapp/limites";
+import {
+  aprovarMensagem as aprovarNoCrm,
+  cancelarMensagem as cancelarNoCrm,
+  enviarAgora,
+  PENDENTES,
+  prepararRascunho,
+  type StatusDaAprovacao,
+} from "@/lib/whatsapp/mensagens";
 import { registrarEnvioManual } from "@/lib/whatsapp/envio-manual";
 import { envioAutomaticoLigado } from "@/lib/whatsapp/transporte";
 
-// Todo envio passa por aqui em quatro passos: preparar (rascunho), aprovar (uma pessoa),
-// despachar (proteções fixas) e, se não saiu, tentar de novo ou cancelar. A IA não aprova.
+// Todo envio passa por quatro passos: preparar (rascunho), aprovar (uma pessoa, agora ou com hora
+// marcada), despachar (proteções fixas) e, se não saiu, tentar de novo ou cancelar. As regras moram
+// em src/lib/whatsapp/mensagens.ts, que o MCP também usa. A IA não aprova.
 
 const SEM_SESSAO = "Sessão expirada. Faça login novamente.";
 const SEM_PERMISSAO = "Você não tem permissão para acessar o CRM.";
 
 export type Resultado = { erros: string[] };
 export type ResultadoDoRascunho = Resultado & { avisos?: string[]; id?: string };
-export type ResultadoDaAprovacao = Resultado & { status?: ResultadoDoDespacho["status"]; motivo?: string };
+export type ResultadoDaAprovacao = Resultado & { status?: StatusDaAprovacao; motivo?: string };
 
 async function sessaoCrm(): Promise<{ usuario: UsuarioSessao } | { erro: string }> {
   const usuario = await obterUsuarioLogado();
@@ -47,56 +57,15 @@ function revalidar(clienteId: string | null) {
   if (clienteId) revalidatePath(`/empresas/${clienteId}`);
 }
 
-const PENDENTES = ["RASCUNHO", "APROVADA"] as const;
-
 export async function prepararMensagem(entrada: { contatoId: string; texto: string }): Promise<ResultadoDoRascunho> {
   const sessao = await sessaoCrm();
   if ("erro" in sessao) return { erros: [sessao.erro] };
-
-  const contato = await prisma.contato.findUnique({ where: { id: entrada.contatoId } });
-  if (!contato) return { erros: ["Contato não encontrado."] };
-  if (contato.naoContatar) return { erros: ["Este contato pediu para não ser contatado. Só uma pessoa pode desfazer isso na ficha."] };
-  const numero = normalizarTelefone(contato.valor);
-  if (!numero) return { erros: ["O número deste contato não é um telefone válido."] };
-
-  const existente = await prisma.conversa.findUnique({ where: { linha_numero: { linha: "PROSPECCAO", numero } } });
-  if (existente?.clienteId && existente.clienteId !== contato.clienteId) return { erros: ["Este número já está ligado a outra empresa."] };
-
-  const historico = existente
-    ? await prisma.mensagem.findMany({ where: { conversaId: existente.id }, select: { direcao: true, status: true, ocorridoEm: true } })
-    : [];
-  if (existente && (await prisma.mensagem.count({ where: { conversaId: existente.id, direcao: "SAIDA", status: { in: [...PENDENTES] } } })) > 0) {
-    return { erros: ["Já existe uma mensagem pendente para este contato. Edite ou cancele a anterior."] };
+  const r = await prepararRascunho(sessao.usuario, entrada);
+  if (r.id) {
+    const contato = await prisma.contato.findUnique({ where: { id: entrada.contatoId }, select: { clienteId: true } });
+    revalidar(contato?.clienteId ?? null);
   }
-
-  const tipo = tipoDeEnvioSugerido(historico);
-  const { erros, avisos } = validarRascunho(entrada.texto, tipo);
-  if (erros.length > 0) return { erros, avisos };
-
-  const conversa = existente
-    ? existente.clienteId
-      ? existente
-      : await prisma.conversa.update({ where: { id: existente.id }, data: { clienteId: contato.clienteId, contatoId: contato.id, motivoSemVinculo: null } })
-    : await prisma.conversa.create({
-        data: { linha: "PROSPECCAO", numero, clienteId: contato.clienteId, contatoId: contato.id, ultimaMensagemEm: new Date() },
-      });
-
-  const mensagem = await prisma.mensagem.create({
-    data: {
-      conversaId: conversa.id,
-      linha: "PROSPECCAO",
-      direcao: "SAIDA",
-      origem: "PLATAFORMA",
-      tipo: "TEXTO",
-      texto: entrada.texto.trim(),
-      ocorridoEm: new Date(),
-      status: "RASCUNHO",
-      tipoEnvio: tipo,
-      criadaPorId: sessao.usuario.id,
-    },
-  });
-  revalidar(contato.clienteId);
-  return { erros: [], avisos, id: mensagem.id };
+  return { erros: r.erros, avisos: r.avisos, ...(r.id ? { id: r.id } : {}) };
 }
 
 export async function editarRascunho(entrada: { id: string; texto: string }): Promise<ResultadoDoRascunho> {
@@ -111,36 +80,35 @@ export async function editarRascunho(entrada: { id: string; texto: string }): Pr
   return { erros: [], avisos, id: m.id };
 }
 
-/** A pessoa aprova; só depois disso o despacho aplica as proteções e envia (ou segura). */
-export async function aprovarMensagem(entrada: { id: string }): Promise<ResultadoDaAprovacao> {
+/**
+ * A pessoa aprova; só depois disso o despacho aplica as proteções e envia (ou segura). Com
+ * `agendarPara` (o campo de data e hora da tela, ou "amanhã 9h"), fica aprovada até a hora marcada.
+ */
+export async function aprovarMensagem(entrada: { id: string; agendarPara?: string }): Promise<ResultadoDaAprovacao> {
   const sessao = await sessaoCrm();
   if ("erro" in sessao) return { erros: [sessao.erro] };
-  const m = await prisma.mensagem.findUnique({ where: { id: entrada.id }, include: { conversa: true } });
-  if (!m || m.direcao !== "SAIDA" || m.status !== "RASCUNHO" || !m.tipoEnvio || !m.texto) return { erros: ["Só dá para aprovar um rascunho."] };
-
-  const { erros } = validarRascunho(m.texto, m.tipoEnvio);
-  if (erros.length > 0) return { erros };
-
-  const aprovada = await prisma.mensagem.updateMany({
-    where: { id: m.id, status: "RASCUNHO" },
-    data: { status: "APROVADA", aprovadaPorId: sessao.usuario.id, aprovadaEm: new Date(), motivoBloqueio: null },
-  });
-  if (aprovada.count === 0) return { erros: ["Só dá para aprovar um rascunho."] };
-
-  const resultado = await despachar(m.id);
-  revalidar(m.conversa.clienteId);
-  return { erros: [], status: resultado.status, motivo: resultado.motivo };
+  let agendadaPara: Date | null = null;
+  if (entrada.agendarPara?.trim()) {
+    const agora = new Date();
+    const momento = interpretarMomento(entrada.agendarPara, agora, (await lerLimites()).horarioInicio);
+    if (!momento) return { erros: ["Não entendi a data e a hora do agendamento."] };
+    agendadaPara = momento.tipo === "em" ? momento.quando : null;
+    if (agendadaPara && agendadaPara <= agora) return { erros: ["Esse horário já passou. Escolha outro dia e hora."] };
+  }
+  const m = await prisma.mensagem.findUnique({ where: { id: entrada.id }, select: { conversa: { select: { clienteId: true } } } });
+  const r = await aprovarNoCrm(sessao.usuario, { id: entrada.id, agendadaPara });
+  if (r.erros.length === 0) revalidar(m?.conversa.clienteId ?? null);
+  return r;
 }
 
-/** Mensagem aprovada que ficou esperando (horário, linha, limite): tenta de novo agora. */
+/** Mensagem aprovada que ficou esperando (horário, linha, limite) ou agendada: tenta enviar agora. */
 export async function tentarEnviar(entrada: { id: string }): Promise<ResultadoDaAprovacao> {
   const sessao = await sessaoCrm();
   if ("erro" in sessao) return { erros: [sessao.erro] };
-  const m = await prisma.mensagem.findUnique({ where: { id: entrada.id }, include: { conversa: true } });
-  if (!m || m.direcao !== "SAIDA" || m.status !== "APROVADA") return { erros: ["Esta mensagem não está aprovada."] };
-  const resultado = await despachar(m.id);
-  revalidar(m.conversa.clienteId);
-  return { erros: [], status: resultado.status, motivo: resultado.motivo };
+  const m = await prisma.mensagem.findUnique({ where: { id: entrada.id }, select: { conversa: { select: { clienteId: true } } } });
+  const r = await enviarAgora(entrada.id);
+  if (r.erros.length === 0) revalidar(m?.conversa.clienteId ?? null);
+  return r;
 }
 
 /**
@@ -159,17 +127,9 @@ export async function marcarComoEnviada(entrada: { id: string }): Promise<Result
 export async function cancelarMensagem(entrada: { id: string }): Promise<Resultado> {
   const sessao = await sessaoCrm();
   if ("erro" in sessao) return { erros: [sessao.erro] };
-  const m = await prisma.mensagem.findUnique({ where: { id: entrada.id }, include: { conversa: true } });
-  if (!m || m.direcao !== "SAIDA" || !(PENDENTES as readonly string[]).includes(m.status)) {
-    return { erros: ["Só dá para cancelar uma mensagem que ainda não foi enviada."] };
-  }
-  const r = await prisma.mensagem.updateMany({
-    where: { id: m.id, status: { in: [...PENDENTES] } },
-    data: { status: "CANCELADA", motivoBloqueio: `Cancelada por ${sessao.usuario.nome}.` },
-  });
-  if (r.count === 0) return { erros: ["Só dá para cancelar uma mensagem que ainda não foi enviada."] };
-  revalidar(m.conversa.clienteId);
-  return { erros: [] };
+  const r = await cancelarNoCrm(sessao.usuario, entrada.id);
+  if (r.erros.length === 0) revalidar(r.clienteId ?? null);
+  return { erros: r.erros };
 }
 
 export async function definirOrigemContato(entrada: { contatoId: string; origem: string }): Promise<Resultado> {
@@ -430,6 +390,6 @@ export async function consultarEnvio(entrada: { contatoId: string }): Promise<Co
     pendente: pendente?.texto ? { texto: pendente.texto, status: pendente.status as "RASCUNHO" | "APROVADA" } : undefined,
     ultimaRecebida: recebida?.texto ?? undefined,
     numero: numero ?? undefined,
-    envioAutomatico: envioAutomaticoLigado(),
+    envioAutomatico: await envioAutomaticoLigado(),
   };
 }

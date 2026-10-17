@@ -145,7 +145,33 @@ describe("editar, aprovar e cancelar", () => {
       expect(m.aprovadaPorId).toBe(c.usuario.id);
       expect(m.aprovadaEm).not.toBeNull();
       expect(despacharMock).toHaveBeenCalledTimes(1);
-      expect(despacharMock.mock.calls[0]).toEqual([id]);
+      expect((despacharMock.mock.calls[0] as unknown[])[0]).toBe(id);
+    } finally {
+      await c.limpar();
+    }
+  });
+
+  it("aprovar com hora marcada não despacha: fica aprovada e agendada; 'Enviar agora' tira o agendamento", async () => {
+    const c = await cenario();
+    try {
+      c.logar();
+      const { id } = await prepararMensagem({ contatoId: c.contato.id, texto: BOM });
+      expect((await aprovarMensagem({ id: id!, agendarPara: "ontem 9h" })).erros).toEqual(["Não entendi a data e a hora do agendamento."]);
+      const r = await aprovarMensagem({ id: id!, agendarPara: "2099-01-05T09:00" });
+      // Mais de 30 dias à frente não vale.
+      expect(r.erros[0]).toMatch(/30 dias/);
+      const daqui3 = new Date(Date.now() + 3 * 86_400_000).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+      const ok = await aprovarMensagem({ id: id!, agendarPara: `${daqui3}T10:00` });
+      expect(ok).toMatchObject({ erros: [], status: "AGENDADA" });
+      expect(ok.motivo).toMatch(/^Agendada para /);
+      expect(despacharMock).not.toHaveBeenCalled();
+      const m = await prisma.mensagem.findUniqueOrThrow({ where: { id: id! } });
+      expect(m).toMatchObject({ status: "APROVADA", aprovadaPorId: c.usuario.id, aprovadaPeloClaude: false });
+      expect(m.agendadaPara).toEqual(new Date(`${daqui3}T10:00:00-03:00`));
+
+      await tentarEnviar({ id: id! });
+      expect((await prisma.mensagem.findUniqueOrThrow({ where: { id: id! } })).agendadaPara).toBeNull();
+      expect(despacharMock).toHaveBeenCalledTimes(1);
     } finally {
       await c.limpar();
     }

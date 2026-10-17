@@ -3,16 +3,22 @@ import { prisma } from "@/lib/prisma";
 import { despachar } from "./despachar";
 import { obterTransporte, type TransporteWhatsapp } from "./transporte";
 
-// Envio agendado (ADR-015 §4): reenvia as mensagens APROVADAS que ficaram esperando (fora do
-// horário, linha caída, limite do dia). Chamado pelo cron diário (src/app/api/cron/whatsapp).
-// Não decide regra de envio: cada mensagem passa por despachar(), que reaplica as proteções.
-// Aqui só se escolhe a ordem, o ritmo, quando parar e quando cancelar por idade.
+// Envio agendado (ADR-015 §4, ADR-019): envia as mensagens APROVADAS que já podem sair — as que
+// ficaram esperando (fora do horário, linha caída, limite do dia) e as agendadas cuja hora chegou.
+// Chamado pelo cron (src/app/api/cron/whatsapp) a cada 5 minutos, por um agendador externo, e uma
+// vez por dia pela Vercel como rede de segurança. Não decide regra de envio: cada mensagem passa
+// por despachar(), que reaplica as proteções e reserva a mensagem (APROVADA → ENVIANDO) antes de
+// chamar o transporte, então dois disparos juntos nunca enviam a mesma duas vezes. Aqui só se
+// escolhe a ordem, o ritmo, quando parar e quando cancelar por idade.
 
 const IDADE_MAXIMA_MS = 7 * 86_400_000;
 const LOTE_PADRAO = 10;
 // Teto de tentativas por execução, para um lote todo "esperando" não varrer a fila inteira.
 const TENTATIVAS_POR_VAGA = 5;
 export const MOTIVO_APROVACAO_VENCIDA = "Aprovada há mais de 7 dias sem conseguir enviar.";
+
+/** Chave da trava do cron: uma execução por vez. */
+export const TRAVA_DO_ENVIO = "whatsapp:envio-agendado";
 
 export type ResumoDoEnvioAgendado = {
   enviadas: number;
@@ -31,19 +37,25 @@ export async function enviarAprovadas(
   opcoes: { agora?: Date; transporte?: TransporteWhatsapp; limite?: number; mensagemIds?: string[] } = {},
 ): Promise<ResumoDoEnvioAgendado> {
   const agora = opcoes.agora ?? new Date();
-  const transporte = opcoes.transporte ?? obterTransporte();
+  const transporte = opcoes.transporte ?? (await obterTransporte());
   // Máximo de despachos por execução. Cancelamentos por idade não contam.
   const limite = opcoes.limite ?? LOTE_PADRAO;
   // mensagemIds restringe o lote (testes e reenvio pontual); o cron não passa.
+  // Só as vencidas: sem agendamento, ou com a hora marcada já passada.
   const escopo: Prisma.MensagemWhereInput = {
     direcao: "SAIDA",
     status: "APROVADA",
+    OR: [{ agendadaPara: null }, { agendadaPara: { lte: agora } }],
     ...(opcoes.mensagemIds ? { id: { in: opcoes.mensagemIds } } : {}),
   };
   const corte = agora.getTime() - IDADE_MAXIMA_MS;
 
   // Mais antigas primeiro. Um despacho por vez: o limite diário conta o que já saiu.
-  const aprovadas = await prisma.mensagem.findMany({ where: escopo, orderBy: { aprovadaEm: "asc" }, select: { id: true, aprovadaEm: true, tipoEnvio: true } });
+  const aprovadas = await prisma.mensagem.findMany({
+    where: escopo,
+    orderBy: [{ agendadaPara: { sort: "asc", nulls: "first" } }, { aprovadaEm: "asc" }],
+    select: { id: true, aprovadaEm: true, agendadaPara: true, tipoEnvio: true },
+  });
 
   let enviadas = 0;
   let canceladas = 0;
@@ -54,8 +66,9 @@ export async function enviarAprovadas(
 
   for (const m of aprovadas) {
     // Vencida: cancela sem tocar no transporte, mesmo se a linha estiver caída. Não fica
-    // esperando para sempre.
-    if (m.aprovadaEm && m.aprovadaEm.getTime() < corte) {
+    // esperando para sempre. A idade conta da aprovação ou, se agendada, da hora marcada.
+    const desde = Math.max(m.aprovadaEm?.getTime() ?? 0, m.agendadaPara?.getTime() ?? 0);
+    if (desde > 0 && desde < corte) {
       const cancelada = await prisma.mensagem.updateMany({
         where: { id: m.id, status: "APROVADA" },
         data: { status: "CANCELADA", motivoBloqueio: MOTIVO_APROVACAO_VENCIDA },

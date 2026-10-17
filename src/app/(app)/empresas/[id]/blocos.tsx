@@ -62,7 +62,7 @@ export function BlocoCarregando({ linhas = 3, alto = false }: { linhas?: number;
 export async function ConversasDaEmpresa({ empresa }: { empresa: Empresa }) {
   const [conversas, limites] = await Promise.all([buscarConversas(empresa.id), lerLimites()]);
   if (conversas.length === 0) return null;
-  const envioAutomatico = envioAutomaticoLigado();
+  const envioAutomatico = await envioAutomaticoLigado();
   const agora = new Date();
 
   // O que espera uma ação do Rômulo: rascunho ou aprovada parada, e resposta do contato sem retorno.
@@ -70,7 +70,8 @@ export async function ConversasDaEmpresa({ empresa }: { empresa: Empresa }) {
     const quem = c.contato?.nome ?? c.nomeNoWhatsapp ?? empresa.nome;
     const itens: { chave: string; texto: string }[] = [];
     const rascunhos = c.mensagens.filter((m) => m.direcao === "SAIDA" && m.status === "RASCUNHO").length;
-    const paradas = c.mensagens.filter((m) => m.direcao === "SAIDA" && m.status === "APROVADA").length;
+    // Agendada para mais tarde não espera ninguém: sai sozinha na hora marcada.
+    const paradas = c.mensagens.filter((m) => m.direcao === "SAIDA" && m.status === "APROVADA" && !(envioAutomatico && m.agendadaPara && m.agendadaPara > agora)).length;
     if (rascunhos > 0) itens.push({ chave: `r-${c.id}`, texto: rascunhos === 1 ? `Um rascunho para ${quem} espera sua aprovação.` : `${rascunhos} rascunhos para ${quem} esperam sua aprovação.` });
     if (paradas > 0) {
       itens.push({
@@ -117,6 +118,7 @@ export async function ConversasDaEmpresa({ empresa }: { empresa: Empresa }) {
                 destinatario={{ nome: quem, numero: formatarNumero(c.numero) }}
                 mensagens={c.mensagens}
                 envioAutomatico={envioAutomatico}
+                agora={agora}
                 envioPeloCelular={envioPeloCelularDaConversa({ numero: c.numero, empresa: { situacao: empresa.situacao, naoContatar: empresa.naoContatar }, contato: c.contato, mensagens: c.mensagens }, limites, agora)}
                 aviso={c._count.mensagens > c.mensagens.length ? `Mostrando as ${c.mensagens.length} mensagens mais recentes de ${c._count.mensagens}.` : undefined}
               />

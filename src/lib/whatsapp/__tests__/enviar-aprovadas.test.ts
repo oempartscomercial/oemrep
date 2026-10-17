@@ -134,7 +134,7 @@ describe("enviarAprovadas — envio agendado das aprovadas (ADR-015 §4)", () =>
   it("envio desligado neste ambiente: sem erro, o motivo fica registrado e o lote para", async () => {
     const a = await cenario({ aprovadaEm: sp("2026-10-05T10:00:00") });
     try {
-      const r = await enviarAprovadas({ transporte: obterTransporte({}), agora: QUARTA_10H, mensagemIds: [a.mensagem.id] });
+      const r = await enviarAprovadas({ transporte: await obterTransporte({}), agora: QUARTA_10H, mensagemIds: [a.mensagem.id] });
       expect(r).toMatchObject({ enviadas: 0, aguardando: 1, canceladas: 0 });
       expect(r.paradasPor).toBeDefined();
       expect((await recarregar(a.mensagem.id)).motivoBloqueio).toContain("não está conectado");

@@ -115,8 +115,9 @@ describe("entrada — resposta de quem estava 'em contato'", () => {
     }
   });
 
-  it("número sem empresa só grava a mensagem (nunca responde, nunca muda o CRM)", async () => {
+  it("conversa sem empresa só grava a mensagem (nunca responde, nunca muda o CRM)", async () => {
     const n = numeroDeTeste();
+    await prisma.conversa.create({ data: { linha: "PROSPECCAO", numero: n.e164, motivoSemVinculo: "numero_em_varias_empresas", ultimaMensagemEm: new Date() } });
     try {
       const r = await registrarEvento("PROSPECCAO", upsert(n.e164, "IN-4", "Quem fala?"));
       expect(r.resultados).toEqual(["mensagem"]);
@@ -182,8 +183,9 @@ describe("saída — recibos e eco da própria mensagem", () => {
       const r = await registrarEvento("PROSPECCAO", recibo("ENV-7", "DELIVERY_ACK"));
       expect(r.resultados).toEqual(["status: sem mudança"]);
       expect((await prisma.mensagem.findFirstOrThrow({ where: { idExterno: "ENV-7" } })).status).toBe("LIDA");
+      // Recibo de mensagem que não é nossa (conversa pessoal): nem o evento fica guardado.
       const sem = await registrarEvento("PROSPECCAO", recibo("NAO-EXISTE", "READ"));
-      expect(sem.resultados).toEqual(["status: sem mudança"]);
+      expect(sem).toEqual({ eventoId: null, resultados: ["ignorado: recibo de mensagem que não é da base"] });
     } finally {
       await c.limpar();
     }
@@ -199,6 +201,19 @@ describe("saída — recibos e eco da própria mensagem", () => {
       const depois = await prisma.mensagem.findUniqueOrThrow({ where: { id: enviando.id } });
       expect(depois).toMatchObject({ idExterno: "ECO-1", status: "ENVIADA", origem: "PLATAFORMA" });
       expect(await prisma.mensagem.count({ where: { conversaId: c.conversa.id, idExterno: "ECO-1" } })).toBe(1);
+    } finally {
+      await c.limpar();
+    }
+  });
+
+  it("enviada pelo Chatwoot (já ENVIADA, sem id do WhatsApp): o eco também é adotado", async () => {
+    const c = await cenario("EM_CONTATO");
+    try {
+      const enviada = await c.nossa("", { idExterno: null, status: "ENVIADA", texto: "Quem cuida da compra?", ocorridoEm: new Date(), tipoEnvio: "RESPOSTA" });
+      const r = await registrarEvento("PROSPECCAO", upsert(c.n.e164, "ECO-CW", "Quem cuida da compra?", { fromMe: true }));
+      expect(r.resultados).toEqual(["adotada"]);
+      expect(await prisma.mensagem.findUniqueOrThrow({ where: { id: enviada.id } })).toMatchObject({ idExterno: "ECO-CW", status: "ENVIADA", origem: "PLATAFORMA" });
+      expect(await prisma.mensagem.count({ where: { conversaId: c.conversa.id, direcao: "SAIDA" } })).toBe(1);
     } finally {
       await c.limpar();
     }
