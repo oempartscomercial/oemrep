@@ -106,7 +106,7 @@ function Formulario({ atual, fabricas, aoFechar }: { atual: CadastroAtual; fabri
           <CampoTexto rotulo="Origem" placeholder="Ex.: pesquisa, indicação" {...campo("origem")} />
         </div>
         <CampoTextarea rotulo="Observações" rows={4} {...campo("observacoes")} />
-        <Campo rotulo={atual.ehCliente ? "Fábricas que compra" : "Fábricas (opcional)"} dica={atual.ehCliente ? "Cliente precisa de ao menos uma." : undefined}>
+        <Campo rotulo={atual.ehCliente ? "Fábricas que compra" : "Prospecção para (fábricas)"} dica={atual.ehCliente ? "Cliente precisa de ao menos uma." : "Define em qual funil de fábrica a empresa aparece. Pode marcar mais de uma."}>
           <div role="group" aria-label="Fábricas" className="grid grid-cols-2 gap-2">
             {visiveis.map((f) => (
               <label key={f.id} className="flex min-h-11 items-center gap-2 rounded-md border bg-card px-3 text-sm md:min-h-9">
