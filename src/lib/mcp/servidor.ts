@@ -18,6 +18,7 @@ Você fala com um usuário da OEM (normalmente o Rômulo, dono, que não é téc
 - "Não contatar" vale na hora (registrar_interacao com nao_contatar).
 - WhatsApp de prospecção: você prepara (preparar_mensagem_whatsapp), mostra ao usuário o destinatário e o texto exato, e só aprova (aprovar_mensagem_whatsapp) depois do OK explícito dele para aquele texto ("pode enviar", "manda"). Nunca aprove por conta própria, nunca mude o texto depois do OK, nunca envie e-mail. As regras do sistema (não contatar, origem do número, horário comercial, limite do dia, duplicada) valem sempre: se bloquear, explique em uma frase.
 - Rudolph só no Norte e Nordeste (regra do contrato).
+- A prospecção é por fábrica: cada empresa em prospecção tem uma ou mais fábricas ("prospecção para"); a etapa do funil é uma só por empresa. Quando o usuário disser com que fábrica vai trabalhar ("hoje é Rudolph"), use o filtro fabrica em agenda e buscar_empresas. Empresa nova: pergunte a fábrica se ele não disser.
 - Responda em português simples, curto, com datas DD/MM/AAAA e dia da semana; não mostre ids ao usuário (use-os só nas chamadas).`;
 
 const texto = (r: consultas.Resposta) => ({ content: [{ type: "text" as const, text: r.texto }], ...(r.erro ? { isError: true } : {}) });
@@ -33,6 +34,8 @@ const passo = z
     responsavel: z.string().optional().describe("Nome de quem faz. Vazio = o usuário que está falando com você."),
   })
   .describe("Próximo passo: ação, data e responsável.");
+const fabrica = z.string().optional().describe("Nome da fábrica (ex.: Rudolph, Bowden, Seineca/H3). Mostra só o que é dessa fábrica.");
+const fabricas = (o: string) => z.array(z.string().min(1)).optional().describe(`${o} Nomes das fábricas, ex.: ["Rudolph"].`);
 const SITUACOES = ["candidata", "aprovada", "em_contato", "conversando", "avanco", "pausada", "descartada"] as const;
 
 export function criarServidorMcp(usuario: UsuarioSessao): McpServer {
@@ -43,10 +46,11 @@ export function criarServidorMcp(usuario: UsuarioSessao): McpServer {
     {
       title: "Agenda do dia",
       description:
-        "O que fazer hoje: próximos passos atrasados, de hoje e dos próximos 7 dias (com responsável e dia da semana), empresas em andamento sem próximo passo, empresas esperando avaliação e respostas no WhatsApp. Use quando o usuário disser 'bom dia', 'o que eu faço hoje?', 'minha agenda', 'tem algo atrasado?'. Cada passo traz o id para concluir_proximo_passo.",
+        "O que fazer hoje: próximos passos atrasados, de hoje e dos próximos 7 dias (com responsável e dia da semana), empresas em andamento sem próximo passo, empresas esperando avaliação e respostas no WhatsApp. Use quando o usuário disser 'bom dia', 'o que eu faço hoje?', 'minha agenda', 'tem algo atrasado?'. Com fabrica, só o que é daquela fábrica (prospecção dela e oportunidades da carteira dela). Cada passo traz o id para concluir_proximo_passo.",
+      inputSchema: { fabrica },
       annotations: LEITURA,
     },
-    async () => texto(await consultas.agenda()),
+    async (a) => texto(await consultas.agenda(a)),
   );
 
   server.registerTool(
@@ -54,10 +58,11 @@ export function criarServidorMcp(usuario: UsuarioSessao): McpServer {
     {
       title: "Buscar empresas",
       description:
-        "Procura empresas (clientes e prospecção) por nome, CNPJ, site, cidade ou nome de contato, com filtro opcional de situação. Use para achar a empresa certa antes de ver ou gravar, ou para listar por situação (ex.: todas 'candidata' = esperando avaliação).",
+        "Procura empresas (clientes e prospecção) por nome, CNPJ, site, cidade ou nome de contato, com filtros opcionais de situação e de fábrica. Use para achar a empresa certa antes de ver ou gravar, ou para listar por situação e fábrica (ex.: todas 'candidata' da Rudolph = esperando avaliação na Rudolph).",
       inputSchema: {
         texto: z.string().optional().describe("Parte do nome, CNPJ, site, cidade ou nome de contato."),
         situacao: z.enum([...SITUACOES, "cliente"]).optional().describe("candidata = a avaliar; cliente = carteira atual."),
+        fabrica: z.string().optional().describe("Nome da fábrica: empresas em prospecção para ela (ou clientes que a compram)."),
       },
       annotations: LEITURA,
     },
@@ -69,7 +74,7 @@ export function criarServidorMcp(usuario: UsuarioSessao): McpServer {
     {
       title: "Ficha da empresa",
       description:
-        "Ficha completa: dados, situação, próximos passos (com id), contatos (canal, valor, fonte, origem, não contatar), últimas interações, fábricas que compra, pedidos recebidos da planilha (não é faturamento), pedidos lançados e WhatsApp. Use para 'me mostra a X', 'o que tenho da X?'.",
+        "Ficha completa: dados, situação, fábricas da prospecção ('prospecção para') ou fábricas que compra (cliente), próximos passos (com id), contatos (canal, valor, fonte, origem, não contatar), últimas interações, pedidos recebidos da planilha (não é faturamento), pedidos lançados e WhatsApp. Use para 'me mostra a X', 'o que tenho da X?'.",
       inputSchema: { empresa },
       annotations: LEITURA,
     },
@@ -180,7 +185,7 @@ export function criarServidorMcp(usuario: UsuarioSessao): McpServer {
     {
       title: "Registrar o que aconteceu",
       description:
-        "Anota um contato com a empresa (ligação, WhatsApp, e-mail, visita, reunião) e define o próximo passo. Também muda a situação da prospecção, marca 'não contatar' e cadastra um contato novo que apareceu na conversa. Use para 'liguei pra…', 'falei com…', 'a X respondeu', 'anota aí'. Confirme com o usuário antes. Empresa em andamento exige proximo_passo (ou sem_proximo_passo, se o usuário disser que não há).",
+        "Anota um contato com a empresa (ligação, WhatsApp, e-mail, visita, reunião) e define o próximo passo. Também muda a situação da prospecção, inclui ou tira fábricas da prospecção, marca 'não contatar' e cadastra um contato novo que apareceu na conversa. Use para 'liguei pra…', 'falei com…', 'a X respondeu', 'anota aí'. Confirme com o usuário antes. Empresa em andamento exige proximo_passo (ou sem_proximo_passo, se o usuário disser que não há).",
       inputSchema: {
         empresa,
         canal: z.enum(["whatsapp", "telefone", "email", "visita", "reuniao", "outro"]),
@@ -194,6 +199,8 @@ export function criarServidorMcp(usuario: UsuarioSessao): McpServer {
         proximo_passo: passo.optional(),
         sem_proximo_passo: z.boolean().optional().describe("O usuário disse explicitamente que não há próximo passo: o passo aberto é encerrado."),
         nao_contatar: z.boolean().optional().describe("A empresa pediu para não ser mais contatada: vale na hora para ela e todos os contatos."),
+        incluir_fabricas: fabricas("Fábricas para as quais a empresa passa a ser prospectada (não vale para cliente)."),
+        tirar_fabricas: fabricas("Fábricas que deixam de ser prospectadas nesta empresa."),
         contato_novo: z
           .object({
             nome: z.string().optional(),
@@ -239,7 +246,7 @@ export function criarServidorMcp(usuario: UsuarioSessao): McpServer {
     {
       title: "Cadastrar empresa nova",
       description:
-        "Cadastra uma empresa nova em prospecção, que entra como 'a avaliar'. Confere duplicidade por CNPJ e por nome parecido; se houver parecida, mostra e só cadastra com mesmo_assim depois que o usuário confirmar. Nunca invente CNPJ, site ou cidade. Rudolph só no Norte e Nordeste.",
+        "Cadastra uma empresa nova em prospecção, que entra como 'a avaliar', já com a(s) fábrica(s) da prospecção. Confere duplicidade por CNPJ e por nome parecido; se houver parecida, mostra e só cadastra com mesmo_assim depois que o usuário confirmar. Nunca invente CNPJ, site ou cidade. Rudolph só no Norte e Nordeste.",
       inputSchema: {
         nome: z.string().min(1),
         uf: z.string().optional().describe("Sigla do estado, ex.: PE."),
@@ -247,6 +254,7 @@ export function criarServidorMcp(usuario: UsuarioSessao): McpServer {
         cnpj: z.string().optional(),
         site: z.string().optional(),
         observacoes: z.string().optional().describe("O que se sabe da empresa e de onde veio (ex.: catálogo de transmissão agrícola no site)."),
+        fabricas: fabricas("Para qual fábrica (ou quais) é a prospecção. Se o usuário não disse, pergunte."),
         mesmo_assim: z.boolean().optional().describe("Só depois que o usuário confirmar que as parecidas são outras empresas."),
       },
       annotations: ESCRITA,
