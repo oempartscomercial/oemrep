@@ -55,7 +55,8 @@ viram migração depois do go-live.
      planilha de 2026 (pasta `rep/carteira`). A rede `FILIAL-xx` fica fora das sugestões
      até o Rômulo dizer quem são.
 4. **Dois funis com arraste.** O outbound usa a empresa como card; a carteira usa a
-   oportunidade.
+   oportunidade. O outbound é filtrado por fábrica (a empresa pode ser prospectada para várias,
+   com uma etapa só): [ADR-020](ADR-020-prospeccao-por-fabrica.md).
    - Soltar o card numa etapa ativa exige próximo passo com data, e cancelar devolve o
      card ao lugar de origem.
    - `PAUSADA` pede data de retomada. `DESCARTADA` pede motivo e oferece "não contatar".

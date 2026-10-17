@@ -83,7 +83,10 @@ substituindo as planilhas Excel por fábrica (Bowden, Autoflex e futuras).
   (token no cabeçalho Bearer ou em `/api/mcp/<token>` para o conector do claude.ai), tela
   "Conectar o Claude" para gerar e revogar tokens (`TokenApi`, só o hash no banco). As regras de
   gravação do CRM moram em `src/lib/crm` e servem às telas e ao MCP; o que o Claude grava tem
-  `Interacao.origem = CLAUDE`. **OAuth** (`docs/adr/ADR-017-mcp-oauth.md`): a plataforma é o
+  `Interacao.origem = CLAUDE`. **Prospecção por fábrica** (`docs/adr/ADR-020-prospeccao-por-fabrica.md`):
+  `ClienteFabrica` diz para qual fábrica (ou quais) a empresa em prospecção é trabalhada; a etapa é
+  uma só por empresa; o funil de prospecção tem filtro de fábrica lembrado em cookie e o MCP aceita
+  `fabrica`/`fabricas`. **OAuth** (`docs/adr/ADR-017-mcp-oauth.md`): a plataforma é o
   servidor de autorização (metadados em `/.well-known/*`, registro dinâmico, PKCE S256, tela de
   Permitir em `/oauth/autorizar`, tokens em `/oauth/token`); o access token é um `TokenApi` com
   `origem = OAUTH`. Regras puras em `src/domain/mcp/oauth.ts`, banco em `src/lib/mcp/oauth.ts`.
