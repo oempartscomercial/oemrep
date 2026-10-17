@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { compararCampos } from "@/domain/auditoria/evento";
 import { cnpjValido, normalizarCnpj } from "@/domain/cadastro/cnpj";
-import { normalizarUf, ufNorteNordeste } from "@/domain/crm/regiao";
+import { normalizarUf } from "@/domain/crm/regiao";
+import { alertaRegiaoRudolph } from "@/domain/crm/fabrica-prospeccao";
 import { nomeParecido } from "@/domain/crm/duplicidade";
 import { textoOuNulo } from "./contatos";
 import type { Autor } from "./empresas";
+import { ERRO_FABRICA_INVALIDA, fabricasValidas } from "./fabricas-prospeccao";
 
 // Empresa nova em prospecção: entra "a avaliar" (CANDIDATA) e espera o Rômulo decidir se aborda.
 
@@ -15,6 +17,8 @@ export type EntradaNovaEmpresa = {
   cnpj?: string | null;
   site?: string | null;
   observacoes?: string | null;
+  /** Fábricas para as quais a empresa vai ser prospectada (vínculo do cadastro). */
+  fabricasIds?: string[];
   /** Já foi conferido que as parecidas são outras empresas. */
   mesmoAssim?: boolean;
 };
@@ -33,6 +37,8 @@ export async function criarEmpresaProspeccao(autor: Autor, entrada: EntradaNovaE
   if (entrada.uf?.trim() && !uf) erros.push("UF inválida. Use a sigla do estado (ex.: PE).");
   const cnpj = entrada.cnpj?.trim() ? normalizarCnpj(entrada.cnpj) : null;
   if (entrada.cnpj?.trim() && !cnpjValido(entrada.cnpj)) erros.push("CNPJ inválido.");
+  const fabricasIds = [...new Set(entrada.fabricasIds ?? [])];
+  if (!(await fabricasValidas(fabricasIds))) erros.push(ERRO_FABRICA_INVALIDA);
   if (erros.length > 0) return { erros };
 
   if (cnpj) {
@@ -61,16 +67,17 @@ export async function criarEmpresaProspeccao(autor: Autor, entrada: EntradaNovaE
     origem: autor.origem === "CLAUDE" ? "Claude" : null,
   };
   const criada = await prisma.$transaction(async (tx) => {
-    const c = await tx.cliente.create({ data: dados });
+    const c = await tx.cliente.create({ data: { ...dados, fabricas: { create: fabricasIds.map((fabricaId) => ({ fabricaId })) } } });
     await tx.interacao.create({
       data: { clienteId: c.id, data: new Date(), canal: "OUTRO", resumo: "Empresa cadastrada para avaliação (prospecção).", origem: autor.origem, usuarioId: autor.id },
     });
-    await tx.eventoAuditoria.createMany({ data: compararCampos("Cliente", c.id, autor.id, {}, dados) });
+    await tx.eventoAuditoria.createMany({ data: compararCampos("Cliente", c.id, autor.id, {}, { ...dados, ...(fabricasIds.length ? { fabricasIds: [...fabricasIds].sort().join(",") } : {}) }) });
     return c;
   });
+  const nomesFabricas = (await prisma.fabrica.findMany({ where: { id: { in: fabricasIds } }, select: { nome: true } })).map((f) => f.nome);
 
   const avisos: string[] = [];
   if (!uf) avisos.push("Sem UF: confirme o estado da empresa.");
-  else if (!ufNorteNordeste(uf)) avisos.push("Fora do Norte e Nordeste: a linha Rudolph não pode ser oferecida a esta empresa (regra do contrato).");
+  else if (alertaRegiaoRudolph(uf, nomesFabricas)) avisos.push("Fora do Norte e Nordeste: a linha Rudolph não pode ser oferecida a esta empresa (regra do contrato).");
   return { erros: [], id: criada.id, avisos };
 }

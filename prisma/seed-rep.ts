@@ -3,6 +3,7 @@
 // (padrão: ~/Documents/Dev/Outros/rep/dados, vizinha deste projeto).
 // Só roda contra banco local e vazio — nunca contra o Supabase.
 import { PrismaClient } from "@prisma/client";
+import { ligarProspeccaoSemFabrica } from "../src/lib/crm/fabricas-prospeccao";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
@@ -112,6 +113,9 @@ async function main() {
           return { clienteId: clienteIdV, fabricaId: fabricaIdV };
         }),
       });
+      // Toda a prospecção da pasta é Rudolph (a migração 20261017120000 faz o mesmo no banco existente).
+      const rudolph = [...fabricaId.entries()].find(([f]) => nomeFabrica(f) === "Rudolph")?.[1];
+      if (rudolph) await ligarProspeccaoSemFabrica(tx, rudolph);
 
       return {
         fabricas: fabricantes.length,
